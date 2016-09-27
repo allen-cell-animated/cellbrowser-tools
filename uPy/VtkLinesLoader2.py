@@ -36,6 +36,67 @@ class VtkSegmentationReader(uiadaptor):
         self._command(args)
         return 1
 
+    def loadVTK_bSplines(self, filename, objprefix, scale=0.1):
+        if not filename : return
+        vtkname,ext=os.path.splitext(os.path.basename(filename))
+        print filename
+
+        f = open(filename)
+        lines = f.readlines()
+        f.close()
+        # print "closed file"
+
+        vertexList = []
+        edgeList = []
+
+        lineNr = 0
+        pattern = re.compile('([\d]+) ([\d]+) ([\d]+)')
+        # print "ok 0"
+        # read up to the POINTS string
+        while "POINTS" not in lines[lineNr]:
+            lineNr += 1
+        # consume the POINTS line
+        lineNr += 1
+        # print "ok 1.0"
+        # read POINTS up to the LINES string, 3 coordinates at a time
+        while "LINES" not in lines[lineNr]:
+            line_as_floats = [float(x) for x in lines[lineNr].split()]
+            for i in range(len(line_as_floats)/3):
+                vertexList.append((line_as_floats[i*3+0], line_as_floats[i*3+1], line_as_floats[i*3+2]))
+            lineNr += 1
+        # now read LINES to the end:
+        # print "ok 1.1"
+        linesList = []
+        while lineNr < len(lines)-1:
+            lineNr += 1
+            line_as_ints = [int(x) for x in lines[lineNr].split()]
+            # print len(line_as_ints)
+            # nrOfPoints = line_as_ints[0]
+            spline = []
+            for i in range(1, len(line_as_ints)):
+                spline.append(vertexList[line_as_ints[i]])
+            if len(spline) > 1:
+                linesList.append(spline)
+
+
+        scn = self.helper.getCurrentScene()
+        # nr = c4d.BaseObject(c4d.Onull)
+        # nr.SetName(objprefix+'_splineds')
+        # self.helper.addObjectToScene(scn,nr,parent=None)
+        nr = self.helper.newEmpty(objprefix+'_splineds', display=1, visible=1)
+        m = c4d.Matrix()
+        # scale Z to the proper ratio of slice resolution
+        m.Scale(c4d.Vector(1,1,4))
+        nr.SetMg(m)
+        for i in range(len(linesList)):
+            s = self.helper.spline(objprefix+'_spline'+str(i), linesList[i], close=0, type=c4d.SPLINETYPE_BSPLINE, scene=scn, parent=nr)
+            print 'created spline ' + objprefix+'_spline'+str(i)
+            # m = c4d.Matrix()
+            # # scale Z to the proper ratio of slice resolution
+            # m.Scale(c4d.Vector(1,1,4))
+            # s[0].SetMg(m)
+
+
     def loadVTK(self, filename, objprefix, scale=0.1):
         if not filename : return
         vtkname,ext=os.path.splitext(os.path.basename(filename))
@@ -103,7 +164,7 @@ class VtkSegmentationReader(uiadaptor):
         self.loadVTK(filename, "Tub", 0.1)
 
     def loadGeneral(self, filename):
-        self.loadVTK(filename, "Test", 4.0)
+        self.loadVTK_bSplines(filename, "Test", 4.0)
 
     def browseVTK(self,*args):
         #first need to call the ui fileDialog
