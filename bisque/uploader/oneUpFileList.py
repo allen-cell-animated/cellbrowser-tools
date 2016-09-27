@@ -44,6 +44,6 @@ with open(path_csv, 'rU') as csvfile, open('out.txt', 'w') as outfile:
         resource_uniq = uploader.uploadFileSpec(session, resource, None)
         print fname + ',' + resource_uniq
 
-        dataUrls.append(uploader.dataServiceURL + resource_uniq)
+        dataUrls.append(uploader.dataServiceURL(session) + resource_uniq)
 
         outfile.write(fname + ',' + resource_uniq + os.linesep)
