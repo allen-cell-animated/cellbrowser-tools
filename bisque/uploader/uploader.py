@@ -1,5 +1,3 @@
-import os
-
 try:
     from lxml import etree
 except ImportError:
@@ -24,14 +22,17 @@ def init():
     session = BQSession().init_local(user, pswd, bisque_root=root, create_mex=False)
     return session
 
+
 def dataServiceURL(session):
     return session.service_url('data_service')
+
 
 def uploadFileSpec(session, fxml, filepath=None):
     r = etree.XML(session.postblob(filepath, xml=fxml)).find('./')
 
     if r is None or r.get('uri') is None:
         print 'Upload failed'
+        print r
         return None
     else:
         print 'Uploaded ID: %s, URL: %s' % (r.get('resource_uniq'), r.get('uri'))
