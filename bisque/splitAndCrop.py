@@ -78,7 +78,14 @@ def main():
     ]
 
     fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_1.csv'
-    with open(fname, 'rU') as csvfile:
+    structureName = 'mitochondria'
+
+    with open(fname, 'rU') as csvfile, open('/Users/danielt/src/aicsviztools/bisque/filelist.csv', 'w') as csvOutFile:
+
+        fieldnames = ['name', 'source', 'structure', 'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax']
+        csvwriter = csv.DictWriter(csvOutFile, fieldnames=fieldnames)
+        csvwriter.writeheader()
+
         reader = csv.DictReader(csvfile)
         for row in reader:
             segPath = row['outputSegmentationPath']
@@ -91,7 +98,6 @@ def main():
             print(nucSegFile)
             cellSegFile = os.path.join(segPath, row['outputCellSegWholeFilename'])
             print(cellSegFile)
-
 
             imageFile = os.path.join(row['inputFolder'], row['inputFilename'])
             imageFile = os.path.join(*imageFile.split('\\'))
@@ -129,7 +135,7 @@ def main():
 
             # assumption: less than 256 cells segmented in the file.
             # assumption: cell segmentation is a numeric index in the pixels
-            h = np.histogram(cellseg, bins=range(0,256))
+            h = np.histogram(cellseg, bins=range(0, 256))
             # which bins have segmented pixels?
             # note that this includes zeroes, which is to be ignored.
             h0 = np.nonzero(h[0])[0]
@@ -146,12 +152,21 @@ def main():
                 cropped[4] = image_to_mask(cropped[4], i)
                 cropped[5] = image_to_mask(cropped[5], i)
 
-                cropped = cropped.transpose(1,0,2,3)
+                cropped = cropped.transpose(1, 0, 2, 3)
 
-                writer = OmeTifWriter('/Users/danielt/src/aicsviztools/bisque/images/Mito/' + base + '_' + str(i) + '.ome.tif')
+                outname = base + '_' + str(i)
+                writer = OmeTifWriter('/Users/danielt/src/aicsviztools/bisque/images/Mito/' + outname + '.ome.tif')
                 writer.save(cropped, channel_names=[x.upper() for x in channels],
                             pixels_physical_size=physical_size, channel_colors=channel_colors)
 
+                # fieldnames = ['name', 'source', 'structure', 'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax']
+                csvwriter.writerow({'name': outname,
+                                    'source': base,
+                                    'structure': structureName,
+                                    'xmin': bounds[0][0], 'xmax': bounds[0][1],
+                                    'ymin': bounds[1][0], 'ymax': bounds[1][1],
+                                    'zmin': bounds[2][0], 'zmax': bounds[2][1]
+                                    })
 
 
 if __name__ == "__main__":
