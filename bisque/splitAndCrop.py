@@ -77,8 +77,18 @@ def main():
         rgba255(0, 0, 255, 255)
     ]
 
-    fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_1.csv'
-    structureName = 'mitochondria'
+    # fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_1.csv'
+    # structureName = 'mitochondria'
+    # outdir = 'Mito'
+    fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_4.csv'
+    structureName = 'nucleus'
+    outdir = 'lmnb'
+    # fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_3.csv'
+    # structureName = 'alph_actinin'
+    # outdir = 'alphactinin'
+    # fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_2.csv'
+    # structureName = 'microtubules'
+    # outdir = 'tub'
 
     with open(fname, 'rU') as csvfile, open('/Users/danielt/src/aicsviztools/bisque/filelist.csv', 'w') as csvOutFile:
 
@@ -155,7 +165,7 @@ def main():
                 cropped = cropped.transpose(1, 0, 2, 3)
 
                 outname = base + '_' + str(i)
-                writer = OmeTifWriter('/Users/danielt/src/aicsviztools/bisque/images/Mito/' + outname + '.ome.tif')
+                writer = OmeTifWriter(os.path.join('/Users/danielt/src/aicsviztools/bisque/images/', outdir, outname + '.ome.tif'))
                 writer.save(cropped, channel_names=[x.upper() for x in channels],
                             pixels_physical_size=physical_size, channel_colors=channel_colors)
 
