@@ -56,7 +56,7 @@ def get_segmentation_bounds(segmentation_image, index, margin=5):
 
 # assuming 4d image (CZYX) and bounds as [[xmin,xmax],[ymin,ymax],[zmin,zmax]]
 def crop_to_bounds(image, bounds):
-    atrim = image[:, bounds[2][0]:bounds[2][1], bounds[1][0]:bounds[1][1], bounds[0][0]:bounds[0][1]]
+    atrim = np.copy(image[:, bounds[2][0]:bounds[2][1], bounds[1][0]:bounds[1][1], bounds[0][0]:bounds[0][1]])
     return atrim
 
 
