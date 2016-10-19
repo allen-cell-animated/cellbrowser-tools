@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
-import os
 import argparse
-
+import csv
 try:
     from lxml import etree
 except ImportError:
     import xml.etree.ElementTree as etree
-
+import os
 import uploader
 
 # debug output
@@ -30,7 +29,8 @@ args = parser.parse_args()
 
 thumbnailpath = args.thumbnailUrlPath
 
-def oneUp(fname, tagType, outfile):
+
+def oneUp(fname, tagType, dict, outfile):
     fullpath = args.dataPath + fname + '.ome.tif'
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = thumbnailpath + fname + '.png'
@@ -38,12 +38,18 @@ def oneUp(fname, tagType, outfile):
                              name=fname,
                              value=fullpath,
                              permission='published')
-    t = etree.SubElement(resource, 'tag', name='url', value=fullpath, type='link')
+    etree.SubElement(resource, 'tag', name='url', value=fullpath, type='link')
     etree.SubElement(resource, 'tag', name='name', value=fname)
     # if os.path.exists(thumbnail):
     etree.SubElement(resource, 'tag', name='thumbnail', value=thumbnail)
     etree.SubElement(resource, 'tag', name='type', value=tagType)
-
+    if dict:
+        # assume bounding box exists...
+        if dict['xmin']:
+            bounds = dict['xmin']+','+dict['xmax']+','+dict['ymin']+','+dict['ymax']+','+dict['zmin']+','+dict['zmax']
+            etree.SubElement(resource, 'tag', name='bounds', value=bounds)
+        if dict['source']:
+            etree.SubElement(resource, 'tag', name='source', value=dict['source'])
     resource_uniq = uploader.uploadFileSpec(session, resource, None)
     print fname + ',' + (resource_uniq if resource_uniq is not None else "None")
 
@@ -52,9 +58,12 @@ def oneUp(fname, tagType, outfile):
 session = uploader.init()
 if args.list:
     with open(args.list, 'rU') as csvfile, open('out.txt', 'w') as outfile:
-        contents = [rw.strip() for rw in csvfile.readlines() if not rw.startswith('#')]
-        for fname in contents:
-            oneUp(fname, args.tagType, outfile)
+        csvreader = csv.DictReader(csvfile)
+        first_field = csvreader.fieldnames[0]
+        for row in csvreader:
+            if row[first_field].startswith("#"):
+                continue
+            oneUp(row['name'], row['structure'], row, outfile)
 else:
     with open('out.txt', 'a') as outfile:
-        oneUp(args.name, args.tagType, outfile)
+        oneUp(args.name, args.tagType, None, outfile)

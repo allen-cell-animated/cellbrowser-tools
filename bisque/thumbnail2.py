@@ -54,7 +54,8 @@ def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=False):
     im_proj[:, :, 2] *= color[2]
 
     if rescale_inten:
-        im_proj = im_proj / np.max(im_proj.flatten())
+        maxval = np.max(im_proj.flatten())
+        im_proj = im_proj / maxval
 
     return im_proj
 
@@ -154,7 +155,12 @@ def main():
     shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
     # apply the cell segmentation mask.  bye bye to data outside the cell
-    im1 = [mask_image(im, im1[seg_channel_index]) for im in im1]
+    for i in range(im1.shape[0]):
+        im1[i,:,:,:] = mask_image(im1[i,:,:,:], im1[seg_channel_index,:,:,:])
+    # im1 = [mask_image(im, im1[seg_channel_index]) for im in im1]
+    mask = matproj(im1[seg_channel_index], z_axis_index)
+    # pngwriter = pngWriter.PngWriter('test/oMask.png')
+    # pngwriter.save(mask)
 
     num_noise_floor_bins = 16
     comp = np.zeros(shape_out_rgb)
@@ -162,17 +168,21 @@ def main():
         ch = channel_indices[i]
         # try to subtract out the noise floor.
         # range is chosen to ignore zeros due to masking.  alternative is to pass mask image as weights=im1[-1]
-        hi, bin_edges = np.histogram(im1[ch], bins=num_noise_floor_bins, range=(max(1, im1[ch].min()), im1[ch].max()))
+        immin = im1[ch].min()
+        immax = im1[ch].max()
+        hi, bin_edges = np.histogram(im1[ch], bins=num_noise_floor_bins, range=(max(1, immin), immax))
         # hi, bin_edges = np.histogram(im1[0], bins=16, weights=im1[-1])
         # index of tallest peak in histogram
         peakind = np.argmax(hi)
         # subtract this out
         thumb = im1[ch].astype(np.float32)
-        thumb -= bin_edges[peakind]
+        if i != 0:
+            thumb -= bin_edges[peakind]
         # don't go negative
         thumb[thumb < 0] = 0
         # renormalize
-        thumb /= thumb.max()
+        thmax = thumb.max()
+        thumb /= thmax
 
         # resize before projection?
         # thumb = imresize(thumb, shape_out)
@@ -187,6 +197,6 @@ def main():
     pngwriter.save(comp)
 
 if __name__ == "__main__":
-    print sys.argv
+    print " ".join(sys.argv)
     main()
     sys.exit(0)

@@ -77,106 +77,142 @@ def main():
         rgba255(0, 0, 255, 255)
     ]
 
-    # fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_1.csv'
+    inputfiles = [
+        # {'fname':'./nuc_cell_seg_selection_info_for_loading_20160906_1.csv',
+        #  'structureName':'mitochondria',
+        #  'outdir':'mito'},
+         {'fname': './nuc_cell_seg_selection_info_for_loading_20160906_3.csv',
+         'structureName': 'alph_actinin',
+         'outdir': 'alphactinin'},
+        {'fname': './nuc_cell_seg_selection_info_for_loading_20160906_4.csv',
+         'structureName': 'nucleus',
+         'outdir': 'lmnb'}
+    ]
+    # fname = './nuc_cell_seg_selection_info_for_loading_20160906_1.csv'
     # structureName = 'mitochondria'
-    # outdir = 'Mito'
-    fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_4.csv'
-    structureName = 'nucleus'
-    outdir = 'lmnb'
-    # fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_3.csv'
-    # structureName = 'alph_actinin'
-    # outdir = 'alphactinin'
-    # fname = '/Users/danielt/src/aicsviztools/bisque/nuc_cell_seg_selection_info_for_loading_20160906_2.csv'
+    # outdir = 'mito'
+    # fname = './nuc_cell_seg_selection_info_for_loading_20160906_2.csv'
     # structureName = 'microtubules'
     # outdir = 'tub'
+    # fname = './nuc_cell_seg_selection_info_for_loading_20160906_4.csv'
+    # structureName = 'nucleus'
+    # outdir = 'lmnb'
+    # fname = './nuc_cell_seg_selection_info_for_loading_20160906_3.csv'
+    # structureName = 'alph_actinin'
+    # outdir = 'alphactinin'
 
-    with open(fname, 'rU') as csvfile, open('/Users/danielt/src/aicsviztools/bisque/filelist.csv', 'w') as csvOutFile:
 
-        fieldnames = ['name', 'source', 'structure', 'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax']
-        csvwriter = csv.DictWriter(csvOutFile, fieldnames=fieldnames)
-        csvwriter.writeheader()
+    # create_images = False
 
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            segPath = row['outputSegmentationPath']
-            segPath = os.path.join(*segPath.split('\\'))
-            # TODO: this only works for default mac mounts
-            segPath = re.sub('^%s' % 'aibsdata', '/Volumes', segPath)
-            print(segPath)
+    for entry in inputfiles:
+        fname = entry['fname']
+        structureName = entry['structureName']
+        outdir = entry['outdir']
 
-            nucSegFile = os.path.join(segPath, row['outputNucSegWholeFilename'])
-            print(nucSegFile)
-            cellSegFile = os.path.join(segPath, row['outputCellSegWholeFilename'])
-            print(cellSegFile)
+        fileList = os.path.join('images', outdir, 'filelist.csv')
+        writeHeader = False
+        if not os.path.isfile(fileList):
+            writeHeader = True
 
-            imageFile = os.path.join(row['inputFolder'], row['inputFilename'])
-            imageFile = os.path.join(*imageFile.split('\\'))
-            # TODO: this only works for default mac mounts
-            imageFile = re.sub('^%s' % 'aibsdata', '/Volumes', imageFile)
-            print(imageFile)
+        with open(fname, 'rU') as csvfile, open(fileList, 'a') as csvOutFile:
 
-            # nucSegFile = '/Users/danielt/src/aicsviztools/bisque/20160705_I01_001.czi_nucWholeIndex.tiff'
-            nucsegreader = TifReader(nucSegFile)
-            nucseg = nucsegreader.load()
-            # cellSegFile = '/Users/danielt/src/aicsviztools/bisque/20160705_I01_001.czi_cellWholeIndex.tiff'
-            cellsegreader = TifReader(cellSegFile)
-            cellseg = cellsegreader.load()
-            # imageFile = '/Users/danielt/src/aicsviztools/bisque/20160705_I01_001.czi'
-            imagereader = CziReader(imageFile)
-            image = imagereader.load()
-            # print etree.tostring(imagereader.get_metadata())
+            fieldnames = ['name', 'source', 'structure', 'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax']
+            csvwriter = csv.DictWriter(csvOutFile, fieldnames=fieldnames)
+            if writeHeader:
+                csvwriter.writeheader()
 
-            base = os.path.basename(imageFile)
-            base = os.path.splitext(base)[0]
-
-            # image shape assumed to be T,C,Z,Y,X,1
-            image = image[0, :, :, :, :, 0]
-            # cellseg shape assumed to be Z,Y,X
-            assert imagereader.size_z() == cellsegreader.size_z()
-            assert imagereader.size_x() == cellsegreader.size_x()
-            assert imagereader.size_y() == cellsegreader.size_y()
-            assert imagereader.size_z() == nucsegreader.size_z()
-            assert imagereader.size_x() == nucsegreader.size_x()
-            assert imagereader.size_y() == nucsegreader.size_y()
-
-            # add channels for nucseg and cellseg
-            image = np.append(image, [nucseg], axis=0)
-            image = np.append(image, [cellseg], axis=0)
-
-            # assumption: less than 256 cells segmented in the file.
-            # assumption: cell segmentation is a numeric index in the pixels
-            h = np.histogram(cellseg, bins=range(0, 256))
-            # which bins have segmented pixels?
-            # note that this includes zeroes, which is to be ignored.
-            h0 = np.nonzero(h[0])[0]
-            # for each cell segmented from this image:
-            for i in h0:
-                if i == 0:
+            reader = csv.DictReader(csvfile)
+            first_field = reader.fieldnames[0]
+            for row in reader:
+                if row[first_field].startswith("#"):
                     continue
-                print(i)
+                segPath = row['outputSegmentationPath']
+                segPath = os.path.join(*segPath.split('\\'))
+                # TODO: this only works for default mac mounts
+                segPath = re.sub('^%s' % 'aibsdata', '/Volumes', segPath)
+                print(segPath)
 
-                bounds = get_segmentation_bounds(cellseg, i)
-                cropped = crop_to_bounds(image, bounds)
+                nucSegFile = os.path.join(segPath, row['outputNucSegWholeFilename'])
+                print(nucSegFile)
 
-                # turn the seg channels into true masks
-                cropped[4] = image_to_mask(cropped[4], i)
-                cropped[5] = image_to_mask(cropped[5], i)
+                cellSegFile = os.path.join(segPath, row['outputCellSegWholeFilename'])
+                print(cellSegFile)
 
-                cropped = cropped.transpose(1, 0, 2, 3)
+                imageFile = os.path.join(row['inputFolder'], row['inputFilename'])
+                imageFile = os.path.join(*imageFile.split('\\'))
+                # TODO: this only works for default mac mounts
+                imageFile = re.sub('^%s' % 'aibsdata', '/Volumes', imageFile)
+                print(imageFile)
 
-                outname = base + '_' + str(i)
-                writer = OmeTifWriter(os.path.join('/Users/danielt/src/aicsviztools/bisque/images/', outdir, outname + '.ome.tif'))
-                writer.save(cropped, channel_names=[x.upper() for x in channels],
-                            pixels_physical_size=physical_size, channel_colors=channel_colors)
+                cellsegreader = TifReader(cellSegFile)
+                cellseg = cellsegreader.load()
 
-                # fieldnames = ['name', 'source', 'structure', 'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax']
-                csvwriter.writerow({'name': outname,
-                                    'source': base,
-                                    'structure': structureName,
-                                    'xmin': bounds[0][0], 'xmax': bounds[0][1],
-                                    'ymin': bounds[1][0], 'ymax': bounds[1][1],
-                                    'zmin': bounds[2][0], 'zmax': bounds[2][1]
-                                    })
+                nucsegreader = TifReader(nucSegFile)
+                nucseg = nucsegreader.load()
+
+                imagereader = CziReader(imageFile)
+                image = imagereader.load()
+                # print etree.tostring(imagereader.get_metadata())
+
+                # image shape assumed to be T,C,Z,Y,X,1
+                image = image[0, :, :, :, :, 0]
+                # cellseg shape assumed to be Z,Y,X
+                assert imagereader.size_z() == cellsegreader.size_z()
+                assert imagereader.size_x() == cellsegreader.size_x()
+                assert imagereader.size_y() == cellsegreader.size_y()
+                assert imagereader.size_z() == nucsegreader.size_z()
+                assert imagereader.size_x() == nucsegreader.size_x()
+                assert imagereader.size_y() == nucsegreader.size_y()
+
+                # add channels for nucseg and cellseg
+                image = np.append(image, [nucseg], axis=0)
+                image = np.append(image, [cellseg], axis=0)
+
+                base = os.path.basename(imageFile)
+                base = os.path.splitext(base)[0]
+
+
+                # assumption: less than 256 cells segmented in the file.
+                # assumption: cell segmentation is a numeric index in the pixels
+                h = np.histogram(cellseg, bins=range(0, 256))
+                # which bins have segmented pixels?
+                # note that this includes zeroes, which is to be ignored.
+                h0 = np.nonzero(h[0])[0]
+                # for each cell segmented from this image:
+                for i in h0:
+                    if i == 0:
+                        continue
+                    print(i)
+                    outname = base + '_' + str(i)
+
+                    bounds = get_segmentation_bounds(cellseg, i)
+
+                    cropped = crop_to_bounds(image, bounds)
+
+                    # turn the seg channels into true masks
+                    cropped[4] = image_to_mask(cropped[4], i)
+                    cropped[5] = image_to_mask(cropped[5], i)
+
+                    cropped = cropped.transpose(1, 0, 2, 3)
+
+                    writer = OmeTifWriter(os.path.join('/Users/danielt/src/aicsviztools/bisque/images/', outdir, outname + '.ome.tif'))
+                    writer.save(cropped, channel_names=[x.upper() for x in channels],
+                                pixels_physical_size=physical_size, channel_colors=channel_colors)
+
+                    # fieldnames = ['name', 'source', 'structure', 'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax']
+                    csvwriter.writerow({'name': outname,
+                                        'source': base,
+                                        'structure': structureName,
+                                        'xmin': bounds[0][0], 'xmax': bounds[0][1],
+                                        'ymin': bounds[1][0], 'ymax': bounds[1][1],
+                                        'zmin': bounds[2][0], 'zmax': bounds[2][1]
+                                        })
+
+                # image = image.transpose(1, 0, 2, 3)
+                # writer = OmeTifWriter(
+                #     os.path.join('/Users/danielt/src/aicsviztools/bisque/images/', outdir, base + '.ome.tif'))
+                # writer.save(image, channel_names=[x.upper() for x in channels],
+                #             pixels_physical_size=physical_size, channel_colors=channel_colors)
 
 
 if __name__ == "__main__":
