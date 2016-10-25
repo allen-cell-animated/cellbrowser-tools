@@ -39,7 +39,7 @@ def matproj(im, dim, method='max'):
     return im
 
 
-def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=False):
+def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=True):
     imdbl = np.asarray(imxyz).astype('double')
     # do projection
     im_proj = matproj(imdbl, axis, method)
@@ -53,9 +53,9 @@ def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=False):
     im_proj[:, :, 1] *= color[1]
     im_proj[:, :, 2] *= color[2]
 
-    if rescale_inten:
-        maxval = np.max(im_proj.flatten())
-        im_proj = im_proj / maxval
+    # if rescale_inten:
+    #     maxval = np.max(im_proj.flatten())
+    #     im_proj = im_proj / maxval
 
     return im_proj
 
@@ -134,10 +134,15 @@ def main():
 
     # see http://www.somersault1824.com/tips-for-designing-scientific-figures-for-color-blind-readers/
     # or http://mkweb.bcgsc.ca/biovis2012/
+    # colors = [
+    #     [0.0/255.0, 109.0/255.0, 219.0/255.0],
+    #     [36.0/255.0, 255.0/255.0, 36.0/255.0],
+    #     [255.0/255.0, 109.0/255.0, 182.0/255.0]
+    # ]
     colors = [
-        [0.0/255.0, 109.0/255.0, 219.0/255.0],
-        [36.0/255.0, 255.0/255.0, 36.0/255.0],
-        [255.0/255.0, 109.0/255.0, 182.0/255.0]
+        [0.0/255.0, 255.0/255.0, 255.0/255.0],
+        [255.0/255.0, 0.0/255.0, 255.0/255.0],
+        [255.0/255.0, 255.0/255.0, 0.0/255.0]
     ]
     channel_indices = [args.dna, args.mem, args.str]
 
@@ -146,6 +151,7 @@ def main():
     assert len(imsize) == 3
 
     # size down to this edge size, maintaining aspect ratio.
+    # note that this resizing results in all cell thumbnails being about the same size
     max_edge = args.size
     # keep same number of z slices.
     shape_out = np.hstack((imsize[0],
@@ -176,6 +182,7 @@ def main():
         peakind = np.argmax(hi)
         # subtract this out
         thumb = im1[ch].astype(np.float32)
+        # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
         if i != 0:
             thumb -= bin_edges[peakind]
         # don't go negative

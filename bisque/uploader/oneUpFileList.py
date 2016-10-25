@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser()
 # dataPath = 'file:///data/aics/software_it/danielt/images/AICS/bisque/Mito/'
 parser.add_argument("dataPath", help="the directory containing the ome tiff files on the file store")
 parser.add_argument("thumbnailUrlPath", help="the directory containing the thumbnail files as a url")
-parser.add_argument("tagType", default="", help="the tag value to assign to tag name 'type' for all files in fileList")
+parser.add_argument("tagType", default="", help="the tag value to assign to tag name 'structureName' for all files in fileList")
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("--list", help="the file containing names of files to upload, one per line")
 group.add_argument("--name", help="the file to upload, name only, no extension")
@@ -36,13 +36,15 @@ def oneUp(fname, tagType, dict, outfile):
     thumbnail = thumbnailpath + fname + '.png'
     resource = etree.Element('image',
                              name=fname,
-                             value=fullpath,
-                             permission='published')
-    etree.SubElement(resource, 'tag', name='url', value=fullpath, type='link')
+                             value=fullpath)
+    resource.set('permission', 'published')
+    # etree.SubElement(resource, 'tag', name='permission', value='published')
+    # etree.SubElement(resource, 'tag', name='url', value=fullpath, type='link')
     etree.SubElement(resource, 'tag', name='name', value=fname)
+    etree.SubElement(resource, 'tag', name='filename', value=fname)
     # if os.path.exists(thumbnail):
     etree.SubElement(resource, 'tag', name='thumbnail', value=thumbnail)
-    etree.SubElement(resource, 'tag', name='type', value=tagType)
+    etree.SubElement(resource, 'tag', name='structureName', value=tagType)
     if dict:
         # assume bounding box exists...
         if dict['xmin']:
