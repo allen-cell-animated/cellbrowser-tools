@@ -38,6 +38,8 @@ def oneUp(fname, tagType, dict, outfile):
                              name=fname,
                              value=fullpath)
     resource.set('permission', 'published')
+    ingest_tag = etree.SubElement(resource, 'tag', name='ingest')
+    etree.SubElement(ingest_tag, 'tag', name='permission', value='published')
     # etree.SubElement(resource, 'tag', name='permission', value='published')
     # etree.SubElement(resource, 'tag', name='url', value=fullpath, type='link')
     etree.SubElement(resource, 'tag', name='name', value=fname)
