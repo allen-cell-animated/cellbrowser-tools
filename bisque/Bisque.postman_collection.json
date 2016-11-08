@@ -1,0 +1,91 @@
+{
+	"variables": [],
+	"info": {
+		"name": "Bisque",
+		"_postman_id": "e1b860f5-1880-45fe-249c-344e3c9e3cc6",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Delete image",
+			"request": {
+				"url": "http://{{server_ip}}/data_service/00-amSUH8Ywy7wpR7xz4YRmPX",
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Basic YWRtaW46YWRtaW4=",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": "Delete an image"
+			},
+			"response": []
+		},
+		{
+			"name": "Get image data",
+			"request": {
+				"url": "http://{{server_ip}}/data_service/00-5ZCb7dzxb3X5aQ7LEcQniZ?view=deep",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Basic YWRtaW46YWRtaW4=",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Get image metadata",
+			"request": {
+				"url": "http://{{server_ip}}/image_service/00-5ZCb7dzxb3X5aQ7LEcQniZ?meta",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Basic YWRtaW46YWRtaW4=",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "Get Image List",
+			"request": {
+				"url": "http://{{server_ip}}/data_service/image/?offset=0&tag_order=%22@ts%22:desc&wpublic=false&limit=700",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Basic YWRtaW46YWRtaW4=",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		}
+	]
+}
