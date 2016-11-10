@@ -15,7 +15,8 @@ from bqapi.util import save_blob, localpath2url
 
 
 def init():
-    root = 'http://10.128.62.45:8080'
+    # root = 'http://bisque-00.corp.alleninstitute.org:8080'
+    root = 'http://10.128.62.98:8080'
     # user and password
     user = 'admin'
     pswd = 'admin'

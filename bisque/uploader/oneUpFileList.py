@@ -35,11 +35,14 @@ def oneUp(fname, tagType, dict, outfile):
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = thumbnailpath + fname + '.png'
     resource = etree.Element('image',
-                             name=fname,
+                             name=fname+'.ome.tif',
                              value=fullpath)
     resource.set('permission', 'published')
-    ingest_tag = etree.SubElement(resource, 'tag', name='ingest')
-    etree.SubElement(ingest_tag, 'tag', name='permission', value='published')
+
+    # ingest_tag = etree.SubElement(resource, 'tag', name='ingest')
+    # etree.SubElement(ingest_tag, 'tag', name='permission', value='published')
+    # etree.SubElement(ingest_tag, 'tag', name='type', value='zip')
+
     # etree.SubElement(resource, 'tag', name='permission', value='published')
     # etree.SubElement(resource, 'tag', name='url', value=fullpath, type='link')
     etree.SubElement(resource, 'tag', name='name', value=fname)
@@ -68,6 +71,7 @@ if args.list:
             if row[first_field].startswith("#"):
                 continue
             oneUp(row['name'], row['structure'], row, outfile)
+            #break # first row only; debugging
 else:
     with open('out.txt', 'a') as outfile:
         oneUp(args.name, args.tagType, None, outfile)
