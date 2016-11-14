@@ -63,31 +63,53 @@ def crop_to_bounds(image, bounds):
 def image_to_mask(image3d, index, mask_positive_value=1):
     return np.where(image3d == index, mask_positive_value, 0).astype(image3d.dtype)
 
+def normalizePath(p):
+    outPath = os.path.join(*p.split('\\'))
+
+    if sys.platform.startswith('darwin'):
+        # mac default mount point
+        outPath = re.sub('^%s' % 'aibsdata', '/Volumes', outPath)
+    elif sys.platform.startswith('linux'):
+        # linux default mount point
+        outPath = re.sub('^%s' % 'aibsdata', '/data', outPath)
+    else:
+        outPath = "\\\\" + outPath
+
+    # print(outPath)
+    return outPath    
 
 def main():
-    channels = ['memb', 'struct', 'dna', 'trans', 'seg_nuc', 'seg_cell']
-    # todo: get physical size from CSV
-    physical_size = [0.065, 0.065, 0.29]
+    parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
+                                                 'Example: python splitAndCrop.py /path/to/csv')
+    parser.add_argument('input', nargs='+', help='input csv files')
+    parser.add_argument('--outpath', help='output path', default='images')
+    args = parser.parse_args()
+
+    inputfiles = args.input
+
+    channels = ['memb', 'struct', 'dna', 'trans', 'seg_nuc', 'seg_cell', 'seg_struct']
     channel_colors = [
         rgba255(255, 255, 0, 255),
         rgba255(255, 0, 255, 255),
         rgba255(0, 255, 255, 255),
         rgba255(255, 255, 255, 255),
         rgba255(255, 0, 0, 255),
-        rgba255(0, 0, 255, 255)
+        rgba255(0, 0, 255, 255),
+        rgba255(127, 127, 0, 255)
     ]
 
-    inputfiles = [
-        # {'fname':'./nuc_cell_seg_selection_info_for_loading_20160906_1.csv',
-        #  'structureName':'mitochondria',
-        #  'outdir':'mito'},
-         {'fname': './nuc_cell_seg_selection_info_for_loading_20160906_3.csv',
-         'structureName': 'alph_actinin',
-         'outdir': 'alphactinin'},
-        {'fname': './nuc_cell_seg_selection_info_for_loading_20160906_4.csv',
-         'structureName': 'nucleus',
-         'outdir': 'lmnb'}
-    ]
+    # inputfiles = [
+    #     # {'fname':'./nuc_cell_seg_selection_info_for_loading_20160906_1.csv',
+    #     #  'structureName':'mitochondria',
+    #     #  'outdir':'mito'},
+    #      {'fname': './nuc_cell_seg_selection_info_for_loading_20160906_3.csv',
+    #      'structureName': 'alph_actinin',
+    #      'outdir': 'alphactinin'},
+    #     {'fname': './nuc_cell_seg_selection_info_for_loading_20160906_4.csv',
+    #      'structureName': 'nucleus',
+    #      'outdir': 'lmnb'}
+    # ]
+
     # fname = './nuc_cell_seg_selection_info_for_loading_20160906_1.csv'
     # structureName = 'mitochondria'
     # outdir = 'mito'
@@ -105,11 +127,13 @@ def main():
     # create_images = False
 
     for entry in inputfiles:
-        fname = entry['fname']
-        structureName = entry['structureName']
-        outdir = entry['outdir']
+        fname = entry
+        outdir = os.path.join(args.outpath, os.path.splitext(entry)[0])
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
 
-        fileList = os.path.join('images', outdir, 'filelist.csv')
+        fileList = os.path.join(outdir, 'filelist.csv')
+
         writeHeader = False
         if not os.path.isfile(fileList):
             writeHeader = True
@@ -126,22 +150,34 @@ def main():
             for row in reader:
                 if row[first_field].startswith("#"):
                     continue
+
+                # physical_size = [0.065, 0.065, 0.29]
+                # note these are strings here.  it's ok for xml purposes but not for any math.
+                physical_size = [row['xyPixelSize'], row['xyPixelSize'], row['zPixelSize']]
+
+                structureName = row['structureProteinName']
+
                 segPath = row['outputSegmentationPath']
-                segPath = os.path.join(*segPath.split('\\'))
-                # TODO: this only works for default mac mounts
-                segPath = re.sub('^%s' % 'aibsdata', '/Volumes', segPath)
+                segPath = normalizePath(segPath)
                 print(segPath)
 
+                # nucleus segmentation
                 nucSegFile = os.path.join(segPath, row['outputNucSegWholeFilename'])
                 print(nucSegFile)
 
+                # cell segmentation
                 cellSegFile = os.path.join(segPath, row['outputCellSegWholeFilename'])
                 print(cellSegFile)
 
+                structSegPath = row['structureSegOutputFolder']
+                structSegPath = normalizePath(structSegPath)
+
+                # structure segmentation
+                structSegFile = os.path.join(structSegPath, row['structureSegOutputFilename'])
+                print(structSegFile)
+
                 imageFile = os.path.join(row['inputFolder'], row['inputFilename'])
-                imageFile = os.path.join(*imageFile.split('\\'))
-                # TODO: this only works for default mac mounts
-                imageFile = re.sub('^%s' % 'aibsdata', '/Volumes', imageFile)
+                imageFile = normalizePath(imageFile)
                 print(imageFile)
 
                 cellsegreader = TifReader(cellSegFile)
@@ -149,6 +185,9 @@ def main():
 
                 nucsegreader = TifReader(nucSegFile)
                 nucseg = nucsegreader.load()
+
+                structsegreader = TifReader(structSegFile)
+                structseg = structsegreader.load()
 
                 imagereader = CziReader(imageFile)
                 image = imagereader.load()
@@ -163,10 +202,14 @@ def main():
                 assert imagereader.size_z() == nucsegreader.size_z()
                 assert imagereader.size_x() == nucsegreader.size_x()
                 assert imagereader.size_y() == nucsegreader.size_y()
+                assert imagereader.size_z() == structsegreader.size_z()
+                assert imagereader.size_x() == structsegreader.size_x()
+                assert imagereader.size_y() == structsegreader.size_y()
 
-                # add channels for nucseg and cellseg
+                # add channels for segmentations
                 image = np.append(image, [nucseg], axis=0)
                 image = np.append(image, [cellseg], axis=0)
+                image = np.append(image, [structseg], axis=0)
 
                 base = os.path.basename(imageFile)
                 base = os.path.splitext(base)[0]
@@ -192,10 +235,12 @@ def main():
                     # turn the seg channels into true masks
                     cropped[4] = image_to_mask(cropped[4], i)
                     cropped[5] = image_to_mask(cropped[5], i)
+                    # structure segmentation does not use cell rules
+                    # cropped[6] = image_to_mask(cropped[6], i)
 
                     cropped = cropped.transpose(1, 0, 2, 3)
 
-                    writer = OmeTifWriter(os.path.join('/Users/danielt/src/aicsviztools/bisque/images/', outdir, outname + '.ome.tif'))
+                    writer = OmeTifWriter(os.path.join(outdir, outname + '.ome.tif'))
                     writer.save(cropped, channel_names=[x.upper() for x in channels],
                                 pixels_physical_size=physical_size, channel_colors=channel_colors)
 
@@ -210,7 +255,7 @@ def main():
 
                 # image = image.transpose(1, 0, 2, 3)
                 # writer = OmeTifWriter(
-                #     os.path.join('/Users/danielt/src/aicsviztools/bisque/images/', outdir, base + '.ome.tif'))
+                #     os.path.join(outdir, base + '.ome.tif'))
                 # writer.save(image, channel_names=[x.upper() for x in channels],
                 #             pixels_physical_size=physical_size, channel_colors=channel_colors)
 
