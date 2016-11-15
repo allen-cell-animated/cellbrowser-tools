@@ -193,6 +193,9 @@ def main():
     base = os.path.splitext(base)[0]
     # strips away .ome (?)
     base = os.path.splitext(base)[0]
+
+    if not os.path.exists(args.outpath):
+        os.makedirs(args.outpath)
     image_out = os.path.join(args.outpath, base + '.png')
 
     # transpose xycz to xyzc
