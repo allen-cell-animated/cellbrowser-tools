@@ -8,6 +8,7 @@ UPLOADER_PATH=~/src/aicsviztools/bisque/uploader/
 # AICSIMGDESTPATH=/Volumes/aics/software_it/danielt/images/AICS/bisque/
 # AICSTHUMBNAILPATH=/Volumes/aics/software_it/danielt/demos/bisque/thumbnails/
 
+IMGPATH=/data/aics/software_it/danielt/images/AICS/bisque/
 URLIMGPATH=file:///data/aics/software_it/danielt/images/AICS/bisque/
 URLTHUMBNAILPATH=http://stg-aics/danielt_demos/bisque/thumbnails/
 
@@ -15,7 +16,7 @@ URLTHUMBNAILPATH=http://stg-aics/danielt_demos/bisque/thumbnails/
 TAGVALUE=dummy
 
 # filelist.csv created by splitAndCrop.py
-for i in alphactinin mito tub lmnb; do
-    python $UPLOADER_PATH/oneUpFileList.py ${URLIMGPATH}${i}/ ${URLTHUMBNAILPATH}${i}/ $TAGVALUE --list ./images/$i/filelist.csv
+for i in 20160705_I01 20160705_S03 20160708_C01 20160708_I01 20160711_C01 20160929_I01 20160930_S01; do
+    python $UPLOADER_PATH/oneUpFileList.py ${URLIMGPATH}${i}/ ${URLTHUMBNAILPATH}${i}/ $TAGVALUE --list ${IMGPATH}${i}/filelist.csv
     mv out.txt outAlphaActinin.txt
 done
