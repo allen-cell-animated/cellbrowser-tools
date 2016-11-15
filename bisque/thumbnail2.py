@@ -92,59 +92,18 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 #     return img
 
 
-def main():
-    # python interleave.py --path /Volumes/aics/software_it/danielt/images/AICS/alphactinin/ --prefix img40_1
-    parser = argparse.ArgumentParser(description='Generate thumbnail from a cell image. '
-                                     'Example: python thumbnail.py /path/to/images/myImg.ome.tif 0 1 2 3')
-    parser.add_argument('--path', required=True, help='input file path')
-    parser.add_argument('--dna', required=True, type=int, help='dna channel index')
-    parser.add_argument('--mem', required=True, type=int, help='membrane channel index')
-    parser.add_argument('--str', required=True, type=int, help='structure channel index')
-
-    # assume segmentation mask is last channel, by default .
-    parser.add_argument('--seg', default=-1, type=int, help='segmentation channel index')
-
-    parser.add_argument('--size', default=128, type=int, help='maximum edge size of image')
-    parser.add_argument('--outpath', default='./', help='output file path (directory only)')
-    # parser.add_argument('--prefix', nargs=1, help='input file name prefix')
-    args = parser.parse_args()
-
-    inpath = args.path
-
-    seg_channel_index = args.seg
-
-    im1 = []
-
-    if os.path.isfile(inpath):
-        reader = omeTifReader.OmeTifReader(inpath)
-        im1 = reader.load()
-    else:
-        raise 'Bad file path ' + inpath
-
-    # transpose xycz to xyzc
-    assert len(im1.shape) == 4
-    im1 = np.transpose(im1, (1,0,2,3))
-
-    base = os.path.basename(inpath)
-    # strips away .tif
-    base = os.path.splitext(base)[0]
-    # strips away .ome (?)
-    base = os.path.splitext(base)[0]
-    image_out = os.path.join(args.outpath, base + '.png')
-
-    # see http://www.somersault1824.com/tips-for-designing-scientific-figures-for-color-blind-readers/
-    # or http://mkweb.bcgsc.ca/biovis2012/
-    # colors = [
-    #     [0.0/255.0, 109.0/255.0, 219.0/255.0],
-    #     [36.0/255.0, 255.0/255.0, 36.0/255.0],
-    #     [255.0/255.0, 109.0/255.0, 182.0/255.0]
-    # ]
-    colors = [
-        [0.0/255.0, 255.0/255.0, 255.0/255.0],
-        [255.0/255.0, 0.0/255.0, 255.0/255.0],
-        [255.0/255.0, 255.0/255.0, 0.0/255.0]
-    ]
-    channel_indices = [args.dna, args.mem, args.str]
+# see http://www.somersault1824.com/tips-for-designing-scientific-figures-for-color-blind-readers/
+# or http://mkweb.bcgsc.ca/biovis2012/
+# colors = [
+#     [0.0/255.0, 109.0/255.0, 219.0/255.0],
+#     [36.0/255.0, 255.0/255.0, 36.0/255.0],
+#     [255.0/255.0, 109.0/255.0, 182.0/255.0]
+# ]
+# pass in a xyzc image!
+def makeThumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0/255.0, 255.0/255.0, 255.0/255.0],
+                                                          [255.0/255.0, 0.0/255.0, 255.0/255.0],
+                                                          [255.0/255.0, 255.0/255.0, 0.0/255.0]],
+                  seg_channel_index=-1, size=128):
 
     # assume all images have same shape!!!
     imsize = np.array(im1[0].shape)
@@ -152,7 +111,7 @@ def main():
 
     # size down to this edge size, maintaining aspect ratio.
     # note that this resizing results in all cell thumbnails being about the same size
-    max_edge = args.size
+    max_edge = size
     # keep same number of z slices.
     shape_out = np.hstack((imsize[0],
                            max_edge if imsize[1] > imsize[2] else max_edge*imsize[1]/imsize[2],
@@ -196,10 +155,52 @@ def main():
         rgbproj = make_rgb_proj(thumb, z_axis_index, colors[i])
         rgbproj = imresize(rgbproj, shape_out_rgb)
         comp += rgbproj
-        # pngwriter = pngWriter.PngWriter('test/oThumb'+str(i)+'.png')
-        # pngwriter.save(rgbproj)
     # renormalize
     # comp /= comp.max()
+    return comp
+
+def main():
+    # python interleave.py --path /Volumes/aics/software_it/danielt/images/AICS/alphactinin/ --prefix img40_1
+    parser = argparse.ArgumentParser(description='Generate thumbnail from a cell image. '
+                                     'Example: python thumbnail2.py /path/to/images/myImg.ome.tif 0 1 2 3')
+    parser.add_argument('--path', required=True, help='input file path')
+    parser.add_argument('--dna', required=True, type=int, help='dna channel index')
+    parser.add_argument('--mem', required=True, type=int, help='membrane channel index')
+    parser.add_argument('--str', required=True, type=int, help='structure channel index')
+
+    # assume segmentation mask is last channel, by default .
+    parser.add_argument('--seg', default=-1, type=int, help='segmentation channel index')
+
+    parser.add_argument('--size', default=128, type=int, help='maximum edge size of image')
+    parser.add_argument('--outpath', default='./', help='output file path (directory only)')
+    # parser.add_argument('--prefix', nargs=1, help='input file name prefix')
+    args = parser.parse_args()
+
+    inpath = args.path
+
+    seg_channel_index = args.seg
+
+    im1 = []
+
+    if os.path.isfile(inpath):
+        reader = omeTifReader.OmeTifReader(inpath)
+        im1 = reader.load()
+    else:
+        raise 'Bad file path ' + inpath
+
+    base = os.path.basename(inpath)
+    # strips away .tif
+    base = os.path.splitext(base)[0]
+    # strips away .ome (?)
+    base = os.path.splitext(base)[0]
+    image_out = os.path.join(args.outpath, base + '.png')
+
+    # transpose xycz to xyzc
+    assert len(im1.shape) == 4
+    im1 = np.transpose(im1, (1,0,2,3))
+
+    comp = makeThumbnail(im1, channel_indices=[args.dna, args.mem, args.str], size=args.size, seg_channel_index=seg_channel_index)
+
     pngwriter = pngWriter.PngWriter(image_out)
     pngwriter.save(comp)
 
