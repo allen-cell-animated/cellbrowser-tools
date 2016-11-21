@@ -9,29 +9,9 @@ except ImportError:
 import os
 import uploader
 
-# debug output
-printSteps = False
 
-# should the uploaded images be available to all?
-uploadPublic = True
-
-# command line args
-parser = argparse.ArgumentParser()
-# fileList = './files.txt'
-# dataPath = 'file:///data/aics/software_it/danielt/images/AICS/bisque/Mito/'
-parser.add_argument("dataPath", help="the directory containing the ome tiff files on the file store")
-parser.add_argument("thumbnailUrlPath", help="the directory containing the thumbnail files as a url")
-parser.add_argument("tagType", default="", help="the tag value to assign to tag name 'structureName' for all files in fileList")
-group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument("--list", help="the file containing names of files to upload, one per line")
-group.add_argument("--name", help="the file to upload, name only, no extension")
-args = parser.parse_args()
-
-thumbnailpath = args.thumbnailUrlPath
-
-
-def oneUp(fname, tagType, dict, outfile):
-    fullpath = args.dataPath + fname + '.ome.tif'
+def oneUp(datapath, thumbnailpath, fname, tagType, dict, outfile):
+    fullpath = datapath + fname + '.ome.tif'
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = thumbnailpath + fname + '.png'
     resource = etree.Element('image',
@@ -58,20 +38,40 @@ def oneUp(fname, tagType, dict, outfile):
         if dict['source']:
             etree.SubElement(resource, 'tag', name='source', value=dict['source'])
     resource_uniq = uploader.uploadFileSpec(session, resource, None)
-    print fname + ',' + (resource_uniq if resource_uniq is not None else "None")
+    print fname + ',' + (resource_uniq if resource_uniq is not None else "None") + ',' + fullpath
 
     outfile.write(fname + ',' + resource_uniq + ',' + fullpath + os.linesep)
 
-session = uploader.init()
-if args.list:
-    with open(args.list, 'rU') as csvfile, open('out.txt', 'w') as outfile:
-        csvreader = csv.DictReader(csvfile)
-        first_field = csvreader.fieldnames[0]
-        for row in csvreader:
-            if row[first_field].startswith("#"):
-                continue
-            oneUp(row['name'], row['structure'], row, outfile)
-            #break # first row only; debugging
-else:
-    with open('out.txt', 'a') as outfile:
-        oneUp(args.name, args.tagType, None, outfile)
+
+def main():
+    # debug output
+    printSteps = False
+
+    # should the uploaded images be available to all?
+    uploadPublic = True
+
+    # command line args
+    parser = argparse.ArgumentParser()
+    # fileList = './files.txt'
+    # dataPath = 'file:///data/aics/software_it/danielt/images/AICS/bisque/Mito/'
+    parser.add_argument("dataPath", help="the directory containing the ome tiff files on the file store")
+    parser.add_argument("thumbnailUrlPath", help="the directory containing the thumbnail files as a url")
+    parser.add_argument("tagType", default="", help="the tag value to assign to tag name 'structureName' for all files in fileList")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--list", help="the file containing names of files to upload, one per line")
+    group.add_argument("--name", help="the file to upload, name only, no extension")
+    args = parser.parse_args()
+
+    session = uploader.init()
+    if args.list:
+        with open(args.list, 'rU') as csvfile, open('out.txt', 'w') as outfile:
+            csvreader = csv.DictReader(csvfile)
+            first_field = csvreader.fieldnames[0]
+            for row in csvreader:
+                if row[first_field].startswith("#"):
+                    continue
+                oneUp(args.dataPath, args.thumbnailUrlPath, row['name'], row['structure'], row, outfile)
+                #break # first row only; debugging
+    else:
+        with open('out.txt', 'a') as outfile:
+            oneUp(args.dataPath, args.thumbnailUrlPath, args.name, args.tagType, None, outfile)
