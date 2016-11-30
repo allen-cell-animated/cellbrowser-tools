@@ -9,8 +9,6 @@ import os
 import sys
 import cellJob
 
-test_local = True
-
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
 # cbrThumbnailURL file:// uri to cellbrowser thumbnail
@@ -33,6 +31,8 @@ def main():
                                                  'Example: python createJobsFromCSV.py /path/to/csv --outpath /path/to/destination/dir')
     parser.add_argument('input', nargs='+', help='input csv files')
     parser.add_argument('--outpath', help='output path', default='images')
+    parser.add_argument('--first', type=int, help='how many to process', default=-1)
+    parser.add_argument('--dryrun', help='write only to local dir and do not add to db', action='store_true')
     args = parser.parse_args()
 
     inputfiles = args.input
@@ -45,13 +45,7 @@ def main():
         if not os.path.exists(outdir):
             os.makedirs(outdir)
 
-        fileList = os.path.join(outdir, 'filelist.csv')
-
-        writeHeader = False
-        if not os.path.isfile(fileList):
-            writeHeader = True
-
-        with open(fname, 'rU') as csvfile, open(fileList, 'a') as csvOutFile:
+        with open(fname, 'rU') as csvfile:
 
             reader = csv.DictReader(csvfile)
             first_field = reader.fieldnames[0]
@@ -60,19 +54,26 @@ def main():
                     continue
 
                 info = cellJob.CellJob(row)
-                if test_local:
-                    info.cbrImageLocation = os.path.abspath(os.path.join('images', subdir))
-                    info.cbrThumbnailLocation = os.path.abspath(os.path.join('images', subdir))
+                info.cbrAddToDb = True
+                if args.dryrun:
+                    info.cbrImageLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
+                    info.cbrThumbnailLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
+                    info.cbrAddToDb = False
+                    info.cbrGenerateThumbnail = True
+                    info.cbrGenerateCellImage = True
                 else:
                     info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
                     info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
+                    info.cbrAddToDb = True
+                    info.cbrGenerateThumbnail = True
+                    info.cbrGenerateCellImage = True
 
-                info.cbrGenerateThumbnail = False
-                info.cbrGenerateCellImage = False
-                info.cbrAddToDb = True
                 generateShForRow(outdir, i, subdir, info)
                 i = i + 1
-                # break  # only do it once!
+                if i == args.first:
+                    break
+        if i == args.first:
+            break
 
 
 if __name__ == "__main__":
