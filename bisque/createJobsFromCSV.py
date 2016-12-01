@@ -8,23 +8,27 @@ import json
 import os
 import sys
 import cellJob
+from processImageWithSegmentation import do_main
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
 # cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
-def generateShForRow(outdir, i, subdir, info):
+def generateShForRow(outdir, i, subdir, info, do_run):
     # dump row data into json
     jsonname = 'aicsCellJob_'+str(i)+'.json'
     pathjson = os.path.join(outdir, jsonname)
     with open(pathjson, 'w') as fp:
         json.dump(info.__dict__, fp)
 
-    path = os.path.join(outdir, 'aicsCellJob_'+str(i)+'.sh')
-    with open(path, 'w') as fp:
-        fp.write('python ../../processImageWithSegmentation.py ' + jsonname)
-        fp.write(os.linesep)
+    if do_run:
+        do_main(pathjson)
+    else:
+        path = os.path.join(outdir, 'aicsCellJob_'+str(i)+'.sh')
+        with open(path, 'w') as fp:
+            fp.write('python ../../processImageWithSegmentation.py ' + jsonname)
+            fp.write(os.linesep)
 
 def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, and set up a job script for each row.'
@@ -32,7 +36,14 @@ def main():
     parser.add_argument('input', nargs='+', help='input csv files')
     parser.add_argument('--outpath', help='output path', default='images')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
-    parser.add_argument('--dryrun', help='write only to local dir and do not add to db', action='store_true')
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--dryrun', help='write only to local dir and do not add to db', action='store_true')
+    group.add_argument('--dbonly', help='only write to db', action='store_true')
+    group.add_argument('--thumbnailsonly', help='only generate thumbnail', action='store_true')
+
+    parser.add_argument('--run', help='actually run the jobs!', action='store_true')
+
     args = parser.parse_args()
 
     inputfiles = args.input
@@ -61,14 +72,29 @@ def main():
                     info.cbrAddToDb = False
                     info.cbrGenerateThumbnail = True
                     info.cbrGenerateCellImage = True
+                elif args.dbonly:
+                    info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
+                    info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
+                    info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
+                    info.cbrAddToDb = True
+                    info.cbrGenerateThumbnail = False
+                    info.cbrGenerateCellImage = False
+                elif args.thumbnailsonly:
+                    info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
+                    info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
+                    info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
+                    info.cbrAddToDb = False
+                    info.cbrGenerateThumbnail = True
+                    info.cbrGenerateCellImage = False
                 else:
                     info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
                     info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
+                    info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
                     info.cbrAddToDb = True
                     info.cbrGenerateThumbnail = True
                     info.cbrGenerateCellImage = True
 
-                generateShForRow(outdir, i, subdir, info)
+                generateShForRow(outdir, i, subdir, info, args.run)
                 i = i + 1
                 if i == args.first:
                     break

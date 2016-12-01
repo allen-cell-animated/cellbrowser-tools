@@ -17,8 +17,9 @@ from bqapi.util import save_blob, localpath2url
 def init(sessionDictionary):
     if sessionDictionary is None:
         sessionDictionary = {
-            # 'root': 'http://bisque-00.corp.alleninstitute.org:8080'
-            'root': 'http://10.128.62.98:8080',
+            'root': 'http://test-aics-01',
+            # 'root': 'http://bisque-00.corp.alleninstitute.org:8080',
+            # 'root': 'http://10.128.62.98:8080',
             'user': 'admin',
             'password': 'admin'
         }

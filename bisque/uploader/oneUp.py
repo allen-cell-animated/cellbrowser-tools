@@ -14,13 +14,13 @@ def oneUp(sessionInfo, dict, outfile):
     session = uploader.init(sessionInfo)
 
     cbrImageLocation = dict['cbrImageLocation']
-    cbrThumbnailLocation = dict['cbrThumbnailLocation']
+    cbrThumbnailURL = dict['cbrThumbnailURL']
     cbrCellName = dict['cbrCellName']
     structureProteinName = dict['structureProteinName']
 
-    fullpath = cbrImageLocation + cbrCellName + '.ome.tif'
+    fullpath = cbrImageLocation + '/' + cbrCellName + '.ome.tif'
     # assume thumbnail to be a png file and servable from thumbnailpath
-    thumbnail = cbrThumbnailLocation + cbrCellName + '.png'
+    thumbnail = cbrThumbnailURL
     resource = etree.Element('image',
                              name=cbrCellName+'.ome.tif',
                              value=fullpath)

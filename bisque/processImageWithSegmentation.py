@@ -69,25 +69,36 @@ def image_to_mask(image3d, index, mask_positive_value=1):
     return np.where(image3d == index, mask_positive_value, 0).astype(image3d.dtype)
 
 
-def normalizePath(p):
-    # expects paths to start with \\aibsdata !!
-    # windows: \\aibsdata
-    # mac:     /Volumes (?)
-    # linux:   /data
+def normalizePath(path):
+    # expects windows paths to start with \\aibsdata !!
+    # windows: \\\\aibsdata\\aics
+    # mac:     /Volumes/aics (???)
+    # linux:   /data/aics
 
-    outPath = os.path.join(*p.split('\\'))
+    # 1. strip away the root.
+    if path.startswith('\\\\aibsdata\\aics\\'):
+        path = path[len('\\\\aibsdata\\aics\\'):]
+    elif path.startswith('/data/aics/'):
+        path = path[len('/data/aics/'):]
+    elif path.startswith('/Volumes/aics/'):
+        path = path[len('/Volumes/aics/'):]
 
+    # 2. split the path up into a list of dirs
+    path_as_list = re.split(r'\\|/', path)
+
+    # 3. insert the proper system root for this platform
+    dest_root = ''
     if sys.platform.startswith('darwin'):
-        # mac default mount point
-        outPath = re.sub('^%s' % 'aibsdata', '/Volumes', outPath)
+        dest_root = '/Volumes/aics'
     elif sys.platform.startswith('linux'):
-        # linux default mount point
-        outPath = re.sub('^%s' % 'aibsdata', '/data', outPath)
+        dest_root = '/data/aics'
     else:
-        # windows?
-        outPath = "\\\\" + outPath
+        dest_root = '\\\\aibsdata\\aics'
+
+    path_as_list.insert(0, dest_root)
 
     # print(outPath)
+    outPath = os.path.join(*path_as_list)
     return outPath
 
 
@@ -160,9 +171,9 @@ def splitAndCrop(row):
     image = imagereader.load()
     # print etree.tostring(imagereader.get_metadata())
 
-    # image shape assumed to be T,C,Z,Y,X,1
+    # image shape from czi assumed to be ZCYX
     # assume no T dimension for now.
-    image = image[0, :, :, :, :, 0]
+    image = image.transpose(1, 0, 2, 3)
     # image is now CZYX
 
     # cellseg shape assumed to be Z,Y,X
@@ -216,14 +227,16 @@ def splitAndCrop(row):
             thumbnail = thumbnail2.makeThumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel), int(row.structureChannel)],
                                                  size=row.cbrThumbnailSize, seg_channel_index=cell_seg_channel)
 
-            pngwriter = pngWriter.PngWriter(os.path.join(thumbnaildir, outname + '.png'))
+            out_thumbnaildir = normalizePath(thumbnaildir)
+            pngwriter = pngWriter.PngWriter(os.path.join(out_thumbnaildir, outname + '.png'))
             pngwriter.save(thumbnail)
 
         if row.cbrGenerateCellImage:
             # transpose CZYX to ZCYX
             cropped = cropped.transpose(1, 0, 2, 3)
 
-            writer = OmeTifWriter(os.path.join(outdir, outname + '.ome.tif'))
+            out_outdir = normalizePath(outdir)
+            writer = OmeTifWriter(os.path.join(out_outdir, outname + '.ome.tif'))
             writer.save(cropped, channel_names=[x.upper() for x in channels],
                         pixels_physical_size=physical_size, channel_colors=channel_colors)
 
@@ -234,18 +247,10 @@ def splitAndCrop(row):
             row.cbrCellIndex = i
             row.cbrSourceImageName = base
             row.cbrCellName = outname
-            row.cbrThumbnailURL = 'file://' + thumbnaildir + '/' + outname + '.png'
+            row.cbrThumbnailURL = thumbnaildir.replace('/data/aics/software_it/danielt/demos', 'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + outname + '.png'
             dbkey = oneUp.oneUp(None, row.__dict__, None)
 
-
-def main():
-    parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
-                                                 'Example: python processImageWithSegmentation.py /path/to/csv --outpath /path/to/destination/dir')
-    parser.add_argument('input', help='input json file')
-    args = parser.parse_args()
-
-    fname = args.input
-
+def do_main(fname):
     # extract json to dictionary.
     jobspec = {}
     with open(fname) as jobfile:
@@ -262,6 +267,14 @@ def main():
     # thumbnail_location
 
     splitAndCrop(info)
+
+def main():
+    parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
+                                                 'Example: python processImageWithSegmentation.py /path/to/csv --outpath /path/to/destination/dir')
+    parser.add_argument('input', help='input json file')
+    args = parser.parse_args()
+
+    do_main(args.input)
 
 
 if __name__ == "__main__":
