@@ -105,7 +105,7 @@ def main():
 
     inpath = args.path
     inseries = args.prefix
-    channels = ['dna', 'memb', 'struct', 'seg_cell']
+    channels = ['dna', 'memb', 'struct', 'seg_memb']
     tifext = '.tif'
 
     # load all images in at once(?)

@@ -117,7 +117,7 @@ def splitAndCrop(row):
     if not os.path.exists(thumbnaildir):
         os.makedirs(thumbnaildir)
 
-    channels = ['memb', 'struct', 'dna', 'trans', 'seg_nuc', 'seg_cell', 'seg_struct']
+    channels = ['memb', 'struct', 'dna', 'trans', 'seg_dna', 'seg_memb', 'seg_struct']
     channel_colors = [
         rgba255(255, 255, 0, 255),
         rgba255(255, 0, 255, 255),

@@ -50,7 +50,7 @@ uploadPublic = True
 basepath = 'file:///data/aics/Software_IT/danielt/images/AICS/'
 
 suffix = '_%s.tif'
-channel = ['struct', 'dna', 'memb', 'seg_nuc']
+channel = ['struct', 'dna', 'memb', 'seg_dna']
 
 dataset = 'alphactinin/'
 img = 'img40_1'
@@ -70,7 +70,7 @@ etree.SubElement(meta, 'tag', name='dimensions', value='XYCZT')
 etree.SubElement(meta, 'tag', name='channel_0_name', value='STRUCT')
 etree.SubElement(meta, 'tag', name='channel_1_name', value='DNA')
 etree.SubElement(meta, 'tag', name='channel_2_name', value='MEMB')
-etree.SubElement(meta, 'tag', name='channel_3_name', value='SEG_NUC')
+etree.SubElement(meta, 'tag', name='channel_3_name', value='SEG_DNA')
 
 # THE UPLOADER.
 

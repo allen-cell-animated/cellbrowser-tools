@@ -62,7 +62,7 @@ def main():
 
     inpath = args.path
     inseries = args.prefix
-    channels = ['dna', 'memb', 'struct', 'seg_nuc', 'seg_cell']
+    channels = ['dna', 'memb', 'struct', 'seg_dna', 'seg_memb']
     tifext = '.tif'
     physical_size = [0.065, 0.065, 0.29]
     channel_colors = [

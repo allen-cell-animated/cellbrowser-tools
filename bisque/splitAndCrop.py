@@ -76,7 +76,7 @@ def normalizePath(p):
         outPath = "\\\\" + outPath
 
     # print(outPath)
-    return outPath    
+    return outPath
 
 def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
@@ -87,7 +87,7 @@ def main():
 
     inputfiles = args.input
 
-    channels = ['memb', 'struct', 'dna', 'trans', 'seg_nuc', 'seg_cell', 'seg_struct']
+    channels = ['memb', 'struct', 'dna', 'trans', 'seg_dna', 'seg_memb', 'seg_struct']
     channel_colors = [
         rgba255(255, 255, 0, 255),
         rgba255(255, 0, 255, 255),
