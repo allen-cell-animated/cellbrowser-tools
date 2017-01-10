@@ -92,12 +92,15 @@ def normalizePath(path):
         dest_root = '/Volumes/aics'
     elif sys.platform.startswith('linux'):
         dest_root = '/data/aics'
+    elif path_as_list[0].endswith(':'):
+        # this assures that files needing to be saved locally are using the correct drive
+        path_as_list[0] += '\\'
+        dest_root = path_as_list[0]
     else:
         dest_root = '\\\\aibsdata\\aics'
 
     path_as_list.insert(0, dest_root)
 
-    # print(outPath)
     outPath = os.path.join(*path_as_list)
     return outPath
 
@@ -169,6 +172,7 @@ def splitAndCrop(row):
 
     imagereader = CziReader(imageFile)
     image = imagereader.load()
+    image = np.squeeze(image, 0) if image.shape[0] == 1 else image
     # print etree.tostring(imagereader.get_metadata())
 
     # image shape from czi assumed to be ZCYX
@@ -229,7 +233,7 @@ def splitAndCrop(row):
 
             out_thumbnaildir = normalizePath(thumbnaildir)
             pngwriter = pngWriter.PngWriter(os.path.join(out_thumbnaildir, outname + '.png'))
-            pngwriter.save(thumbnail)
+            pngwriter.save(thumbnail.transpose(2, 0, 1), overwrite_file=True)
 
         if row.cbrGenerateCellImage:
             # transpose CZYX to ZCYX
@@ -238,7 +242,7 @@ def splitAndCrop(row):
             out_outdir = normalizePath(outdir)
             writer = OmeTifWriter(os.path.join(out_outdir, outname + '.ome.tif'))
             writer.save(cropped, channel_names=[x.upper() for x in channels],
-                        pixels_physical_size=physical_size, channel_colors=channel_colors)
+                        pixels_physical_size=physical_size, channel_colors=channel_colors, overwrite_file=True)
 
         if row.cbrAddToDb:
             row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
