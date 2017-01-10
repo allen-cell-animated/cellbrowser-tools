@@ -82,6 +82,10 @@ def normalizePath(path):
         path = path[len('/data/aics/'):]
     elif path.startswith('/Volumes/aics/'):
         path = path[len('/Volumes/aics/'):]
+    else
+        # if the path does not reference a known root, don't try to change it.
+        # it's probably a local path.
+        return path
 
     # 2. split the path up into a list of dirs
     path_as_list = re.split(r'\\|/', path)
@@ -92,10 +96,6 @@ def normalizePath(path):
         dest_root = '/Volumes/aics'
     elif sys.platform.startswith('linux'):
         dest_root = '/data/aics'
-    elif path_as_list[0].endswith(':'):
-        # this assures that files needing to be saved locally are using the correct drive
-        path_as_list[0] += '\\'
-        dest_root = path_as_list[0]
     else:
         dest_root = '\\\\aibsdata\\aics'
 
