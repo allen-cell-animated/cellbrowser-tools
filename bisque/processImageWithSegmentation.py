@@ -82,7 +82,7 @@ def normalizePath(path):
         path = path[len('/data/aics/'):]
     elif path.startswith('/Volumes/aics/'):
         path = path[len('/Volumes/aics/'):]
-    else
+    else:
         # if the path does not reference a known root, don't try to change it.
         # it's probably a local path.
         return path
