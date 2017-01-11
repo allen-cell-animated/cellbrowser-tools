@@ -39,7 +39,8 @@ def uploadFileSpec(session, fxml, filepath=None):
 
     if r is None or r.get('uri') is None:
         print 'Upload failed'
-        print r
+        print etree.tostring(r)
+        print etree.tostring(fxml)
         return None
     else:
         print 'Uploaded ID: %s, URL: %s' % (r.get('resource_uniq'), r.get('uri'))
