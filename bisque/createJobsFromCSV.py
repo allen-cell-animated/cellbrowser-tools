@@ -34,7 +34,7 @@ def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, and set up a job script for each row.'
                                                  'Example: python createJobsFromCSV.py /path/to/csv --outpath /path/to/destination/dir')
     parser.add_argument('input', nargs='+', help='input csv files')
-    parser.add_argument('--outpath', help='output path', default='images')
+    parser.add_argument('--outpath', help='output path', default='test')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
     group = parser.add_mutually_exclusive_group()
