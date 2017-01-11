@@ -51,7 +51,7 @@ def main():
     i = 0
     for entry in inputfiles:
         fname = entry
-        subdir = os.path.splitext(entry)[0]
+        subdir = os.path.splitext(os.path.basename(entry))[0]
         outdir = os.path.join(args.outpath, subdir)
         if not os.path.exists(outdir):
             os.makedirs(outdir)
