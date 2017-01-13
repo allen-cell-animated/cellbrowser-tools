@@ -28,21 +28,23 @@ def mask_image(im, mask):
     return im_masked
 
 
-def matproj(im, dim, method='max'):
+def matproj(im, dim, method='max', slice_index=0):
     if method == 'max':
         im = np.max(im, dim)
     elif method == 'mean':
         im = np.mean(im, dim)
     elif method == 'sum':
         im = np.sum(im, dim)
+    elif method == 'slice':
+        im = im[slice_index, :, :]
 
     return im
 
 
-def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=True):
+def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=True, slice_index=0):
     imdbl = np.asarray(imxyz).astype('double')
     # do projection
-    im_proj = matproj(imdbl, axis, method)
+    im_proj = matproj(imdbl, axis, method, slice_index=slice_index)
 
     # turn into RGB
     im_proj = np.expand_dims(im_proj, 2)
@@ -93,7 +95,7 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 
 
 # see http://www.somersault1824.com/tips-for-designing-scientific-figures-for-color-blind-readers/
-# or http://mkweb.bcgsc.ca/biovis2012/
+# or http://mkweb.bcgsc.ca/biovis2012/color-blindness-palette.png
 # colors = [
 #     [0.0/255.0, 109.0/255.0, 219.0/255.0],
 #     [36.0/255.0, 255.0/255.0, 36.0/255.0],

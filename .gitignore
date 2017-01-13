@@ -1,3 +1,4 @@
 bisque/test/
 .idea/
 *.pyc
+test/
