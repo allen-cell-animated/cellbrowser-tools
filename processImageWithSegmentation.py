@@ -14,6 +14,7 @@ import sys
 import cellJob
 import thumbnail2
 from uploader import oneUp
+import processFullFieldWithSegmentation
 
 def int32(x):
     if x > 0xFFFFFFFF:
@@ -172,6 +173,8 @@ def splitAndCrop(row):
 
     imagereader = CziReader(imageFile)
     image = imagereader.load()
+    if row.cbrGenerateThumbnail:
+        processFullFieldWithSegmentation.generate_images(image=image, row=row)
     image = np.squeeze(image, 0) if image.shape[0] == 1 else image
     # print etree.tostring(imagereader.get_metadata())
 
