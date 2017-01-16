@@ -61,24 +61,28 @@ def make_full_field_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
 
         imdbl = np.asarray(thumb).astype('double')
         # if the membrane channel is being manipulated
-        if i == memb_index or struct_index:
-            # the slicing projection for the memb_chan keeps it from smearing out from the top and bottom slices
-            # the slicing projection for struct_chan keeps it from becoming too scattered and dim
-            im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
-        elif i == nuc_index:
-            # the max projection for the dna_chan keeps the nuclei from appearing holey
-            im_proj = matproj(imdbl, 0, 'max')
+        im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
+        if i == nuc_index:
+            average = np.average(im_proj)
+            peaks = im_proj > average
+            # TODO: GET THIS TO WORK
+            # impmax = im_proj.max()
+            # im_proj[peaks] *= 4.5
 
         rgb_image[i] = im_proj
 
     # TODO: Should these be parameters for this function?
-    channel_contrasts = [15.0, 15.0, 10.0]
+    channel_contrasts = [15.0, 10.0, 10.0]
+    mem_avg = np.average(rgb_image[memb_index])
+    nuc_avg = np.average(rgb_image[nuc_index])
+    struct_avg = np.average(rgb_image[struct_index])
 
+    # TODO: Possibly mask out background noise by finding middle point between min and avg and zeroing lower values
     # TODO: Can these for loops be condensed?
     for channel in channel_indices:
         # normalize the channel to values from 0 to 1
         rgb_image[channel] /= np.max(rgb_image[channel])
-        # scale the whole channel to a max equivalent the correct contrast ratio
+        # scale the whole channel to a max equivalent to the correct contrast ratio
         rgb_image[channel] *= channel_contrasts[channel]
 
     for i in range(rgb_image.shape[0]):
@@ -98,57 +102,33 @@ def make_full_field_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
 # TODO: Should these indices really be passed like this?
 # On one hand, this clears up which indices are being passed per function
 # If they're in an array, it's a little confusing to have indices[1] = 2 or something.
-def generate_png(image, memb_index=0, nuc_index=1, struct_index=2, image_path="test.png"):
+def _generate_png(image, memb_index=0, nuc_index=1, struct_index=2, image_path="test.png"):
     # r,g,b = [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]
     c, m, y = [0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]
     thumbnail = make_full_field_thumbnail(image,
                                           memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index,
-                                          colors=[c, m, y], size=512)
+                                          colors=[c, m, y], size=128)
     thumbnail = np.transpose(thumbnail, (2, 0, 1))
-    PngWriter(image_path).save(thumbnail, overwrite_file=True)
+    with pngWriter.PngWriter(image_path, overwrite_file=True) as writer:
+        writer.save(thumbnail)
 
 
-def generate_images(row):
-    full_path = os.path.join(row.inputFolder, row.inputFilename)
-    with cziReader.CziReader(full_path) as reader:
-        image = reader.load()
+def _generate_ome_tif(image, image_path="test.ome.tif"):
+    with omeTifWriter.OmeTifWriter(file_path=image_path, overwrite_file=True) as writer:
+        writer.save(image)
+
+
+def generate_images(image, row):
     # This assumes T = 1
-    image = image.squeeze(0).transpose(1, 0, 2, 3)
     # This omits the transmitted light channel
-    image = image[0:3, :, :, :]
+    no_tlight = image[0:3, :, :, :]
+    image = image.transpose(1, 0, 2, 3)
     # this generates a file name identical to the original czi with a png extension
-    png_extension = os.path.splitext(row.inputFilename)[0] + ".png"
+    png_extension = os.path.splitext(row.inputFilename)[0] + "_FullField.png"
     output_path = os.path.join(row.cbrThumbnailLocation, png_extension)
-    generate_png(image,
-                 memb_index=row.memChannel-1, nuc_index=row.nucChannel-1, struct_index=row.structureChannel-1,
-                 image_path=output_path)
-
-
-def main():
-    parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
-                                                 'Example: python processImageWithSegmentation.py /path/to/csv --outpath /path/to/destination/dir')
-    parser.add_argument('input', help='input json file')
-    args = parser.parse_args()
-    # extract json to dictionary.
-    with open(args.input) as jobfile:
-        jobspec = json.load(jobfile)
-        info = cellJob.CellJob(jobspec)
-
-    """
-        jobspec is expected to be a dictionary of:
-         ,DeliveryDate,Version,inputFolder,inputFilename,
-         xyPixelSize,zPixelSize,memChannel,nucChannel,structureChannel,structureProteinName,
-         lightChannel,timePoint,
-         outputSegmentationPath,outputNucSegWholeFilename,outputCellSegWholeFilename,
-         structureSegOutputFolder,structureSegOutputFilename,
-        image_db_location,
-        thumbnail_location
-    """
-
-    generate_images(info)
-
-
-if __name__ == "__main__":
-    print(sys.argv)
-    main()
-    sys.exit(0)
+    _generate_png(no_tlight,
+                  memb_index=row.memChannel-1, nuc_index=row.nucChannel-1, struct_index=row.structureChannel-1,
+                  image_path=output_path)
+    ome_tif_extension = os.path.splitext(row.inputFilename)[0] + "_FullField.ome.tif"
+    output_path = os.path.join(row.cbrThumbnailLocation, ome_tif_extension)
+    _generate_ome_tif(image, output_path)

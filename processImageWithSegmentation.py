@@ -173,8 +173,6 @@ def splitAndCrop(row):
 
     imagereader = CziReader(imageFile)
     image = imagereader.load()
-    if row.cbrGenerateThumbnail:
-        processFullFieldWithSegmentation.generate_images(image=image, row=row)
     image = np.squeeze(image, 0) if image.shape[0] == 1 else image
     # print etree.tostring(imagereader.get_metadata())
 
@@ -183,7 +181,7 @@ def splitAndCrop(row):
     image = image.transpose(1, 0, 2, 3)
     # image is now CZYX
 
-    # cellseg shape assumed to be Z,Y,X
+    # cellseg shape assumed to be Z, Y, X
     assert imagereader.size_z() == cellsegreader.size_z()
     assert imagereader.size_x() == cellsegreader.size_x()
     assert imagereader.size_y() == cellsegreader.size_y()
@@ -202,6 +200,9 @@ def splitAndCrop(row):
     cell_seg_channel = image.shape[0]-1
     image = np.append(image, [structseg], axis=0)
     struct_seg_channel = image.shape[0]-1
+
+    if row.cbrGenerateThumbnail:
+        processFullFieldWithSegmentation.generate_images(image=image, row=row)
 
     base = os.path.basename(imageFile)
     base = os.path.splitext(base)[0]
@@ -235,17 +236,17 @@ def splitAndCrop(row):
                                                  size=row.cbrThumbnailSize, seg_channel_index=cell_seg_channel)
 
             out_thumbnaildir = normalizePath(thumbnaildir)
-            pngwriter = pngWriter.PngWriter(os.path.join(out_thumbnaildir, outname + '.png'))
-            pngwriter.save(thumbnail.transpose(2, 0, 1), overwrite_file=True)
+            pngwriter = pngWriter.PngWriter(os.path.join(out_thumbnaildir, outname + '.png'), overwrite_file=True)
+            pngwriter.save(thumbnail.transpose(2, 0, 1))
 
         if row.cbrGenerateCellImage:
             # transpose CZYX to ZCYX
             cropped = cropped.transpose(1, 0, 2, 3)
 
             out_outdir = normalizePath(outdir)
-            writer = OmeTifWriter(os.path.join(out_outdir, outname + '.ome.tif'))
+            writer = OmeTifWriter(os.path.join(out_outdir, outname + '.ome.tif'), overwrite_file=True)
             writer.save(cropped, channel_names=[x.upper() for x in channels],
-                        pixels_physical_size=physical_size, channel_colors=channel_colors, overwrite_file=True)
+                        pixels_physical_size=physical_size, channel_colors=channel_colors)
 
         if row.cbrAddToDb:
             row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
