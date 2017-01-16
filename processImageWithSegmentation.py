@@ -73,16 +73,19 @@ def image_to_mask(image3d, index, mask_positive_value=1):
 def normalizePath(path):
     # expects windows paths to start with \\aibsdata !!
     # windows: \\\\aibsdata\\aics
+    windowsroot = '\\\\aibsdata\\aics\\'
     # mac:     /Volumes/aics (???)
+    macroot = '/Volumes/aics/'
     # linux:   /data/aics
+    linuxroot = '/data/aics/'
 
     # 1. strip away the root.
-    if path.startswith('\\\\aibsdata\\aics\\'):
-        path = path[len('\\\\aibsdata\\aics\\'):]
-    elif path.startswith('/data/aics/'):
-        path = path[len('/data/aics/'):]
-    elif path.startswith('/Volumes/aics/'):
-        path = path[len('/Volumes/aics/'):]
+    if path.startswith(windowsroot):
+        path = path[len(windowsroot):]
+    elif path.startswith(linuxroot):
+        path = path[len(linuxroot):]
+    elif path.startswith(macroot):
+        path = path[len(macroot):]
     else:
         # if the path does not reference a known root, don't try to change it.
         # it's probably a local path.
@@ -91,14 +94,14 @@ def normalizePath(path):
     # 2. split the path up into a list of dirs
     path_as_list = re.split(r'\\|/', path)
 
-    # 3. insert the proper system root for this platform
+    # 3. insert the proper system root for this platform (without the trailing slash)
     dest_root = ''
     if sys.platform.startswith('darwin'):
-        dest_root = '/Volumes/aics'
+        dest_root = macroot[:-1]
     elif sys.platform.startswith('linux'):
-        dest_root = '/data/aics'
+        dest_root = linuxroot[:-1]
     else:
-        dest_root = '\\\\aibsdata\\aics'
+        dest_root = windowsroot[:-1]
 
     path_as_list.insert(0, dest_root)
 
