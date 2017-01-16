@@ -15,6 +15,7 @@ import cellJob
 import thumbnail2
 from uploader import oneUp
 
+
 def int32(x):
     if x > 0xFFFFFFFF:
         raise OverflowError
@@ -56,7 +57,7 @@ def get_segmentation_bounds(segmentation_image, index, margin=5):
     xstart, ystart, zstart = clamp(xstart-margin, ystart-margin, zstart-margin, segmentation_image.shape)
     xstop, ystop, zstop = clamp(xstop+margin, ystop+margin, zstop+margin, segmentation_image.shape)
 
-    return [[xstart, xstop],[ystart, ystop],[zstart, zstop]]
+    return [[xstart, xstop], [ystart, ystop], [zstart, zstop]]
 
 
 # assuming 4d image (CZYX) and bounds as [[xmin,xmax],[ymin,ymax],[zmin,zmax]]
@@ -254,6 +255,7 @@ def splitAndCrop(row):
             row.cbrThumbnailURL = thumbnaildir.replace('/data/aics/software_it/danielt/demos', 'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + outname + '.png'
             dbkey = oneUp.oneUp(None, row.__dict__, None)
 
+
 def do_main(fname):
     # extract json to dictionary.
     jobspec = {}
@@ -272,6 +274,7 @@ def do_main(fname):
 
     splitAndCrop(info)
 
+
 def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
                                                  'Example: python processImageWithSegmentation.py /path/to/csv --outpath /path/to/destination/dir')
@@ -282,6 +285,6 @@ def main():
 
 
 if __name__ == "__main__":
-    print sys.argv
+    print (sys.argv)
     main()
     sys.exit(0)
