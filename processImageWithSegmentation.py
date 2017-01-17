@@ -138,6 +138,7 @@ def splitAndCrop(row):
 
     structureName = row.structureProteinName
 
+    print("loading segmentations...")
     segPath = row.outputSegmentationPath
     segPath = normalizePath(segPath)
     print(segPath)
@@ -181,6 +182,7 @@ def splitAndCrop(row):
     image = image.transpose(1, 0, 2, 3)
     # image is now CZYX
 
+    print("asserting...")
     # cellseg shape assumed to be Z, Y, X
     assert imagereader.size_z() == cellsegreader.size_z()
     assert imagereader.size_x() == cellsegreader.size_x()
@@ -201,8 +203,8 @@ def splitAndCrop(row):
     image = np.append(image, [structseg], axis=0)
     struct_seg_channel = image.shape[0]-1
 
-    if row.cbrGenerateThumbnail:
-        processFullFieldWithSegmentation.generate_images(image=image, row=row)
+    print("generating full field images...")
+    processFullFieldWithSegmentation.generate_images(image=image, row=row)
 
     base = os.path.basename(imageFile)
     base = os.path.splitext(base)[0]
@@ -214,6 +216,7 @@ def splitAndCrop(row):
     # note that this includes zeroes, which is to be ignored.
     h0 = np.nonzero(h[0])[0]
     # for each cell segmented from this image:
+    print("segmenting cells...")
     for i in h0:
         if i == 0:
             continue

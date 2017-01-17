@@ -118,17 +118,20 @@ def _generate_ome_tif(image, image_path="test.ome.tif"):
         writer.save(image)
 
 
+# TODO: Change these parameters to make this method more versatile
 def generate_images(image, row):
     # This assumes T = 1
     # This omits the transmitted light channel
     no_tlight = image[0:3, :, :, :]
     image = image.transpose(1, 0, 2, 3)
     # this generates a file name identical to the original czi with a png extension
-    png_extension = os.path.splitext(row.inputFilename)[0] + "_FullField.png"
+    png_extension = os.path.splitext(row.inputFilename)[0] + ".png"
     output_path = os.path.join(row.cbrThumbnailLocation, png_extension)
+    print("generating png...")
     _generate_png(no_tlight,
                   memb_index=row.memChannel-1, nuc_index=row.nucChannel-1, struct_index=row.structureChannel-1,
                   image_path=output_path)
-    ome_tif_extension = os.path.splitext(row.inputFilename)[0] + "_FullField.ome.tif"
+    ome_tif_extension = os.path.splitext(row.inputFilename)[0] + ".ome.tif"
     output_path = os.path.join(row.cbrThumbnailLocation, ome_tif_extension)
+    print("generating ometif...")
     _generate_ome_tif(image, output_path)
