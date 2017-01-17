@@ -16,6 +16,7 @@ import thumbnail2
 from uploader import oneUp
 import processFullFieldWithSegmentation
 
+
 def int32(x):
     if x > 0xFFFFFFFF:
         raise OverflowError
@@ -57,7 +58,7 @@ def get_segmentation_bounds(segmentation_image, index, margin=5):
     xstart, ystart, zstart = clamp(xstart-margin, ystart-margin, zstart-margin, segmentation_image.shape)
     xstop, ystop, zstop = clamp(xstop+margin, ystop+margin, zstop+margin, segmentation_image.shape)
 
-    return [[xstart, xstop],[ystart, ystop],[zstart, zstop]]
+    return [[xstart, xstop], [ystart, ystop], [zstart, zstop]]
 
 
 # assuming 4d image (CZYX) and bounds as [[xmin,xmax],[ymin,ymax],[zmin,zmax]]
@@ -73,16 +74,19 @@ def image_to_mask(image3d, index, mask_positive_value=1):
 def normalizePath(path):
     # expects windows paths to start with \\aibsdata !!
     # windows: \\\\aibsdata\\aics
+    windowsroot = '\\\\aibsdata\\aics\\'
     # mac:     /Volumes/aics (???)
+    macroot = '/Volumes/aics/'
     # linux:   /data/aics
+    linuxroot = '/data/aics/'
 
     # 1. strip away the root.
-    if path.startswith('\\\\aibsdata\\aics\\'):
-        path = path[len('\\\\aibsdata\\aics\\'):]
-    elif path.startswith('/data/aics/'):
-        path = path[len('/data/aics/'):]
-    elif path.startswith('/Volumes/aics/'):
-        path = path[len('/Volumes/aics/'):]
+    if path.startswith(windowsroot):
+        path = path[len(windowsroot):]
+    elif path.startswith(linuxroot):
+        path = path[len(linuxroot):]
+    elif path.startswith(macroot):
+        path = path[len(macroot):]
     else:
         # if the path does not reference a known root, don't try to change it.
         # it's probably a local path.
@@ -91,14 +95,14 @@ def normalizePath(path):
     # 2. split the path up into a list of dirs
     path_as_list = re.split(r'\\|/', path)
 
-    # 3. insert the proper system root for this platform
+    # 3. insert the proper system root for this platform (without the trailing slash)
     dest_root = ''
     if sys.platform.startswith('darwin'):
-        dest_root = '/Volumes/aics'
+        dest_root = macroot[:-1]
     elif sys.platform.startswith('linux'):
-        dest_root = '/data/aics'
+        dest_root = linuxroot[:-1]
     else:
-        dest_root = '\\\\aibsdata\\aics'
+        dest_root = windowsroot[:-1]
 
     path_as_list.insert(0, dest_root)
 
@@ -261,6 +265,7 @@ def splitAndCrop(row):
             row.cbrThumbnailURL = thumbnaildir.replace('/data/aics/software_it/danielt/demos', 'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + outname + '.png'
             dbkey = oneUp.oneUp(None, row.__dict__, None)
 
+
 def do_main(fname):
     # extract json to dictionary.
     jobspec = {}
@@ -279,6 +284,7 @@ def do_main(fname):
 
     splitAndCrop(info)
 
+
 def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
                                                  'Example: python processImageWithSegmentation.py /path/to/csv --outpath /path/to/destination/dir')
@@ -289,6 +295,6 @@ def main():
 
 
 if __name__ == "__main__":
-    print sys.argv
+    print (sys.argv)
     main()
     sys.exit(0)

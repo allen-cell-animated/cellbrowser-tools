@@ -3,17 +3,18 @@
 # author: Dan Toloudis danielt@alleninstitute.org
 
 import argparse
+import cellJob
 import csv
 import json
 import os
 import sys
-import cellJob
 from processImageWithSegmentation import do_main
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
 # cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
+
 
 def generateShForRow(outdir, i, subdir, info, do_run):
     # dump row data into json
@@ -29,6 +30,7 @@ def generateShForRow(outdir, i, subdir, info, do_run):
         with open(path, 'w') as fp:
             fp.write('python ../../processImageWithSegmentation.py ' + jsonname)
             fp.write(os.linesep)
+
 
 def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, and set up a job script for each row.'
@@ -103,6 +105,6 @@ def main():
 
 
 if __name__ == "__main__":
-    print sys.argv
+    print (sys.argv)
     main()
     sys.exit(0)

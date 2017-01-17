@@ -55,16 +55,17 @@ def oneUp(sessionInfo, dict, outfile):
     # from the parent.
     perm = 'published'
 
-    fullpath = cbrImageLocation + '/' + cbrCellName + '.ome.tif'
+    tifext = '.ome.tif'
+    fullpath = cbrImageLocation + '/' + cbrCellName + tifext
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = cbrThumbnailURL
     resource = etree.Element('image',
-                             name=cbrCellName+'.ome.tif',
+                             name=cbrCellName+tifext,
                              value=fullpath)
     resource.set('permission', perm)
 
     etree.SubElement(resource, 'tag', name='name', value=cbrCellName, permission=perm)
-    etree.SubElement(resource, 'tag', name='filename', value=cbrCellName, permission=perm)
+    etree.SubElement(resource, 'tag', name='filename', value=cbrCellName+tifext, permission=perm)
 
     etree.SubElement(resource, 'tag', name='thumbnail', value=thumbnail, permission=perm)
     etree.SubElement(resource, 'tag', name='structureProteinName', value=structureProteinName, permission=perm)
