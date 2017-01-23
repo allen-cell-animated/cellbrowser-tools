@@ -97,7 +97,7 @@ def main():
                     info.cbrGenerateCellImage = True
 
                 generateShForRow(outdir, i, subdir, info, args.run)
-                i = i + 1
+                i += 1
                 if i == args.first:
                     break
         if i == args.first:

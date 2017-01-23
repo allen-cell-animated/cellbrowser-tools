@@ -10,11 +10,12 @@ import numpy as np
 import os
 import re
 import sys
+from processFullFieldWithSegmentation import generate_fullfield_ometif
+from processFullFieldWithSegmentation import generate_fullfield_png
 
 import cellJob
 import thumbnail2
 from uploader import oneUp
-import processFullFieldWithSegmentation
 
 
 def int32(x):
@@ -38,6 +39,17 @@ def rgba255(r, g, b, a):
     x = r << 24 | g << 16 | b << 8 | a
     # now force x into a signed 32 bit integer for OME XML Channel Color.
     return int32(x)
+
+channels = ['memb', 'struct', 'dna', 'trans', 'seg_dna', 'seg_memb', 'seg_struct']
+channel_colors = [
+    rgba255(255, 255, 0, 255),
+    rgba255(255, 0, 255, 255),
+    rgba255(0, 255, 255, 255),
+    rgba255(255, 255, 255, 255),
+    rgba255(255, 0, 0, 255),
+    rgba255(0, 0, 255, 255),
+    rgba255(127, 127, 0, 255)
+]
 
 
 # note that shape is expected to be z,y,x
@@ -71,7 +83,7 @@ def image_to_mask(image3d, index, mask_positive_value=1):
     return np.where(image3d == index, mask_positive_value, 0).astype(image3d.dtype)
 
 
-def normalizePath(path):
+def normalize_path(path):
     # expects windows paths to start with \\aibsdata !!
     # windows: \\\\aibsdata\\aics
     windowsroot = '\\\\aibsdata\\aics\\'
@@ -110,7 +122,7 @@ def normalizePath(path):
     return outPath
 
 
-def splitAndCrop(row):
+def split_and_crop(row):
     # row is expected to be a dictionary of:
     #  ,DeliveryDate,Version,inputFolder,inputFilename,
     #  xyPixelSize,zPixelSize,memChannel,nucChannel,structureChannel,structureProteinName,
@@ -125,17 +137,6 @@ def splitAndCrop(row):
     if not os.path.exists(thumbnaildir):
         os.makedirs(thumbnaildir)
 
-    channels = ['memb', 'struct', 'dna', 'trans', 'seg_dna', 'seg_memb', 'seg_struct']
-    channel_colors = [
-        rgba255(255, 255, 0, 255),
-        rgba255(255, 0, 255, 255),
-        rgba255(0, 255, 255, 255),
-        rgba255(255, 255, 255, 255),
-        rgba255(255, 0, 0, 255),
-        rgba255(0, 0, 255, 255),
-        rgba255(127, 127, 0, 255)
-    ]
-
     # physical_size = [0.065, 0.065, 0.29]
     # note these are strings here.  it's ok for xml purposes but not for any math.
     physical_size = [row.xyPixelSize, row.xyPixelSize, row.zPixelSize]
@@ -143,47 +144,47 @@ def splitAndCrop(row):
     structureName = row.structureProteinName
 
     print("loading segmentations...")
-    segPath = row.outputSegmentationPath
-    segPath = normalizePath(segPath)
-    print(segPath)
+    seg_path = row.outputSegmentationPath
+    seg_path = normalize_path(seg_path)
+    print(seg_path)
 
     # nucleus segmentation
-    nucSegFile = os.path.join(segPath, row.outputNucSegWholeFilename)
-    print(nucSegFile)
+    nuc_seg_file = os.path.join(seg_path, row.outputNucSegWholeFilename)
+    print(nuc_seg_file)
 
     # cell segmentation
-    cellSegFile = os.path.join(segPath, row.outputCellSegWholeFilename)
-    print(cellSegFile)
+    cell_seg_file = os.path.join(seg_path, row.outputCellSegWholeFilename)
+    print(cell_seg_file)
 
-    structSegPath = row.structureSegOutputFolder
-    structSegPath = normalizePath(structSegPath)
+    struct_seg_path = row.structureSegOutputFolder
+    struct_seg_path = normalize_path(struct_seg_path)
 
     # structure segmentation
-    structSegFile = os.path.join(structSegPath, row.structureSegOutputFilename)
-    print(structSegFile)
+    struct_seg_file = os.path.join(struct_seg_path, row.structureSegOutputFilename)
+    print(struct_seg_file)
 
-    imageFile = os.path.join(row.inputFolder, row.inputFilename)
-    imageFile = normalizePath(imageFile)
-    print(imageFile)
+    image_file = os.path.join(row.inputFolder, row.inputFilename)
+    image_file = normalize_path(image_file)
+    print(image_file)
 
     # load the input files
-    cellsegreader = TifReader(cellSegFile)
+    cellsegreader = TifReader(cell_seg_file)
     cellseg = cellsegreader.load()
 
-    nucsegreader = TifReader(nucSegFile)
+    nucsegreader = TifReader(nuc_seg_file)
     nucseg = nucsegreader.load()
 
-    structsegreader = TifReader(structSegFile)
+    structsegreader = TifReader(struct_seg_file)
     structseg = structsegreader.load()
 
-    imagereader = CziReader(imageFile)
+    imagereader = CziReader(image_file)
     image = imagereader.load()
     image = np.squeeze(image, 0) if image.shape[0] == 1 else image
     # print etree.tostring(imagereader.get_metadata())
 
     # image shape from czi assumed to be ZCYX
     # assume no T dimension for now.
-    image = image.transpose(1, 0, 2, 3)
+    image = image.transpose((1, 0, 2, 3))
     # image is now CZYX
 
     print("asserting...")
@@ -208,10 +209,35 @@ def splitAndCrop(row):
     struct_seg_channel = image.shape[0]-1
 
     print("generating full field images...")
-    processFullFieldWithSegmentation.generate_images(image=image, row=row)
 
-    base = os.path.basename(imageFile)
+    base = os.path.basename(image_file)
     base = os.path.splitext(base)[0]
+
+    if row.cbrGenerateThumbnail:
+        memb_index, nuc_index, struct_index = row.memChannel - 1, row.nucChannel - 1, row.structureChannel - 1
+        out_thumbnaildir = os.path.join(str(normalize_path(thumbnaildir)),
+                                        str(os.path.splitext(row.inputFilename)[0])) + '.png'
+        generate_fullfield_png(image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index,
+                               image_path=out_thumbnaildir)
+    if row.cbrGenerateCellImage:
+        out_outdir = os.path.join(str(normalize_path(outdir)), str(os.path.splitext(row.inputFilename)[0])) + '.ome.tif'
+        generate_fullfield_ometif(image, image_path=out_outdir,
+                                  channel_names=[x.upper() for x in channels], channel_colors=channel_colors,
+                                  pixels_physical_size=physical_size)
+
+    if row.cbrAddToDb:
+        row.cbrThumbnailURL = thumbnaildir.replace('/data/aics/software_it/danielt/demos',
+                                                   'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + base + '.png'
+        session_info = {
+            'root': 'http://10.128.62.104:8080',
+            'user': 'admin',
+            'password': 'admin'
+        }
+        row.cbrBounds = None
+        row.cbrCellIndex = 0
+        row.cbrSourceImageName = None
+        row.cbrCellName = os.path.splitext(row.inputFilename)[0]
+        dbkey = oneUp.oneUp(session_info, row.__dict__, None)
 
     # assumption: less than 256 cells segmented in the file.
     # assumption: cell segmentation is a numeric index in the pixels
@@ -221,6 +247,7 @@ def splitAndCrop(row):
     h0 = np.nonzero(h[0])[0]
     # for each cell segmented from this image:
     print("segmenting cells...")
+    # return
     for i in h0:
         if i == 0:
             continue
@@ -242,7 +269,7 @@ def splitAndCrop(row):
             thumbnail = thumbnail2.makeThumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel), int(row.structureChannel)],
                                                  size=row.cbrThumbnailSize, seg_channel_index=cell_seg_channel)
 
-            out_thumbnaildir = normalizePath(thumbnaildir)
+            out_thumbnaildir = normalize_path(thumbnaildir)
             pngwriter = pngWriter.PngWriter(os.path.join(out_thumbnaildir, outname + '.png'), overwrite_file=True)
             pngwriter.save(thumbnail.transpose(2, 0, 1))
 
@@ -250,7 +277,7 @@ def splitAndCrop(row):
             # transpose CZYX to ZCYX
             cropped = cropped.transpose(1, 0, 2, 3)
 
-            out_outdir = normalizePath(outdir)
+            out_outdir = normalize_path(outdir)
             writer = OmeTifWriter(os.path.join(out_outdir, outname + '.ome.tif'), overwrite_file=True)
             writer.save(cropped, channel_names=[x.upper() for x in channels],
                         pixels_physical_size=physical_size, channel_colors=channel_colors)
@@ -263,7 +290,12 @@ def splitAndCrop(row):
             row.cbrSourceImageName = base
             row.cbrCellName = outname
             row.cbrThumbnailURL = thumbnaildir.replace('/data/aics/software_it/danielt/demos', 'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + outname + '.png'
-            dbkey = oneUp.oneUp(None, row.__dict__, None)
+            session_info = {
+                'root': 'http://10.128.62.104:8080',
+                'user': 'admin',
+                'password': 'admin'
+            }
+            dbkey = oneUp.oneUp(session_info, row.__dict__, None)
 
 
 def do_main(fname):
@@ -282,7 +314,7 @@ def do_main(fname):
     # image_db_location,
     # thumbnail_location
 
-    splitAndCrop(info)
+    split_and_crop(info)
 
 
 def main():

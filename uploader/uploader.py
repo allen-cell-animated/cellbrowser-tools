@@ -13,20 +13,21 @@ from bqapi.util import save_blob, localpath2url
 
 # THE UPLOADER.
 
+
 # sessionDictionary must have root, user, password
-def init(sessionDictionary):
-    if sessionDictionary is None:
-        sessionDictionary = {
-            #'root': 'http://test-aics-01',
+def init(session_dictionary):
+    if session_dictionary is None:
+        session_dictionary = {
+            # 'root': 'http://test-aics-01',
             # 'root': 'http://bisque-00.corp.alleninstitute.org:8080',
-            #'root': 'http://10.128.62.104:8080',
-            'root': 'http://SPECIFY_DB_URL_EXPLICITLY'
+            # 'root': 'http://10.128.62.104:8080',
+            'root': 'http://SPECIFY_DB_URL_EXPLICITLY',
             'user': 'admin',
             'password': 'admin'
         }
-    session = BQSession().init_local(sessionDictionary['user'],
-                                     sessionDictionary['password'],
-                                     bisque_root=sessionDictionary['root'],
+    session = BQSession().init_local(session_dictionary['user'],
+                                     session_dictionary['password'],
+                                     bisque_root=session_dictionary['root'],
                                      create_mex=False)
     return session
 
