@@ -59,15 +59,26 @@ class DbApi(object):
     # GET http://10.128.62.104:8080/data_service/image/00-iPDrkt4dZaL2uWLoCDmQEd?view=deep
     @staticmethod
     def getImagesByName(name):
+        results = ElementTree.Element('results')
         limit = '700'
-        try:
-            response = requests.get(DbApi.db_uri + 'image/?offset=0&tag_query=name:' + name + '&tag_order="@ts":desc&wpublic=false&limit=' + limit + '&view=deep', headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            print(e)
-        tree = ElementTree.fromstring(response.content)
-        # TODO(if more than 700 returned, loop around and get 700 more until we have all query results)
-        return tree
+        nlimit = 700
+        more = True
+        while more:
+            try:
+                response = requests.get(DbApi.db_uri + 'image/?offset=0&tag_query=name:' + name + '&tag_order="@ts":desc&wpublic=false&limit=' + limit + '&view=deep', headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                print(e)
+            tree = ElementTree.fromstring(response.content)
+            if tree is not None:
+                results.extend(tree.getchildren())
+                count = len(tree.getchildren())
+                # if more than 700 returned, loop around and get 700 more until we have all query results
+                if count < nlimit:
+                    more = False
+            else:
+                more = False
+        return results
 
     # Querying resources
     #
@@ -94,18 +105,26 @@ class DbApi(object):
     # <li>Find a resource with time stamp "2012:01:01": <b>@ts=&gt;2012:01:01</b></li>
     @staticmethod
     def getImagesByTagValue(name, value):
+        results = ElementTree.Element('results')
         limit = '700'
-        try:
-            response = requests.get(DbApi.db_uri + 'image/?offset=0&tag_query=' + name + ':' + value + '&tag_order="@ts":desc&wpublic=false&limit=' + limit + '&view=deep', headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            print(e)
-        tree = ElementTree.fromstring(response.content)
-        for image in tree:
-            # n = image.get("name")
-            id = image.get("resource_uniq")
-            print(id)
-        # TODO(if more than 700 returned, loop around and get 700 more until we have all query results)
+        nlimit = 700
+        more = True
+        while more:
+            try:
+                response = requests.get(DbApi.db_uri + 'image/?offset=0&tag_query=' + name + ':' + value + '&tag_order="@ts":desc&wpublic=false&limit=' + limit + '&view=deep', headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                print(e)
+            tree = ElementTree.fromstring(response.content)
+            if tree is not None:
+                results.extend(tree.getchildren())
+                count = len(tree.getchildren())
+                # if more than 700 returned, loop around and get 700 more until we have all query results
+                if count < nlimit:
+                    more = False
+            else:
+                more = False
+        return results
 
     @staticmethod
     def getImageIdFromName(name):
