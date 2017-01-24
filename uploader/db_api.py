@@ -41,7 +41,7 @@ class DbApi(object):
     def updateTag(imgname, tagname, value):
         images = DbApi.getImagesByName(imgname)
         for i in images:
-            for tag in i.find("tag"):
+            for tag in i.findall("tag"):
                 if tag.get('name') == tagname:
                     taguri = tag.get("uri")
                     # string after last slash is tag id
@@ -148,7 +148,7 @@ class DbApi(object):
     def deleteTag(imgname, tagname):
         images = DbApi.getImagesByName(imgname)
         for i in images:
-            for tag in i.find("tag"):
+            for tag in i.findall("tag"):
                 if tag.get('name') == tagname:
                     taguri = tag.get("uri")
                     try:
