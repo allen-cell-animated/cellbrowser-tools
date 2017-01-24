@@ -65,7 +65,8 @@ def oneUp(sessionInfo, dict, outfile):
     resource.set('permission', perm)
 
     etree.SubElement(resource, 'tag', name='name', value=cbrCellName, permission=perm)
-    etree.SubElement(resource, 'tag', name='filename', value=cbrCellName+tifext, permission=perm)
+    # filename is auto inserted by bisque
+    # etree.SubElement(resource, 'tag', name='filename', value=cbrCellName+tifext, permission=perm)
 
     etree.SubElement(resource, 'tag', name='thumbnail', value=thumbnail, permission=perm)
     etree.SubElement(resource, 'tag', name='structureProteinName', value=structureProteinName, permission=perm)
