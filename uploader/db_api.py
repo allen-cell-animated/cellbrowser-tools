@@ -11,6 +11,7 @@ class DbApi(object):
     db_uri = 'http://10.128.62.104:8080/data_service/'
     db_auth = ('admin', 'admin')
 
+    @staticmethod
     def setSessionInfo(session_dict):
         if session_dict is None:
             session_dict = {
@@ -26,6 +27,7 @@ class DbApi(object):
 
     # data = open('edit.xml')
     # requests.post('http://10.128.62.104:8080/data_service/00-XrD4eGZZtzJ98MBrxokUt4', headers=DbApi.headers, data=data, verify=False, auth=DbApi.auth)
+    @staticmethod
     def addTag(imgId, name, value):
         # http://10.128.62.104:8080/client_service/view?resource=http://10.128.62.104:8080/data_service/00-iPDrkt4dZaL2uWLoCDmQEd
         data = '<image uri=\'/data_service/image/' + imgId + '\' ><tag name="' + name + '" value="' + value + '" permission="published"/></image>'
@@ -35,6 +37,7 @@ class DbApi(object):
         except requests.exceptions.RequestException as e:
             print(e)
 
+    @staticmethod
     def updateTag(imgname, tagname, value):
         images = DbApi.getImagesByName(imgname)
         for i in images:
@@ -54,6 +57,7 @@ class DbApi(object):
     # GET http://10.128.62.104:8080/data_service/image/?view=deep
     # get all image tags:
     # GET http://10.128.62.104:8080/data_service/image/00-iPDrkt4dZaL2uWLoCDmQEd?view=deep
+    @staticmethod
     def getImagesByName(name):
         limit = '700'
         try:
@@ -88,6 +92,7 @@ class DbApi(object):
     #
     # <h3>Attribute examples</h3>
     # <li>Find a resource with time stamp "2012:01:01": <b>@ts=&gt;2012:01:01</b></li>
+    @staticmethod
     def getImagesByTagValue(name, value):
         limit = '700'
         try:
@@ -102,14 +107,16 @@ class DbApi(object):
             print(id)
         # TODO(if more than 700 returned, loop around and get 700 more until we have all query results)
 
+    @staticmethod
     def getImageIdFromName(name):
         i = DbApi.getImagesByName(name)
-        if i:
+        if i is not None:
             for image in i:
                 # return the FIRST ONE ONLY
                 return image.get("resource_uniq")
         return None
 
+    @staticmethod
     def getValuesForTagName(name):
         # DbApi.db_uri + 'image/?extract=tag[value,%20name=%22'+name+'%22]'
         try:
@@ -118,6 +125,7 @@ class DbApi(object):
         except requests.exceptions.RequestException as e:
             print(e)
 
+    @staticmethod
     def deleteTag(imgname, tagname):
         images = DbApi.getImagesByName(imgname)
         for i in images:
@@ -130,6 +138,7 @@ class DbApi(object):
                     except requests.exceptions.RequestException as e:
                         print(e)
 
+    @staticmethod
     def deleteImageByName(imgname):
         imgid = DbApi.getImageIdFromName(imgname)
         if imgid:
@@ -139,6 +148,7 @@ class DbApi(object):
             except requests.exceptions.RequestException as e:
                 print(e)
 
+    @staticmethod
     def deleteImage(imgId):
         try:
             response = requests.delete(DbApi.db_uri + imgId, headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
@@ -146,6 +156,7 @@ class DbApi(object):
         except requests.exceptions.RequestException as e:
             print(e)
 
+    @staticmethod
     def add_image(xml):
         # http://10.128.62.104:8080/client_service/view?resource=http://10.128.62.104:8080/data_service/00-iPDrkt4dZaL2uWLoCDmQEd
         data = ElementTree.toString(xml)
