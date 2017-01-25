@@ -11,7 +11,8 @@ import os
 # create xml bundle for the bisque database entry pointing to this image.
 # dict should have: source,xmin,xmax,ymin,ymax,zmin,zmax,imageName,imagePath,thumbnailPath
 def oneUp(sessionInfo, dict, outfile):
-    db_api.setSessionInfo(sessionInfo)
+    api = db_api.DbApi()
+    api.setSessionInfo(sessionInfo)
 
     cbrImageLocation = dict['cbrImageLocation']
     cbrThumbnailURL = dict['cbrThumbnailURL']
@@ -81,7 +82,7 @@ def oneUp(sessionInfo, dict, outfile):
     if dict['cbrSourceImageName'] is not None:
         etree.SubElement(resource, 'tag', name='source', value=dict['cbrSourceImageName'], permission=perm)
 
-    resource_uniq = db_api.add_image(resource)
+    resource_uniq = api.add_image(resource)
     print(cbrCellName + ',' + (resource_uniq if resource_uniq is not None else "None") + ',' + fullpath)
 
     if outfile is not None:

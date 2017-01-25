@@ -22,7 +22,7 @@ class DbApi(object):
                 'user': 'admin',
                 'password': 'admin'
             }
-        DbApi.db_uri = session_dict['root']
+        DbApi.db_uri = session_dict['root'] + '/data_service/'
         DbApi.db_auth = (session_dict['user'], session_dict['password'])
 
     # data = open('edit.xml')
@@ -178,7 +178,7 @@ class DbApi(object):
     @staticmethod
     def add_image(xml):
         # http://10.128.62.104:8080/client_service/view?resource=http://10.128.62.104:8080/data_service/00-iPDrkt4dZaL2uWLoCDmQEd
-        data = ElementTree.toString(xml)
+        data = ElementTree.tostring(xml)
         try:
             response = requests.post(DbApi.db_uri, headers=DbApi.headers, data=data, verify=False, auth=DbApi.db_auth)
             response.raise_for_status()
