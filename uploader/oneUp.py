@@ -4,14 +4,14 @@ try:
     from lxml import etree
 except ImportError:
     import xml.etree.ElementTree as etree
+import db_api
 import os
-import uploader
 
 
 # create xml bundle for the bisque database entry pointing to this image.
 # dict should have: source,xmin,xmax,ymin,ymax,zmin,zmax,imageName,imagePath,thumbnailPath
 def oneUp(sessionInfo, dict, outfile):
-    session = uploader.init(sessionInfo)
+    db_api.setSessionInfo(sessionInfo)
 
     cbrImageLocation = dict['cbrImageLocation']
     cbrThumbnailURL = dict['cbrThumbnailURL']
@@ -60,12 +60,13 @@ def oneUp(sessionInfo, dict, outfile):
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = cbrThumbnailURL
     resource = etree.Element('image',
-                             name=cbrCellName+tifext,
+                             name=cbrCellName + tifext,
                              value=fullpath)
     resource.set('permission', perm)
 
     etree.SubElement(resource, 'tag', name='name', value=cbrCellName, permission=perm)
-    etree.SubElement(resource, 'tag', name='filename', value=cbrCellName+tifext, permission=perm)
+    # filename is auto inserted by bisque
+    # etree.SubElement(resource, 'tag', name='filename', value=cbrCellName+tifext, permission=perm)
 
     etree.SubElement(resource, 'tag', name='thumbnail', value=thumbnail, permission=perm)
     etree.SubElement(resource, 'tag', name='structureProteinName', value=structureProteinName, permission=perm)
@@ -75,13 +76,13 @@ def oneUp(sessionInfo, dict, outfile):
     if dict['cbrBounds'] is not None:
         b = dict['cbrBounds']
         # just a comma delimited string
-        bounds = str(b['xmin'])+','+str(b['xmax'])+','+str(b['ymin'])+','+str(b['ymax'])+','+str(b['zmin'])+','+str(b['zmax'])
+        bounds = str(b['xmin']) + ',' + str(b['xmax']) + ',' + str(b['ymin']) + ',' + str(b['ymax']) + ',' + str(b['zmin']) + ',' + str(b['zmax'])
         etree.SubElement(resource, 'tag', name='bounds', value=bounds, permission=perm)
     if dict['cbrSourceImageName'] is not None:
         etree.SubElement(resource, 'tag', name='source', value=dict['cbrSourceImageName'], permission=perm)
 
-    resource_uniq = uploader.uploadFileSpec(session, resource, None)
-    print cbrCellName + ',' + (resource_uniq if resource_uniq is not None else "None") + ',' + fullpath
+    resource_uniq = db_api.add_image(resource)
+    print(cbrCellName + ',' + (resource_uniq if resource_uniq is not None else "None") + ',' + fullpath)
 
     if outfile is not None:
         outfile.write(cbrCellName + ',' + resource_uniq + ',' + fullpath + os.linesep)
