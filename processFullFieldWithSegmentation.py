@@ -65,7 +65,8 @@ def _make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
             im_proj[peaks] *= 4.5
         # elif i == struct_index:
         #     average = np.average(im_proj)
-        #     lows = im_proj < average
+        #     im_proj -= average
+        #     lows = im_proj < 0
         #     im_proj[lows] = 0
 
         rgb_image[i] = im_proj
@@ -102,11 +103,3 @@ def generate_fullfield_png(image, memb_index=0, nuc_index=2, struct_index=1, ima
                                           colors=[c, m, y], size=128)
     with pngWriter.PngWriter(image_path, overwrite_file=True) as writer:
         writer.save(thumbnail)
-
-
-def generate_fullfield_ometif(image, image_path="test.ome.tif",
-                              pixels_physical_size=None, channel_colors=None, channel_names=None):
-    image = image.transpose(1, 0, 2, 3)
-    with omeTifWriter.OmeTifWriter(file_path=image_path, overwrite_file=True) as writer:
-        writer.save(image, channel_names=channel_names,
-                    pixels_physical_size=pixels_physical_size, channel_colors=channel_colors)

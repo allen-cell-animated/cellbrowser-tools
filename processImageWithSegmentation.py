@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 
 # author: Dan Toloudis danielt@alleninstitute.org
+#         Zach Crabtree zacharyc@alleninstitute.org
 
 from aicsimagetools import *
 import argparse
 import json
-# from xml.etree import cElementTree as etree
 import numpy as np
 import os
 import re
 import sys
-from processFullFieldWithSegmentation import generate_fullfield_ometif
 from processFullFieldWithSegmentation import generate_fullfield_png
 
 import cellJob
@@ -40,7 +39,7 @@ def rgba255(r, g, b, a):
     # now force x into a signed 32 bit integer for OME XML Channel Color.
     return int32(x)
 
-channels = ['memb', 'struct', 'dna', 'trans', 'seg_dna', 'seg_memb', 'seg_struct']
+channels = ['MEMB', 'STRUCT', 'DNA', 'TRANS', 'SEG_DNA', 'SEG_MEMB', 'SEG_STRUCT']
 channel_colors = [
     rgba255(255, 255, 0, 255),
     rgba255(255, 0, 255, 255),
@@ -137,24 +136,20 @@ def split_and_crop(row):
     if not os.path.exists(thumbnaildir):
         os.makedirs(thumbnaildir)
 
-    # physical_size = [0.065, 0.065, 0.29]
-    # note these are strings here.  it's ok for xml purposes but not for any math.
-    physical_size = [row.xyPixelSize, row.xyPixelSize, row.zPixelSize]
-
-    structureName = row.structureProteinName
-
     print("loading segmentations...")
     seg_path = row.outputSegmentationPath
     seg_path = normalize_path(seg_path)
     print(seg_path)
-
+    file_list = []
     # nucleus segmentation
     nuc_seg_file = os.path.join(seg_path, row.outputNucSegWholeFilename)
     print(nuc_seg_file)
+    file_list.append(nuc_seg_file)
 
     # cell segmentation
     cell_seg_file = os.path.join(seg_path, row.outputCellSegWholeFilename)
     print(cell_seg_file)
+    file_list.append(cell_seg_file)
 
     struct_seg_path = row.structureSegOutputFolder
     struct_seg_path = normalize_path(struct_seg_path)
@@ -162,86 +157,50 @@ def split_and_crop(row):
     # structure segmentation
     struct_seg_file = os.path.join(struct_seg_path, row.structureSegOutputFilename)
     print(struct_seg_file)
+    file_list.append(struct_seg_file)
 
     image_file = os.path.join(row.inputFolder, row.inputFilename)
     image_file = normalize_path(image_file)
     print(image_file)
-
-    # load the input files
-    cellsegreader = TifReader(cell_seg_file)
-    cellseg = cellsegreader.load()
-
-    nucsegreader = TifReader(nuc_seg_file)
-    nucseg = nucsegreader.load()
-
-    structsegreader = TifReader(struct_seg_file)
-    structseg = structsegreader.load()
-
-    imagereader = CziReader(image_file)
-    image = imagereader.load()
-    image = np.squeeze(image, 0) if image.shape[0] == 1 else image
-    # print etree.tostring(imagereader.get_metadata())
-
+    image = CziReader(image_file).load()
+    assert len(image.shape) == 5
+    assert image.shape[0] == 1
     # image shape from czi assumed to be ZCYX
-    # assume no T dimension for now.
-    image = image.transpose((1, 0, 2, 3))
-    # image is now CZYX
+    # assume no T dimension for now
+    image = image[0, :, :, :, :].transpose(1, 0, 2, 3)
 
-    print("asserting...")
-    # cellseg shape assumed to be Z, Y, X
-    assert imagereader.size_z() == cellsegreader.size_z()
-    assert imagereader.size_x() == cellsegreader.size_x()
-    assert imagereader.size_y() == cellsegreader.size_y()
-    assert imagereader.size_z() == nucsegreader.size_z()
-    assert imagereader.size_x() == nucsegreader.size_x()
-    assert imagereader.size_y() == nucsegreader.size_y()
-    assert imagereader.size_z() == structsegreader.size_z()
-    assert imagereader.size_x() == structsegreader.size_x()
-    assert imagereader.size_y() == structsegreader.size_y()
-
-    # append channels containing segmentations
-    # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
-    image = np.append(image, [nucseg], axis=0)
-    nuc_seg_channel = image.shape[0]-1
-    image = np.append(image, [cellseg], axis=0)
-    cell_seg_channel = image.shape[0]-1
-    image = np.append(image, [structseg], axis=0)
-    struct_seg_channel = image.shape[0]-1
+    seg_indices = []
+    for f in file_list:
+        file_ext = os.path.splitext(f)[1]
+        if file_ext == '.tiff':
+            seg = TifReader(f).load()
+            assert seg.shape[0] == image.shape[1]
+            assert seg.shape[1] == image.shape[2]
+            assert seg.shape[2] == image.shape[3]
+            # append channels containing segmentations
+            # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
+            image = np.append(image, [seg], axis=0)
+            seg_indices.append(image.shape[0] - 1)
+        else:
+            raise ValueError("Image is not a tiff segmentation file!")
 
     print("generating full field images...")
 
     base = os.path.basename(image_file)
     base = os.path.splitext(base)[0]
 
-    if row.cbrGenerateThumbnail:
-        memb_index, nuc_index, struct_index = row.memChannel - 1, row.nucChannel - 1, row.structureChannel - 1
-        out_thumbnaildir = os.path.join(str(normalize_path(thumbnaildir)),
-                                        str(os.path.splitext(row.inputFilename)[0])) + '.png'
-        generate_fullfield_png(image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index,
-                               image_path=out_thumbnaildir)
-    if row.cbrGenerateCellImage:
-        out_outdir = os.path.join(str(normalize_path(outdir)), str(os.path.splitext(row.inputFilename)[0])) + '.ome.tif'
-        generate_fullfield_ometif(image, image_path=out_outdir,
-                                  channel_names=[x.upper() for x in channels], channel_colors=channel_colors,
-                                  pixels_physical_size=physical_size)
+    # necessary for bisque metadata, this is the config for a fullfield image
+    row.cbrBounds = None
+    row.cbrCellIndex = 0
+    row.cbrSourceImageName = None
+    row.cbrCellName = os.path.splitext(row.inputFilename)[0]
 
-    if row.cbrAddToDb:
-        row.cbrThumbnailURL = thumbnaildir.replace('/data/aics/software_it/danielt/demos',
-                                                   'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + base + '.png'
-        session_info = {
-            'root': 'http://10.128.62.104:8080',
-            'user': 'admin',
-            'password': 'admin'
-        }
-        row.cbrBounds = None
-        row.cbrCellIndex = 0
-        row.cbrSourceImageName = None
-        row.cbrCellName = os.path.splitext(row.inputFilename)[0]
-        dbkey = oneUp.oneUp(session_info, row.__dict__, None)
+    _generate_from_args(row, image, thumb_dir=thumbnaildir, out_dir=outdir, fullfield=True)
 
     # assumption: less than 256 cells segmented in the file.
     # assumption: cell segmentation is a numeric index in the pixels
-    h = np.histogram(cellseg, bins=range(0, 256))
+    cell_segmentation_image = image[seg_indices[1], :, :, :]
+    h = np.histogram(cell_segmentation_image, bins=range(0, 256))
     # which bins have segmented pixels?
     # note that this includes zeroes, which is to be ignored.
     h0 = np.nonzero(h[0])[0]
@@ -254,52 +213,71 @@ def split_and_crop(row):
         print(i)
         outname = base + '_' + str(i)
 
-        bounds = get_segmentation_bounds(cellseg, i)
+        bounds = get_segmentation_bounds(cell_segmentation_image, i)
 
         cropped = crop_to_bounds(image, bounds)
 
         # turn the seg channels into true masks
-        cropped[nuc_seg_channel] = image_to_mask(cropped[nuc_seg_channel], i)
-        cropped[cell_seg_channel] = image_to_mask(cropped[cell_seg_channel], i)
+        cropped[seg_indices[0]] = image_to_mask(cropped[seg_indices[0]], i)
+        cropped[seg_indices[1]] = image_to_mask(cropped[seg_indices[1]], i)
         # structure segmentation does not use same masking index rules(?)
         # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
-        if row.cbrGenerateThumbnail:
-            # assumes cropped is CZYX
-            thumbnail = thumbnail2.makeThumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel), int(row.structureChannel)],
-                                                 size=row.cbrThumbnailSize, seg_channel_index=cell_seg_channel)
+        png_dir = os.path.join(normalize_path(thumbnaildir), outname + '.png')
+        ometif_dir = os.path.join(normalize_path(outdir), outname) + '.ome.tif'
+        thumbnail = thumbnail2.makeThumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel),
+                                                                       int(row.structureChannel)],
+                                             size=row.cbrThumbnailSize, seg_channel_index=seg_indices[1])
+        # making it CYX for the png writer
+        thumb = thumbnail.transpose(2, 0, 1)
+        row.cbrCellIndex = i
+        row.cbrSourceImageName = base
+        row.cbrCellName = outname
+        row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
+                         'ymin': bounds[1][0], 'ymax': bounds[1][1],
+                         'zmin': bounds[2][0], 'zmax': bounds[2][1]}
+        _generate_from_args(row, cropped, thumb_dir=png_dir, out_dir=ometif_dir, thumbnail=thumb)
 
-            out_thumbnaildir = normalize_path(thumbnaildir)
-            pngwriter = pngWriter.PngWriter(os.path.join(out_thumbnaildir, outname + '.png'), overwrite_file=True)
-            pngwriter.save(thumbnail.transpose(2, 0, 1))
 
-        if row.cbrGenerateCellImage:
-            # transpose CZYX to ZCYX
-            cropped = cropped.transpose(1, 0, 2, 3)
+def _generate_from_args(row, image, thumb_dir, out_dir, fullfield=False, thumbnail=None):
+    # physical_size = [0.065, 0.065, 0.29]
+    # note these are strings here.  it's ok for xml purposes but not for any math.
+    physical_size = [row.xyPixelSize, row.xyPixelSize, row.zPixelSize]
 
-            out_outdir = normalize_path(outdir)
-            writer = OmeTifWriter(os.path.join(out_outdir, outname + '.ome.tif'), overwrite_file=True)
-            writer.save(cropped, channel_names=[x.upper() for x in channels],
-                        pixels_physical_size=physical_size, channel_colors=channel_colors)
+    base = os.path.splitext(os.path.basename(normalize_path(os.path.join(row.inputFolder, row.inputFilename))))[0]
+    if row.cbrGenerateThumbnail:
+        memb_index, nuc_index, struct_index = row.memChannel - 1, row.nucChannel - 1, row.structureChannel - 1
+        if fullfield:
+            png_dir = os.path.join(str(normalize_path(thumb_dir)),
+                                   str(os.path.splitext(row.inputFilename)[0])) + '.png'
+            generate_fullfield_png(image, memb_index=memb_index, nuc_index=nuc_index,
+                                   struct_index=struct_index, image_path=png_dir)
+        elif thumbnail is not None:
+            with PngWriter(file_path=thumb_dir, overwrite_file=True) as writer:
+                writer.save(thumbnail)
+        else:
+            raise ValueError("Thumbnail is not provided for segmented cell output")
 
-        if row.cbrAddToDb:
-            row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
-                             'ymin': bounds[1][0], 'ymax': bounds[1][1],
-                             'zmin': bounds[2][0], 'zmax': bounds[2][1]}
-            row.cbrCellIndex = i
-            row.cbrSourceImageName = base
-            row.cbrCellName = outname
-            row.cbrThumbnailURL = thumbnaildir.replace('/data/aics/software_it/danielt/demos', 'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + outname + '.png'
-            session_info = {
-                'root': 'http://10.128.62.104:8080',
-                'user': 'admin',
-                'password': 'admin'
-            }
-            dbkey = oneUp.oneUp(session_info, row.__dict__, None)
+    if row.cbrGenerateCellImage:
+        ometif_dir = os.path.join(str(normalize_path(out_dir)),
+                                  str(os.path.splitext(row.inputFilename)[0])) + '.ome.tif'
+        transposed_image = image.transpose(1, 0, 2, 3)
+        with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
+            writer.save(transposed_image, channel_names=channels, channel_colors=channel_colors, pixels_physical_size=physical_size)
+
+    if row.cbrAddToDb:
+        row.cbrThumbnailURL = thumb_dir.replace('/data/aics/software_it/danielt/demos',
+                                                'http://stg-aics.corp.alleninstitute.org/danielt_demos')
+        row.cbrThumbnailURL += '/' + base + '.png'
+        session_info = {
+            'root': 'http://10.128.62.104:8080',
+            'user': 'admin',
+            'password': 'admin'
+        }
+        dbkey = oneUp.oneUp(session_info, row.__dict__, None)
 
 
 def do_main(fname):
-    # extract json to dictionary.
     jobspec = {}
     with open(fname) as jobfile:
         jobspec = json.load(jobfile)

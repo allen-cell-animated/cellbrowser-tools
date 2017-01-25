@@ -68,6 +68,9 @@ def main():
 
                 info = cellJob.CellJob(row)
                 info.cbrAddToDb = True
+                info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
+                info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
+                info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
                 if args.dryrun:
                     info.cbrImageLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
                     info.cbrThumbnailLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
@@ -75,23 +78,14 @@ def main():
                     info.cbrGenerateThumbnail = True
                     info.cbrGenerateCellImage = True
                 elif args.dbonly:
-                    info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
-                    info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
-                    info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
                     info.cbrAddToDb = True
                     info.cbrGenerateThumbnail = False
                     info.cbrGenerateCellImage = False
                 elif args.thumbnailsonly:
-                    info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
-                    info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
-                    info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
                     info.cbrAddToDb = False
                     info.cbrGenerateThumbnail = True
                     info.cbrGenerateCellImage = False
                 else:
-                    info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
-                    info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
-                    info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
                     info.cbrAddToDb = True
                     info.cbrGenerateThumbnail = True
                     info.cbrGenerateCellImage = True
