@@ -11,6 +11,7 @@ import os
 import re
 import sys
 from processFullFieldWithSegmentation import generate_fullfield_png
+from processFullFieldWithSegmentation import _make_fullfield_thumbnail
 
 import cellJob
 import thumbnail2
@@ -195,7 +196,13 @@ def split_and_crop(row):
     row.cbrSourceImageName = None
     row.cbrCellName = os.path.splitext(row.inputFilename)[0]
 
-    _generate_from_args(row, image, thumb_dir=thumbnaildir, out_dir=outdir, fullfield=True)
+    png_dir, ometif_dir, png_url = _generate_paths(row)
+    memb_index, nuc_index, struct_index = row.memChannel - 1, row.nucChannel - 1, row.structureChannel - 1
+    ffthumb = _make_fullfield_thumbnail(image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+    _generate_from_args(row, image=image, thumbnail=ffthumb, thumb_dir=png_dir, out_dir=ometif_dir, thumb_url=png_url)
+
+    if not row.cbrGenerateSegmentedImages:
+        return
 
     # assumption: less than 256 cells segmented in the file.
     # assumption: cell segmentation is a numeric index in the pixels
@@ -206,12 +213,10 @@ def split_and_crop(row):
     h0 = np.nonzero(h[0])[0]
     # for each cell segmented from this image:
     print("segmenting cells...")
-    # return
     for i in h0:
         if i == 0:
             continue
         print(i)
-        outname = base + '_' + str(i)
 
         bounds = get_segmentation_bounds(cell_segmentation_image, i)
 
@@ -223,8 +228,7 @@ def split_and_crop(row):
         # structure segmentation does not use same masking index rules(?)
         # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
-        png_dir = os.path.join(normalize_path(thumbnaildir), outname + '.png')
-        ometif_dir = os.path.join(normalize_path(outdir), outname) + '.ome.tif'
+        png_dir, ometif_dir, png_url = _generate_paths(row, seg_cell_index=i)
         thumbnail = thumbnail2.makeThumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel),
                                                                        int(row.structureChannel)],
                                              size=row.cbrThumbnailSize, seg_channel_index=seg_indices[1])
@@ -232,49 +236,61 @@ def split_and_crop(row):
         thumb = thumbnail.transpose(2, 0, 1)
         row.cbrCellIndex = i
         row.cbrSourceImageName = base
-        row.cbrCellName = outname
+        row.cbrCellName = base + '_' + str(i)
         row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
                          'ymin': bounds[1][0], 'ymax': bounds[1][1],
                          'zmin': bounds[2][0], 'zmax': bounds[2][1]}
-        _generate_from_args(row, cropped, thumb_dir=png_dir, out_dir=ometif_dir, thumbnail=thumb)
+        _generate_from_args(row, image=cropped, thumbnail=thumb, thumb_dir=png_dir, out_dir=ometif_dir, thumb_url=png_url)
 
 
-def _generate_from_args(row, image, thumb_dir, out_dir, fullfield=False, thumbnail=None):
+def _generate_from_args(row, image, thumbnail, thumb_dir, out_dir, thumb_url):
     # physical_size = [0.065, 0.065, 0.29]
     # note these are strings here.  it's ok for xml purposes but not for any math.
     physical_size = [row.xyPixelSize, row.xyPixelSize, row.zPixelSize]
-
-    base = os.path.splitext(os.path.basename(normalize_path(os.path.join(row.inputFolder, row.inputFilename))))[0]
     if row.cbrGenerateThumbnail:
-        memb_index, nuc_index, struct_index = row.memChannel - 1, row.nucChannel - 1, row.structureChannel - 1
-        if fullfield:
-            png_dir = os.path.join(str(normalize_path(thumb_dir)),
-                                   str(os.path.splitext(row.inputFilename)[0])) + '.png'
-            generate_fullfield_png(image, memb_index=memb_index, nuc_index=nuc_index,
-                                   struct_index=struct_index, image_path=png_dir)
-        elif thumbnail is not None:
+        if thumbnail is not None:
             with PngWriter(file_path=thumb_dir, overwrite_file=True) as writer:
                 writer.save(thumbnail)
         else:
             raise ValueError("Thumbnail is not provided for segmented cell output")
 
     if row.cbrGenerateCellImage:
-        ometif_dir = os.path.join(str(normalize_path(out_dir)),
-                                  str(os.path.splitext(row.inputFilename)[0])) + '.ome.tif'
         transposed_image = image.transpose(1, 0, 2, 3)
-        with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
+        with OmeTifWriter(file_path=out_dir, overwrite_file=True) as writer:
             writer.save(transposed_image, channel_names=channels, channel_colors=channel_colors, pixels_physical_size=physical_size)
 
     if row.cbrAddToDb:
-        row.cbrThumbnailURL = thumb_dir.replace('/data/aics/software_it/danielt/demos',
-                                                'http://stg-aics.corp.alleninstitute.org/danielt_demos')
-        row.cbrThumbnailURL += '/' + base + '.png'
+        row.cbrThumbnailURL = thumb_url
         session_info = {
             'root': 'http://10.128.62.104:8080',
             'user': 'admin',
             'password': 'admin'
         }
         dbkey = oneUp.oneUp(session_info, row.__dict__, None)
+
+
+def _generate_paths(row, seg_cell_index=0):
+    # full fields need different directories than segmented cells do
+    file_name = str(os.path.splitext(row.inputFilename)[0])
+    png_dir = os.path.join(normalize_path(row.cbrThumbnailLocation), file_name)
+    ometif_dir = os.path.join(normalize_path(row.cbrImageLocation), file_name)
+
+    source_file_list = re.split(r'\\|/', row.cbrImageLocation)
+    source_file = source_file_list[len(source_file_list) - 1]
+    png_url = "http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/" + source_file + "/"
+
+    if seg_cell_index != 0:
+        png_dir += '_' + str(seg_cell_index)
+        ometif_dir += '_' + str(seg_cell_index)
+        png_url += file_name + '_' + str(seg_cell_index)
+    else:
+        png_url += file_name
+
+    png_dir += '.png'
+    ometif_dir += '.ome.tif'
+    png_url += '.png'
+
+    return png_dir, ometif_dir, png_url
 
 
 def do_main(fname):

@@ -26,6 +26,7 @@ class CellJob(object):
         self.cbrGenerateThumbnail = False
         self.cbrGenerateCellImage = False
         self.cbrAddToDb = False
+        self.cbrGenerateSegmentedImages = True
         if csvRow is not None:
             self.DeliveryDate = csvRow.get('DeliveryDate')
             self.Version = csvRow.get('Version')
@@ -50,4 +51,5 @@ class CellJob(object):
             self.cbrThumbnailSize = csvRow.get('cbrThumbnailSize', self.cbrThumbnailSize)
             self.cbrGenerateThumbnail = csvRow.get('cbrGenerateThumbnail', self.cbrGenerateThumbnail)
             self.cbrGenerateCellImage = csvRow.get('cbrGenerateCellImage', self.cbrGenerateCellImage)
+            self.cbrGenerateSegmentedImages = csvRow.get('cbrGenerateSegmentedImages', self.cbrGenerateSegmentedImages)
             self.cbrAddToDb = csvRow.get('cbrAddToDb', self.cbrAddToDb)

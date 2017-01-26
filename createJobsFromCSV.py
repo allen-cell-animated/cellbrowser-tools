@@ -43,6 +43,7 @@ def main():
     group.add_argument('--dryrun', help='write only to local dir and do not add to db', action='store_true')
     group.add_argument('--dbonly', help='only write to db', action='store_true')
     group.add_argument('--thumbnailsonly', help='only generate thumbnail', action='store_true')
+    group.add_argument('--fullfieldonly', help='only generate fullfield images', action='store_true')
 
     parser.add_argument('--run', help='actually run the jobs!', action='store_true')
 
@@ -71,6 +72,8 @@ def main():
                 info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
                 info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
                 info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
+                if args.fullfieldonly:
+                    info.cbrGenerateSegmentedImages = False
                 if args.dryrun:
                     info.cbrImageLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
                     info.cbrThumbnailLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))

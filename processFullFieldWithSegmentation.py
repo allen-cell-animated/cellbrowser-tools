@@ -66,8 +66,7 @@ def _make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         # elif i == struct_index:
         #     average = np.average(im_proj)
         #     im_proj -= average
-        #     lows = im_proj < 0
-        #     im_proj[lows] = 0
+        #     im_proj[im_proj < 0] = 0
 
         rgb_image[i] = im_proj
 
