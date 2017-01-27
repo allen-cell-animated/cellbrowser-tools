@@ -3,6 +3,7 @@
 # author: Dan Toloudis danielt@alleninstitute.org
 #         Zach Crabtree zacharyc@alleninstitute.org
 
+from __future__ import print_function
 from aicsimagetools import *
 import argparse
 import json
@@ -10,9 +11,7 @@ import numpy as np
 import os
 import re
 import sys
-from processFullFieldWithSegmentation import generate_fullfield_png
 from processFullFieldWithSegmentation import _make_fullfield_thumbnail
-
 import cellJob
 import thumbnail2
 from uploader import oneUp
@@ -185,7 +184,7 @@ def split_and_crop(row):
         else:
             raise ValueError("Image is not a tiff segmentation file!")
 
-    print("generating full field images...")
+    print("generating full field images...", end="")
 
     base = os.path.basename(image_file)
     base = os.path.splitext(base)[0]
@@ -199,7 +198,7 @@ def split_and_crop(row):
     png_dir, ometif_dir, png_url = _generate_paths(row)
     memb_index, nuc_index, struct_index = row.memChannel - 1, row.nucChannel - 1, row.structureChannel - 1
     ffthumb = _make_fullfield_thumbnail(image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
-    _generate_from_args(row, image=image, thumbnail=ffthumb, thumb_dir=png_dir, out_dir=ometif_dir, thumb_url=png_url)
+    _save_and_post(row, image=image, thumbnail=ffthumb, thumb_dir=png_dir, out_dir=ometif_dir, thumb_url=png_url)
 
     if not row.cbrGenerateSegmentedImages:
         return
@@ -240,10 +239,10 @@ def split_and_crop(row):
         row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
                          'ymin': bounds[1][0], 'ymax': bounds[1][1],
                          'zmin': bounds[2][0], 'zmax': bounds[2][1]}
-        _generate_from_args(row, image=cropped, thumbnail=thumb, thumb_dir=png_dir, out_dir=ometif_dir, thumb_url=png_url)
+        _save_and_post(row, image=cropped, thumbnail=thumb, thumb_dir=png_dir, out_dir=ometif_dir, thumb_url=png_url)
 
 
-def _generate_from_args(row, image, thumbnail, thumb_dir, out_dir, thumb_url):
+def _save_and_post(row, image, thumbnail, thumb_dir, out_dir, thumb_url):
     # physical_size = [0.065, 0.065, 0.29]
     # note these are strings here.  it's ok for xml purposes but not for any math.
     physical_size = [row.xyPixelSize, row.xyPixelSize, row.zPixelSize]
@@ -258,6 +257,7 @@ def _generate_from_args(row, image, thumbnail, thumb_dir, out_dir, thumb_url):
         transposed_image = image.transpose(1, 0, 2, 3)
         with OmeTifWriter(file_path=out_dir, overwrite_file=True) as writer:
             writer.save(transposed_image, channel_names=channels, channel_colors=channel_colors, pixels_physical_size=physical_size)
+        print()
 
     if row.cbrAddToDb:
         row.cbrThumbnailURL = thumb_url
@@ -274,10 +274,7 @@ def _generate_paths(row, seg_cell_index=0):
     file_name = str(os.path.splitext(row.inputFilename)[0])
     png_dir = os.path.join(normalize_path(row.cbrThumbnailLocation), file_name)
     ometif_dir = os.path.join(normalize_path(row.cbrImageLocation), file_name)
-
-    source_file_list = re.split(r'\\|/', row.cbrImageLocation)
-    source_file = source_file_list[len(source_file_list) - 1]
-    png_url = "http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/" + source_file + "/"
+    png_url = row.cbrThumbnailURL + "/"
 
     if seg_cell_index != 0:
         png_dir += '_' + str(seg_cell_index)
