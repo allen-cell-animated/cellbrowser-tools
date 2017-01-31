@@ -262,7 +262,7 @@ def _save_and_post(row, image, thumbnail, thumb_dir, out_dir, thumb_url):
     if row.cbrAddToDb:
         row.cbrThumbnailURL = thumb_url
         session_info = {
-            'root': 'http://10.128.62.104:8080',
+            'root': 'http://10.128.62.104',
             'user': 'admin',
             'password': 'admin'
         }

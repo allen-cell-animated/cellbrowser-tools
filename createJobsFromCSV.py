@@ -20,7 +20,7 @@ import jobScheduler
 def generateShForRow(outdir, i, subdir, info, do_run):
     # dump row data into json
     current_dir = os.path.join(os.getcwd(), outdir)
-    jsonname = current_dir + 'aicsCellJob_'+str(i)+'.json'
+    jsonname = os.path.join(current_dir, 'aicsCellJob_'+str(i)+'.json')
     pathjson = os.path.join(outdir, jsonname)
     with open(pathjson, 'w') as fp:
         json.dump(info.__dict__, fp)
