@@ -28,6 +28,7 @@ def oneUp(sessionInfo, dict, outfile):
         'Alpha tubulin': 'Microtubules',
         'Alpha-tubulin': 'Microtubules',
         'LaminB1': 'Nucleus',
+        'Lamin B1': 'Nucleus',
         'Lamin-B1': 'Nucleus',
         'Desmoplakin': 'Cell-cell junctions',
         'Sec61 beta': 'Endoplasmic reticulum',
@@ -50,6 +51,7 @@ def oneUp(sessionInfo, dict, outfile):
     structureName = proteinToStructure.get(structureProteinName)
     if structureName is None:
         structureName = "Unknown"
+        print('Unknown structure protein name: ' + structureProteinName)
 
     # Pass permission explicitly for each tag. This is to work around an apparent bug in the bisque back-end.
     # If we upgrade the back end we should check to see if this bug is fixed. The tag permissions should be inherited
@@ -81,6 +83,9 @@ def oneUp(sessionInfo, dict, outfile):
         etree.SubElement(resource, 'tag', name='bounds', value=bounds, permission=perm)
     if dict['cbrSourceImageName'] is not None:
         etree.SubElement(resource, 'tag', name='source', value=dict['cbrSourceImageName'], permission=perm)
+        etree.SubElement(resource, 'tag', name='isCropped', value="true", permission=perm)
+    else:
+        etree.SubElement(resource, 'tag', name='isCropped', value="false", permission=perm)
 
     resource_uniq = api.add_image(resource)
     print(cbrCellName + ',' + (resource_uniq if resource_uniq is not None else "None") + ',' + fullpath)
