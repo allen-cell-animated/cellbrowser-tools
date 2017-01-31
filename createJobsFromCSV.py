@@ -19,7 +19,8 @@ import jobScheduler
 
 def generateShForRow(outdir, i, subdir, info, do_run):
     # dump row data into json
-    jsonname = 'aicsCellJob_'+str(i)+'.json'
+    current_dir = os.path.join(os.getcwd(), outdir)
+    jsonname = current_dir + 'aicsCellJob_'+str(i)+'.json'
     pathjson = os.path.join(outdir, jsonname)
     with open(pathjson, 'w') as fp:
         json.dump(info.__dict__, fp)
@@ -27,15 +28,17 @@ def generateShForRow(outdir, i, subdir, info, do_run):
     if do_run == "run":
         do_main(pathjson)
     else:
-        script_string = 'python ../../processImageWithSegmentation.py ' + jsonname
+        script_string = open('stock_bash_script.txt').read()
+        # script_string += "export PATH=$PATH:/data/aics/software/anaconda2/envs/cb-tools/bin\n"
+        script_string = script_string.replace('{jsonobject}', jsonname)
         with open('preferences.json') as jsonreader:
             json_obj = json.load(jsonreader)
         logger = jobScheduler.get_logger('test/logs')
-        path = os.path.join(outdir, 'aicsCellJob_'+str(i)+'.sh')
+        path = os.path.join(outdir, 'aicsCellJob_' + str(i) + '.sh')
         with open(path, 'w') as fp:
             fp.write(script_string)
             fp.write(os.linesep)
-        jobScheduler.submit_job(script_string, json_obj, logger)
+        jobScheduler.submit_job(path, json_obj, logger)
 
 
 def main():
