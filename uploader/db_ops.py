@@ -37,6 +37,7 @@ def removeRedundantTags():
     visitor.counter = 0
     db_api.DbApi.forEachImageByName('*', visitor)
 
+
 def addIsCroppedTag():
     def visitor(xml):
         cropped = xml.findall('.//tag[@name="isCropped"]')
