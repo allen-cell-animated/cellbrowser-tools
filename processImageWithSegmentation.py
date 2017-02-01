@@ -136,19 +136,19 @@ def split_and_crop(row):
     if not os.path.exists(thumbnaildir):
         os.makedirs(thumbnaildir)
 
-    print("loading segmentations...")
+    print("loading segmentations...", end="")
     seg_path = row.outputSegmentationPath
     seg_path = normalize_path(seg_path)
-    print(seg_path)
+    # print(seg_path)
     file_list = []
     # nucleus segmentation
     nuc_seg_file = os.path.join(seg_path, row.outputNucSegWholeFilename)
-    print(nuc_seg_file)
+    # print(nuc_seg_file)
     file_list.append(nuc_seg_file)
 
     # cell segmentation
     cell_seg_file = os.path.join(seg_path, row.outputCellSegWholeFilename)
-    print(cell_seg_file)
+    # print(cell_seg_file)
     file_list.append(cell_seg_file)
 
     struct_seg_path = row.structureSegOutputFolder
@@ -156,12 +156,12 @@ def split_and_crop(row):
 
     # structure segmentation
     struct_seg_file = os.path.join(struct_seg_path, row.structureSegOutputFilename)
-    print(struct_seg_file)
+    # print(struct_seg_file)
     file_list.append(struct_seg_file)
 
     image_file = os.path.join(row.inputFolder, row.inputFilename)
     image_file = normalize_path(image_file)
-    print(image_file)
+    # print(image_file)
     image = CziReader(image_file).load()
     assert len(image.shape) == 5
     assert image.shape[0] == 1
@@ -184,6 +184,7 @@ def split_and_crop(row):
         else:
             raise ValueError("Image is not a tiff segmentation file!")
 
+    print("done")
     print("generating full field images...", end="")
 
     base = os.path.basename(image_file)
@@ -203,6 +204,8 @@ def split_and_crop(row):
     if not row.cbrGenerateSegmentedImages:
         return
 
+    print("done")
+
     # assumption: less than 256 cells segmented in the file.
     # assumption: cell segmentation is a numeric index in the pixels
     cell_segmentation_image = image[seg_indices[1], :, :, :]
@@ -211,11 +214,11 @@ def split_and_crop(row):
     # note that this includes zeroes, which is to be ignored.
     h0 = np.nonzero(h[0])[0]
     # for each cell segmented from this image:
-    print("segmenting cells...")
+    print("generating segmented images...", end="")
     for i in h0:
         if i == 0:
             continue
-        print(i)
+        print(i, end=" ")
 
         bounds = get_segmentation_bounds(cell_segmentation_image, i)
 
@@ -228,7 +231,8 @@ def split_and_crop(row):
         # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
         png_dir, ometif_dir, png_url = _generate_paths(row, seg_cell_index=i)
-        thumbnail = thumbnail2.makeThumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel),
+        if row.cbrGenerateThumbnail:
+            thumbnail = thumbnail2.makeThumbnail(cropped.copy(), channel_indices=[int(row.nucChannel), int(row.memChannel),
                                                                        int(row.structureChannel)],
                                              size=row.cbrThumbnailSize, seg_channel_index=seg_indices[1])
         # making it CYX for the png writer
@@ -240,6 +244,7 @@ def split_and_crop(row):
                          'ymin': bounds[1][0], 'ymax': bounds[1][1],
                          'zmin': bounds[2][0], 'zmax': bounds[2][1]}
         _save_and_post(row, image=cropped, thumbnail=thumb, thumb_dir=png_dir, out_dir=ometif_dir, thumb_url=png_url)
+    print("done")
 
 
 def _save_and_post(row, image, thumbnail, thumb_dir, out_dir, thumb_url):
@@ -257,7 +262,6 @@ def _save_and_post(row, image, thumbnail, thumb_dir, out_dir, thumb_url):
         transposed_image = image.transpose(1, 0, 2, 3)
         with OmeTifWriter(file_path=out_dir, overwrite_file=True) as writer:
             writer.save(transposed_image, channel_names=channels, channel_colors=channel_colors, pixels_physical_size=physical_size)
-        print()
 
     if row.cbrAddToDb:
         row.cbrThumbnailURL = thumb_url
