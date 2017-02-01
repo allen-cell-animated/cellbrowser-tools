@@ -1,2 +1,0 @@
-export PYTHONPATH=$PYTHONPATH$( find /data/aics/software_it/zacharyc/cellbrowser-tools/ -not -path '*/\.*' -type d -printf ':%p' )
-python /data/aics/software_it/zacharyc/cellbrowser-tools/processImageWithSegmentation.py {jsonobject}

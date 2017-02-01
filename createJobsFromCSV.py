@@ -17,10 +17,11 @@ import jobScheduler
 # cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
-def generateShForRow(outdir, i, subdir, info, do_run):
+def generate_sh_for_row(outdir, i, subdir, info, do_run):
     # dump row data into json
+    cell_job_postfix = subdir + "_" + str(i)
     current_dir = os.path.join(os.getcwd(), outdir)
-    jsonname = os.path.join(current_dir, 'aicsCellJob_'+str(i)+'.json')
+    jsonname = os.path.join(current_dir, 'aicsCellJob_'+cell_job_postfix+'.json')
     pathjson = os.path.join(outdir, jsonname)
     with open(pathjson, 'w') as fp:
         json.dump(info.__dict__, fp)
@@ -28,52 +29,58 @@ def generateShForRow(outdir, i, subdir, info, do_run):
     if do_run == "run":
         do_main(pathjson)
     else:
-        script_string = open('stock_bash_script.txt').read()
-        # script_string += "export PATH=$PATH:/data/aics/software/anaconda2/envs/cb-tools/bin\n"
-        script_string = script_string.replace('{jsonobject}', jsonname)
-        with open('preferences.json') as jsonreader:
-            json_obj = json.load(jsonreader)
-        logger = jobScheduler.get_logger('test/logs')
-        path = os.path.join(outdir, 'aicsCellJob_' + str(i) + '.sh')
+        script_string = ""
+        script_string += "export PYTHONPATH=$PYTHONPATH$( find /data/aics/software_it/zacharyc/cellbrowser-tools/ " \
+                         "-not -path '*/\.*' -type d -printf ':%p' )\n"
+        script_string += "python /data/aics/software_it/zacharyc/cellbrowser-tools/processImageWithSegmentation.py "
+        script_string += jsonname
+        path = os.path.join(outdir, 'aicsCellJob_' + cell_job_postfix + '.sh')
         with open(path, 'w') as fp:
             fp.write(script_string)
             fp.write(os.linesep)
-        jobScheduler.submit_job(path, json_obj, logger)
+        if do_run == "cluster":
+            with open('preferences.json') as jsonreader:
+                json_obj = json.load(jsonreader)
+            logger = jobScheduler.get_logger('test/logs')
+            jobScheduler.submit_job(path, json_obj, logger)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Process data set defined in csv files, and set up a job script for each row.'
-                                                 'Example: python createJobsFromCSV.py /path/to/csv --outpath /path/to/destination/dir')
+    # TODO: perfect these arguments
+    parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
+                                                 'and set up a job script for each row.'
+                                                 'Example: python createJobsFromCSV.py /path/to/csv')
     parser.add_argument('input', nargs='+', help='input csv files')
-    parser.add_argument('--outpath', help='output path', default='test')
+    parser.add_argument('--outpath', '-o', help='output path', default='test')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--dryrun', help='write only to local dir and do not add to db', action='store_true')
     group.add_argument('--dbonly', help='only write to db', action='store_true')
 
-    parser.add_argument('--thumbnailsonly', help='only generate thumbnail', action='store_true')
-    parser.add_argument('--fullfieldonly', help='only generate fullfield images', action='store_true')
+    generation = parser.add_mutually_exclusive_group()
+    generation.add_argument('--thumbnailsonly', '-t', help='only generate thumbnail', action='store_true')
+    generation.add_argument('--fullfieldonly', '-f', help='only generate fullfield images', action='store_true')
+    # generation.add_argument('--segmentedonly', '-s', help='only generate segmented cell images', action='store_true')
+    # generation.add_argument('--all', '-a', action='store_true')
 
     runner = parser.add_mutually_exclusive_group()
-    runner.add_argument('--run', help='run the jobs locally!', action='store_true', default=False)
-    runner.add_argument('--cluster', help='run jobs using the cluster!', action='store_true', default=False)
+    runner.add_argument('--run', '-r', help='run the jobs locally', action='store_true', default=False)
+    runner.add_argument('--cluster', '-c', help='run jobs using the cluster', action='store_true', default=False)
 
     args = parser.parse_args()
 
-    inputfiles = args.input
-
-    # TODO: recursively search through directories to sequentially parse through each csv file
+    input_files = args.input
 
     i = 0
-    for entry in inputfiles:
-        fname = entry
+    for entry in input_files:
+        file_name = entry
         subdir = os.path.splitext(os.path.basename(entry))[0]
-        outdir = os.path.join(args.outpath, subdir)
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
+        output_dir = os.path.join(args.outpath, subdir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-        with open(fname, 'rU') as csvfile:
+        with open(file_name, 'rU') as csvfile:
 
             reader = csv.DictReader(csvfile)
             first_field = reader.fieldnames[0]
@@ -108,9 +115,9 @@ def main():
                     info.cbrGenerateCellImage = True
 
                 if args.run:
-                    generateShForRow(outdir, i, subdir, info, "run")
+                    generate_sh_for_row(output_dir, i, subdir, info, "run")
                 elif args.cluster:
-                    generateShForRow(outdir, i, subdir, info, "cluster")
+                    generate_sh_for_row(output_dir, i, subdir, info, "cluster")
                 i += 1
                 if i == args.first:
                     break
