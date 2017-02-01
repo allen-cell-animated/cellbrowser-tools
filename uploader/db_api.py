@@ -19,7 +19,7 @@ class DbApi(object):
                 'user': 'admin',
                 'password': 'admin'
             }
-        DbApi.db_uri = session_dict['root']
+        DbApi.db_uri = session_dict['root'] + '/data_service/'
         DbApi.db_auth = (session_dict['user'], session_dict['password'])
 
     # data = open('edit.xml')
