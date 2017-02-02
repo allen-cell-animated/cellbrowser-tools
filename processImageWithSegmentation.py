@@ -15,6 +15,8 @@ from processFullFieldWithSegmentation import _make_fullfield_thumbnail
 import cellJob
 import thumbnail2
 from uploader import oneUp
+import pprint
+
 
 
 def int32(x):
@@ -308,6 +310,12 @@ def do_main(fname):
     #  structureSegOutputFolder,structureSegOutputFilename,
     # image_db_location,
     # thumbnail_location
+
+    # TODO: If info is invalid, print to stderr here
+    if info.cbrParseError:
+        sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
+        pprint.pprint(jobspec, stream=sys.stderr)
+        return
 
     split_and_crop(info)
 

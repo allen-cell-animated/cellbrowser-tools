@@ -5,41 +5,78 @@ class CellJob(object):
         self.Version = '0.0'
         self.inputFolder = ''
         self.inputFilename = ''
+        self.inputFileRow = 0
+
         self.xyPixelSize = 0.0
         self.zPixelSize = 0.0
+
         self.memChannel = 0
         self.nucChannel = 0
         self.structureChannel = 0
         self.structureProteinName = ''
         self.lightChannel = 0
         self.timePoint = 0
+
         self.outputSegmentationPath = ''
         self.outputNucSegWholeFilename = ''
         self.outputCellSegWholeFilename = ''
         self.structureSegOutputFolder = ''
         self.structureSegOutputFilename = ''
+
         self.cbrImageLocation = './images'
         self.cbrThumbnailLocation = './images'
         self.cbrThumbnailURL = 'file:///images'
         self.cbrThumbnailSize = 128
+
         # processing
+
         self.cbrGenerateThumbnail = False
         self.cbrGenerateCellImage = False
         self.cbrAddToDb = False
         self.cbrGenerateSegmentedImages = True
+        self.cbrParseError = False
         if csvRow is not None:
+            self.cbrParseError = csvRow.get('cbrParseError', False)
             self.DeliveryDate = csvRow.get('DeliveryDate')
             self.Version = csvRow.get('Version')
             self.inputFolder = csvRow.get('inputFolder')
             self.inputFilename = csvRow.get('inputFilename')
-            self.xyPixelSize = float(csvRow.get('xyPixelSize', 0))
-            self.zPixelSize = float(csvRow.get('zPixelSize', 0))
-            self.memChannel = int(float(csvRow.get('memChannel', 0)))
-            self.nucChannel = int(float(csvRow.get('nucChannel', 0)))
-            self.structureChannel = int(float(csvRow.get('structureChannel', 0)))
+            try:
+                self.xyPixelSize = float(csvRow.get('xyPixelSize', 0))
+            except ValueError:
+                self.xyPixelSize = 0
+                self.cbrParseError = True
+            try:
+                self.zPixelSize = float(csvRow.get('zPixelSize', 0))
+            except ValueError:
+                self.zPixelSize = 0
+                self.cbrParseError = True
+            try:
+                self.memChannel = int(float(csvRow.get('memChannel', 0)))
+            except ValueError:
+                self.memChannel = 0
+                self.cbrParseError = True
+            try:
+                self.nucChannel = int(float(csvRow.get('nucChannel', 0)))
+            except ValueError:
+                self.nucChannel = 0
+                self.cbrParseError = True
+            try:
+                self.structureChannel = int(float(csvRow.get('structureChannel', 0)))
+            except ValueError:
+                self.structureChannel = 0
+                self.cbrParseError = True
             self.structureProteinName = csvRow.get('structureProteinName')
-            self.lightChannel = int(float(csvRow.get('lightChannel', 0)))
-            self.timePoint = int(float(csvRow.get('timePoint', 0)))
+            try:
+                self.lightChannel = int(float(csvRow.get('lightChannel', 0)))
+            except ValueError:
+                self.lightChannel = 0
+                self.cbrParseError = True
+            try:
+                self.timePoint = int(float(csvRow.get('timePoint', 0)))
+            except ValueError:
+                self.timePoint = 0
+                self.cbrParseError = True
             self.outputSegmentationPath = csvRow.get('outputSegmentationPath')
             self.outputNucSegWholeFilename = csvRow.get('outputNucSegWholeFilename')
             self.outputCellSegWholeFilename = csvRow.get('outputCellSegWholeFilename')
