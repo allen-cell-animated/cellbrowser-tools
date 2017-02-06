@@ -10,11 +10,13 @@ import json
 import numpy as np
 import os
 import re
+import subprocess
 import sys
 import cellJob
 import thumbnail2
 from uploader import oneUp
 import pprint
+import xml.etree.ElementTree as ET
 
 
 def _int32(x):
@@ -119,41 +121,12 @@ class ImageProcessor:
     def __init__(self, info):
         self.row = info
 
-        self.channels = ['MEMB', 'STRUCT', 'DNA', 'TRANS', 'SEG_DNA', 'SEG_MEMB', 'SEG_STRUCT']
-        self.channel_colors = [
-            _rgba255(255, 255, 0, 255),
-            _rgba255(255, 0, 255, 255),
-            _rgba255(0, 255, 255, 255),
-            _rgba255(255, 255, 255, 255),
-            _rgba255(255, 0, 0, 255),
-            _rgba255(0, 0, 255, 255),
-            _rgba255(127, 127, 0, 255)
-        ]
-
-        # Setting up directory paths for images
-        self.image_file = normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
-        self.file_name = str(os.path.splitext(self.row.inputFilename)[0])
-        self._generate_paths()
-
-        # Setting up segmentation channels for full image
-        self.seg_indices = []
-        self.image = self.add_segs_to_img()
-
-    def _generate_paths(self):
-        # full fields need different directories than segmented cells do
-        self.png_dir = os.path.join(normalize_path(self.row.cbrThumbnailLocation), self.file_name)
-        self.ometif_dir = os.path.join(normalize_path(self.row.cbrImageLocation), self.file_name)
-        self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
-
-    def add_segs_to_img(self):
-        file_name = os.path.splitext(os.path.basename(self.row.inputFilename))[0]
-
-        outdir = self.row.cbrImageLocation
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
-        thumbnaildir = self.row.cbrThumbnailLocation
-        if not os.path.exists(thumbnaildir):
-            os.makedirs(thumbnaildir)
+    outdir = row.cbrImageLocation
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    thumbnaildir = row.cbrThumbnailLocation
+    if not os.path.exists(thumbnaildir):
+        os.makedirs(thumbnaildir)
 
         print("loading segmentations for " + file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
@@ -181,7 +154,20 @@ class ImageProcessor:
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
         image_file = normalize_path(image_file)
         # print(image_file)
-        image = CziReader(image_file).load()
+
+        # obtain OME XML metadata from original microscopy image
+        showinf = 'showinf'
+        if sys.platform.startswith('win'):
+            showinf += '.bat'
+        omexmlstring = subprocess.check_output([os.path.join('.', 'bftools', showinf), '-omexml-only', '-nopix', '-nometa',
+                                                image_file],
+                                               stdin=None, stderr=None, shell=False)
+        omexml = ET.fromstring(omexmlstring, ET.XMLParser(encoding='ISO-8859-1'))
+
+        cr = CziReader(image_file)
+        image = cr.load()
+        cmeta = cr.get_metadata()
+        # image = CziReader(image_file).load()
         assert len(image.shape) == 5
         assert image.shape[0] == 1
         # image shape from czi assumed to be ZCYX
