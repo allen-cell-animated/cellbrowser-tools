@@ -34,6 +34,7 @@ class CellJob(object):
         self.cbrGenerateCellImage = False
         self.cbrAddToDb = False
         self.cbrGenerateSegmentedImages = True
+        self.cbrGenerateFullFieldImages = True
         self.cbrParseError = False
         if csvRow is not None:
             self.cbrParseError = csvRow.get('cbrParseError', False)
@@ -89,4 +90,5 @@ class CellJob(object):
             self.cbrGenerateThumbnail = csvRow.get('cbrGenerateThumbnail', self.cbrGenerateThumbnail)
             self.cbrGenerateCellImage = csvRow.get('cbrGenerateCellImage', self.cbrGenerateCellImage)
             self.cbrGenerateSegmentedImages = csvRow.get('cbrGenerateSegmentedImages', self.cbrGenerateSegmentedImages)
+            self.cbrGenerateFullFieldImages = csvRow.get('cbrGenerateFullFieldImages', self.cbrGenerateFullFieldImages)
             self.cbrAddToDb = csvRow.get('cbrAddToDb', self.cbrAddToDb)

@@ -14,8 +14,8 @@ _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
 #     # scale all remaining data up by some ratio - perhaps add avg to values that aren't 0
 
 
-def _make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
-                              colors=_cmy, size=128):
+def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
+                             colors=_cmy, size=128):
     # assume all images have same shape!
     imsize = np.array(im1[0].shape)
     im1 = im1[0:3, :, :, :]
@@ -94,11 +94,3 @@ def _make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
 
     # returns a CXY array for the pngwriter
     return comp.transpose((2, 0, 1))
-
-
-def generate_fullfield_png(image, memb_index=0, nuc_index=2, struct_index=1, image_path="test.png"):
-    c, m, y = [0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]
-    thumbnail = _make_fullfield_thumbnail(image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index,
-                                          colors=[c, m, y], size=128)
-    with pngWriter.PngWriter(image_path, overwrite_file=True) as writer:
-        writer.save(thumbnail)

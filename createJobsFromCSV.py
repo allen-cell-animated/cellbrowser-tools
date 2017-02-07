@@ -46,7 +46,6 @@ def generate_sh_for_row(outdir, i, subdir, info, do_run):
 
 
 def main():
-    # TODO: perfect these arguments
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
                                                  'and set up a job script for each row.'
                                                  'Example: python createJobsFromCSV.py /path/to/csv')
@@ -55,14 +54,18 @@ def main():
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--dryrun', help='write only to local dir and do not add to db', action='store_true')
-    group.add_argument('--dbonly', help='only write to db', action='store_true')
+    group.add_argument('--dryrun', '-d', help='write only to local dir and do not add to db', action='store_true')
+    group.add_argument('--dbonly', '-p', help='only post to db', action='store_true')
 
     generation = parser.add_mutually_exclusive_group()
     generation.add_argument('--thumbnailsonly', '-t', help='only generate thumbnail', action='store_true')
-    generation.add_argument('--fullfieldonly', '-f', help='only generate fullfield images', action='store_true')
-    # generation.add_argument('--segmentedonly', '-s', help='only generate segmented cell images', action='store_true')
-    # generation.add_argument('--all', '-a', action='store_true')
+    generation.add_argument('--imagesonly', '-i', help='only generate images', action='store_true')
+
+    cell_images = parser.add_mutually_exclusive_group()
+    cell_images.add_argument('--fullfieldonly', '-f', help='only generate fullfield images', action='store_true')
+    cell_images.add_argument('--segmentedonly', '-s', help='only generate segmented cell images', action='store_true')
+
+    parser.add_argument('--all', '-a', action='store_true')
 
     runner = parser.add_mutually_exclusive_group()
     runner.add_argument('--run', '-r', help='run the jobs locally', action='store_true', default=False)
@@ -93,31 +96,49 @@ def main():
                 info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
                 info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
                 info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
-                if args.fullfieldonly:
-                    info.cbrGenerateSegmentedImages = False
-                if args.dryrun:
-                    info.cbrImageLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
-                    info.cbrThumbnailLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
-                    info.cbrAddToDb = False
+                if args.all:
+                    info.cbrAddToDb = True
                     info.cbrGenerateThumbnail = True
                     info.cbrGenerateCellImage = True
-                elif args.dbonly:
-                    info.cbrAddToDb = True
-                    info.cbrGenerateThumbnail = False
-                    info.cbrGenerateCellImage = False
-                elif args.thumbnailsonly:
-                    info.cbrAddToDb = False
-                    info.cbrGenerateThumbnail = True
-                    info.cbrGenerateCellImage = False
+                    info.cbrGenerateSegmentedImages = True
+                    info.cbrGenerateFullFieldImages = True
                 else:
-                    info.cbrAddToDb = True
-                    info.cbrGenerateThumbnail = True
-                    info.cbrGenerateCellImage = True
+                    if args.dryrun:
+                        info.cbrImageLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
+                        info.cbrThumbnailLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
+                        info.cbrAddToDb = False
+                    elif args.dbonly:
+                        info.cbrAddToDb = True
+                        info.cbrGenerateThumbnail = False
+                        info.cbrGenerateCellImage = False
+
+                    if args.thumbnailsonly:
+                        info.cbrGenerateThumbnail = True
+                        info.cbrGenerateCellImage = False
+                    elif args.imagesonly:
+                        info.cbrGenerateThumbnail = False
+                        info.cbrGenerateCellImage = True
+                    elif not args.dbonly:
+                        info.cbrGenerateThumbnail = True
+                        info.cbrGenerateCellImage = True
+
+                    if args.fullfieldonly:
+                        info.cbrGenerateSegmentedImages = False
+                        info.cbrGenerateFullFieldImages = True
+                    elif args.segmentedonly:
+                        info.cbrGenerateSegmentedImages = True
+                        info.cbrGenerateFullFieldImages = False
+                    else:
+                        info.cbrGenerateSegmentedImages = True
+                        info.cbrGenerateFullFieldImages = True
 
                 if args.run:
                     generate_sh_for_row(output_dir, i, subdir, info, "run")
                 elif args.cluster:
                     generate_sh_for_row(output_dir, i, subdir, info, "cluster")
+                else:
+                    generate_sh_for_row(output_dir, i, subdir, info, "")
+
                 i += 1
                 if i == args.first:
                     break
