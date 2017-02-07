@@ -54,6 +54,11 @@ def get_logger(log_dir):
 
     logger = logging.getLogger('jobScheduler')
     logger.setLevel(logging.DEBUG)
+    # makes sure that logger drops other file handlers and doesn't print out repeated messages
+    for handle in logger.handlers:
+        handle.close()
+    logger.handlers = []
+
     fh = logging.FileHandler(log_dir + os.sep + time.strftime("%Y_%m_%d-%H_%M_%S") + '.log')
     fh.setLevel(logging.DEBUG)
 

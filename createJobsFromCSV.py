@@ -138,6 +138,7 @@ def main():
                 if args.run:
                     generate_sh_for_row(output_dir, i, subdir, info, "run")
                 elif args.cluster:
+                    # TODO: set arg to copy each indiv file to another output
                     generate_sh_for_row(output_dir, i, subdir, info, "cluster")
                 else:
                     generate_sh_for_row(output_dir, i, subdir, info, "")
