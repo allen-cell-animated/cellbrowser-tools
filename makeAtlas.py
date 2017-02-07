@@ -223,8 +223,8 @@ def splitAndCrop(row):
 
         if row.cbrGenerateThumbnail:
             # assumes cropped is CZYX
-            thumbnail = thumbnail2.makeThumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel), int(row.structureChannel)],
-                                                 size=row.cbrThumbnailSize, seg_channel_index=cell_seg_channel)
+            thumbnail = thumbnail2.make_segmented_thumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel), int(row.structureChannel)],
+                                                            size=row.cbrThumbnailSize, seg_channel_index=cell_seg_channel)
 
             out_thumbnaildir = normalizePath(thumbnaildir)
             pngwriter = pngWriter.PngWriter(os.path.join(out_thumbnaildir, outname + '.png'))

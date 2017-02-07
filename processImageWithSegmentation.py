@@ -11,7 +11,6 @@ import numpy as np
 import os
 import re
 import sys
-from processFullFieldWithSegmentation import make_fullfield_thumbnail
 import cellJob
 import thumbnail2
 from uploader import oneUp
@@ -167,7 +166,7 @@ class ImageProcessor:
             memb_index, nuc_index, struct_index = self.row.memChannel - 1, self.row.nucChannel - 1, self.row.structureChannel - 1
 
             if self.row.cbrGenerateThumbnail:
-                ffthumb = make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
             else:
                 ffthumb = None
 
@@ -196,27 +195,25 @@ class ImageProcessor:
                 print(i, end=" ")
 
                 bounds = get_segmentation_bounds(cell_segmentation_image, i)
-
-                if self.row.cbrGenerateCellImage:
-                    cropped = crop_to_bounds(self.image, bounds)
-
-                    # turn the seg channels into true masks
-                    cropped[self.seg_indices[0]] = image_to_mask(cropped[self.seg_indices[0]], i)
-                    cropped[self.seg_indices[1]] = image_to_mask(cropped[self.seg_indices[1]], i)
-                    # structure segmentation does not use same masking index rules(?)
-                    # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
-                else:
-                    cropped = None
+                cropped = crop_to_bounds(self.image, bounds)
+                # turn the seg channels into true masks
+                cropped[self.seg_indices[0]] = image_to_mask(cropped[self.seg_indices[0]], i)
+                cropped[self.seg_indices[1]] = image_to_mask(cropped[self.seg_indices[1]], i)
+                # structure segmentation does not use same masking index rules(?)
+                # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
-                    thumbnail = thumbnail2.makeThumbnail(cropped.copy(), channel_indices=[int(self.row.nucChannel),
-                                                                                          int(self.row.memChannel),
-                                                                                          int(self.row.structureChannel)],
-                                                         size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
+                    thumbnail = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[int(self.row.nucChannel),
+                                                                                                     int(self.row.memChannel),
+                                                                                                     int(self.row.structureChannel)],
+                                                                    size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     # making it CYX for the png writer
                     thumb = thumbnail.transpose(2, 0, 1)
                 else:
                     thumb = None
+
+                if not self.row.cbrGenerateCellImage:
+                    cropped = None
 
                 self.row.cbrCellIndex = i
                 self.row.cbrSourceImageName = base
