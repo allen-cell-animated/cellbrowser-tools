@@ -55,6 +55,7 @@ def main():
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--dryrun', '-d', help='write only to local dir and do not add to db', action='store_true')
+    group.add_argument('--notdb', '-n', help='write to the server dirs but do not add to db', action='store_true')
     group.add_argument('--dbonly', '-p', help='only post to db', action='store_true')
 
     generation = parser.add_mutually_exclusive_group()
@@ -111,6 +112,8 @@ def main():
                         info.cbrAddToDb = True
                         info.cbrGenerateThumbnail = False
                         info.cbrGenerateCellImage = False
+                    elif args.notdb:
+                        info.cbrAddToDb = False
 
                     if args.thumbnailsonly:
                         info.cbrGenerateThumbnail = True
