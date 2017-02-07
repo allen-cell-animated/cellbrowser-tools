@@ -19,36 +19,34 @@ def oneUp(sessionInfo, dict, outfile):
     cbrCellName = dict['cbrCellName']
     structureProteinName = dict['structureProteinName']
 
+    # TODO encode this table in db or someplace else?
     proteinToStructure = {
-        'Alpha actinin': 'Membrane',
-        'Alpha-actinin': 'Membrane',
-        'Paxillin': 'Adhesions',
+        'ALPHAACTININ': 'Membrane',
+        'PAXILLIN': 'Adhesions',
+        'PAXILIN': 'Adhesions',
         'TOM20': 'Mitochondria',
-        'Tom20': 'Mitochondria',
-        'Alpha tubulin': 'Microtubules',
-        'Alpha-tubulin': 'Microtubules',
-        'LaminB1': 'Nucleus',
-        'Lamin B1': 'Nucleus',
-        'Lamin-B1': 'Nucleus',
-        'Desmoplakin': 'Cell-cell junctions',
-        'Sec61 beta': 'Endoplasmic reticulum',
-        'Sec61-beta': 'Endoplasmic reticulum',
-        'Fibrillarin': 'Nucleolus',
-        'Beta actin': 'Actin',
-        'Beta-actin': 'Actin',
-        'Vimentin': 'Intermediate filaments',
+        'ALPHATUBULIN': 'Microtubules',
+        'LAMINB1': 'Nucleus',
+        'DESMOPLAKIN': 'Cell-cell junctions',
+        'SEC61BETA': 'Endoplasmic reticulum',
+        'SEC61B': 'Endoplasmic reticulum',
+        'FIBRILLARIN': 'Nucleolus',
+        'BETAACTIN': 'Actin',
+        'VIMENTIN': 'Intermediate filaments',
         'LAMP1': 'Lysosome',
-        'ZO 1': 'Tight junctions',
-        'ZO-1': 'Tight junctions',
         'ZO1': 'Tight junctions',
-        'Myosin IIB': 'Myosin',
-        'beta-galactoside alpha-2,6-sialyltransferase 1': 'Golgi',
+        'MYOSINIIB': 'Myosin',
+        'BETAGALACTOSIDEALPHA26SIALYLTRANSFERASE1': 'Golgi',
         'ST6GAL1': 'Golgi',
         'LC3': 'Autophagosomes',
-        'Centrin': 'Centrosome',
-        'GFP': 'Cytoplasm'
+        'CENTRIN': 'Centrosome',
+        'GFP': 'Cytoplasm',
+        'PMP34': 'Peroxisomes',
+        'CAAX': 'Plasma membrane'
     }
-    structureName = proteinToStructure.get(structureProteinName)
+    # strip spaces and hyphens for dictionary lookup.
+    structureProteinKey = structureProteinName.replace('-', '').replace(' ', '').replace(',', '').upper()
+    structureName = proteinToStructure.get(structureProteinKey)
     if structureName is None:
         structureName = "Unknown"
         print('Unknown structure protein name: ' + structureProteinName)
@@ -74,6 +72,8 @@ def oneUp(sessionInfo, dict, outfile):
     etree.SubElement(resource, 'tag', name='thumbnail', value=thumbnail, permission=perm)
     etree.SubElement(resource, 'tag', name='structureProteinName', value=structureProteinName, permission=perm)
     etree.SubElement(resource, 'tag', name='structureName', value=structureName, permission=perm)
+    # this batch of images are all from microscope and not simulated.
+    etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
 
     # assume bounding box exists...
     if dict['cbrBounds'] is not None:

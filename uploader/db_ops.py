@@ -1,16 +1,5 @@
 import db_api
 
-session_dict = {
-    # 'root': 'http://test-aics-01',
-    # 'root': 'http://bisque-00.corp.alleninstitute.org:8080',
-    # 'root': 'http://10.128.62.104:8080',
-    'root': 'http://10.128.62.104',
-    'user': 'admin',
-    'password': 'admin'
-}
-
-db_api.DbApi.setSessionInfo(session_dict)
-
 
 # DELETE A SET OF IMAGES
 # deleteImagesByName('20160708_C01*')
@@ -36,6 +25,7 @@ def removeRedundantTags():
             i += 1
     visitor.counter = 0
     db_api.DbApi.forEachImageByName('*', visitor)
+
 
 def addIsCroppedTag():
     def visitor(xml):
