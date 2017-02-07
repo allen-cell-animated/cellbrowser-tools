@@ -71,6 +71,8 @@ def oneUp(sessionInfo, dict, outfile):
     etree.SubElement(resource, 'tag', name='thumbnail', value=thumbnail, permission=perm)
     etree.SubElement(resource, 'tag', name='structureProteinName', value=structureProteinName, permission=perm)
     etree.SubElement(resource, 'tag', name='structureName', value=structureName, permission=perm)
+    # this batch of images are all from microscope and not simulated.
+    etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
 
     # assume bounding box exists...
     if dict['cbrBounds'] is not None:
