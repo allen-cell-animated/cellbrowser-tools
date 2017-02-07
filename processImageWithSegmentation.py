@@ -65,11 +65,7 @@ class ImageProcessor:
     # The functions outside of this class do not rely on a cellJob object
     def __init__(self, info):
         self.row = info
-        self.image_file = normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
-        self.seg_indices = []
-        self.image = self.add_segs_to_img()
-        self.file_name = str(os.path.splitext(self.row.inputFilename)[0])
-        self._generate_paths()
+
         self.channels = ['MEMB', 'STRUCT', 'DNA', 'TRANS', 'SEG_DNA', 'SEG_MEMB', 'SEG_STRUCT']
         self.channel_colors = [
             _rgba255(255, 255, 0, 255),
@@ -80,6 +76,15 @@ class ImageProcessor:
             _rgba255(0, 0, 255, 255),
             _rgba255(127, 127, 0, 255)
         ]
+
+        # Setting up directory paths for images
+        self.image_file = normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
+        self.file_name = str(os.path.splitext(self.row.inputFilename)[0])
+        self._generate_paths()
+
+        # Setting up segmentation channels for full image
+        self.seg_indices = []
+        self.image = self.add_segs_to_img()
 
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
@@ -162,13 +167,19 @@ class ImageProcessor:
             memb_index, nuc_index, struct_index = self.row.memChannel - 1, self.row.nucChannel - 1, self.row.structureChannel - 1
 
             if self.row.cbrGenerateThumbnail:
-                ffthumb = make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index,
-                                                   struct_index=struct_index)
+                ffthumb = make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
             else:
                 ffthumb = None
-            self._save_and_post(image=self.image, thumbnail=ffthumb)
+
+            if self.row.cbrGenerateCellImage:
+                im_to_save = self.image
+            else:
+                im_to_save = None
+
+            self._save_and_post(image=im_to_save, thumbnail=ffthumb)
 
             print("done")
+
         if self.row.cbrGenerateSegmentedImages:
             # assumption: less than 256 cells segmented in the file.
             # assumption: cell segmentation is a numeric index in the pixels
@@ -184,9 +195,9 @@ class ImageProcessor:
                     continue
                 print(i, end=" ")
 
-                if self.row.cbrGenerateCellImage:
-                    bounds = get_segmentation_bounds(cell_segmentation_image, i)
+                bounds = get_segmentation_bounds(cell_segmentation_image, i)
 
+                if self.row.cbrGenerateCellImage:
                     cropped = crop_to_bounds(self.image, bounds)
 
                     # turn the seg channels into true masks
