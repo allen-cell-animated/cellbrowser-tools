@@ -94,7 +94,7 @@ def main():
 
                 info = cellJob.CellJob(row)
                 info.cbrAddToDb = True
-                info.cbrImageLocation = '/data/aics/software_it/danielt/images/AICS/bisque/' + subdir
+                info.cbrImageLocation = '/data/aics/AnimatedCellExplorer/CellViewer/batch1/' + subdir
                 info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
                 info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
                 if args.all:

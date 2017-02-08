@@ -17,43 +17,97 @@ from uploader import oneUp
 import pprint
 
 
-def do_main(fname):
-    with open(fname) as jobfile:
-        jobspec = json.load(jobfile)
-        info = cellJob.CellJob(jobspec)
-
-    # jobspec is expected to be a dictionary of:
-    #  ,DeliveryDate,Version,inputFolder,inputFilename,
-    #  xyPixelSize,zPixelSize,memChannel,nucChannel,structureChannel,structureProteinName,
-    #  lightChannel,timePoint,
-    #  outputSegmentationPath,outputNucSegWholeFilename,outputCellSegWholeFilename,
-    #  structureSegOutputFolder,structureSegOutputFilename,
-    # image_db_location,
-    # thumbnail_location
-
-    if info.cbrParseError:
-        sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
-        pprint.pprint(jobspec, stream=sys.stderr)
-        return
-
-    processor = ImageProcessor(info)
-    processor.generate_and_save()
+def _int32(x):
+    if x > 0xFFFFFFFF:
+        raise OverflowError
+    if x > 0x7FFFFFFF:
+        x = int(0x100000000-x)
+        if x < 2147483648:
+            return -x
+        else:
+            return -2147483648
+    return x
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
-                                                 'Example: python processImageWithSegmentation.py /path/to/csv --outpath /path/to/destination/dir')
-    parser.add_argument('input', help='input json file')
-    args = parser.parse_args()
+def _rgba255(r, g, b, a):
+    assert 0 <= r <= 255
+    assert 0 <= g <= 255
+    assert 0 <= b <= 255
+    assert 0 <= a <= 255
+    # bit shift to compose rgba tuple
+    x = r << 24 | g << 16 | b << 8 | a
+    # now force x into a signed 32 bit integer for OME XML Channel Color.
+    return _int32(x)
 
-    do_main(args.input)
+
+# note that shape is expected to be z,y,x
+def clamp(x, y, z, shape):
+    # do not subtract 1 from max sizes because this will be used as an array range
+    # in crop_to_segmentation below
+    return max(0, min(x, shape[2])), max(0, min(y, shape[1])), max(0, min(z, shape[0]))
 
 
-if __name__ == "__main__":
-    print (sys.argv)
-    main()
-    sys.exit(0)
+# assuming 3d segmentation image (ZYX)
+def get_segmentation_bounds(segmentation_image, index, margin=5):
+    # find bounding box
+    b = np.argwhere(segmentation_image == index)
+    (zstart, ystart, xstart), (zstop, ystop, xstop) = b.min(0), b.max(0) + 1
 
+    # apply margins and clamp to image edges
+    # TODO: margin in z is not the same as xy
+    xstart, ystart, zstart = clamp(xstart-margin, ystart-margin, zstart-margin, segmentation_image.shape)
+    xstop, ystop, zstop = clamp(xstop+margin, ystop+margin, zstop+margin, segmentation_image.shape)
+
+    return [[xstart, xstop], [ystart, ystop], [zstart, zstop]]
+
+
+# assuming 4d image (CZYX) and bounds as [[xmin,xmax],[ymin,ymax],[zmin,zmax]]
+def crop_to_bounds(image, bounds):
+    atrim = np.copy(image[:, bounds[2][0]:bounds[2][1], bounds[1][0]:bounds[1][1], bounds[0][0]:bounds[0][1]])
+    return atrim
+
+
+def image_to_mask(image3d, index, mask_positive_value=1):
+    return np.where(image3d == index, mask_positive_value, 0).astype(image3d.dtype)
+
+
+def normalize_path(path):
+    # expects windows paths to start with \\aibsdata !!
+    # windows: \\\\aibsdata\\aics
+    windowsroot = '\\\\aibsdata\\aics\\'
+    # mac:     /Volumes/aics (???)
+    macroot = '/Volumes/aics/'
+    # linux:   /data/aics
+    linuxroot = '/data/aics/'
+
+    # 1. strip away the root.
+    if path.startswith(windowsroot):
+        path = path[len(windowsroot):]
+    elif path.startswith(linuxroot):
+        path = path[len(linuxroot):]
+    elif path.startswith(macroot):
+        path = path[len(macroot):]
+    else:
+        # if the path does not reference a known root, don't try to change it.
+        # it's probably a local path.
+        return path
+
+    # 2. split the path up into a list of dirs
+    path_as_list = re.split(r'\\|/', path)
+
+    # 3. insert the proper system root for this platform (without the trailing slash)
+    dest_root = ''
+    if sys.platform.startswith('darwin'):
+        dest_root = macroot[:-1]
+    elif sys.platform.startswith('linux'):
+        dest_root = linuxroot[:-1]
+    else:
+        dest_root = windowsroot[:-1]
+
+    path_as_list.insert(0, dest_root)
+
+    out_path = os.path.join(*path_as_list)
+    return out_path
 
 class ImageProcessor:
 
@@ -258,94 +312,39 @@ class ImageProcessor:
             dbkey = oneUp.oneUp(session_info, self.row.__dict__, None)
 
 
-def _int32(x):
-    if x > 0xFFFFFFFF:
-        raise OverflowError
-    if x > 0x7FFFFFFF:
-        x = int(0x100000000-x)
-        if x < 2147483648:
-            return -x
-        else:
-            return -2147483648
-    return x
+def do_main(fname):
+    with open(fname) as jobfile:
+        jobspec = json.load(jobfile)
+        info = cellJob.CellJob(jobspec)
+
+    # jobspec is expected to be a dictionary of:
+    #  ,DeliveryDate,Version,inputFolder,inputFilename,
+    #  xyPixelSize,zPixelSize,memChannel,nucChannel,structureChannel,structureProteinName,
+    #  lightChannel,timePoint,
+    #  outputSegmentationPath,outputNucSegWholeFilename,outputCellSegWholeFilename,
+    #  structureSegOutputFolder,structureSegOutputFilename,
+    # image_db_location,
+    # thumbnail_location
+
+    if info.cbrParseError:
+        sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
+        pprint.pprint(jobspec, stream=sys.stderr)
+        return
+
+    processor = ImageProcessor(info)
+    processor.generate_and_save()
 
 
-def _rgba255(r, g, b, a):
-    assert 0 <= r <= 255
-    assert 0 <= g <= 255
-    assert 0 <= b <= 255
-    assert 0 <= a <= 255
-    # bit shift to compose rgba tuple
-    x = r << 24 | g << 16 | b << 8 | a
-    # now force x into a signed 32 bit integer for OME XML Channel Color.
-    return _int32(x)
+def main():
+    parser = argparse.ArgumentParser(description='Process data set defined in csv files, and prepare for ingest into bisque db.'
+                                                 'Example: python processImageWithSegmentation.py /path/to/csv --outpath /path/to/destination/dir')
+    parser.add_argument('input', help='input json file')
+    args = parser.parse_args()
+
+    do_main(args.input)
 
 
-# note that shape is expected to be z,y,x
-def clamp(x, y, z, shape):
-    # do not subtract 1 from max sizes because this will be used as an array range
-    # in crop_to_segmentation below
-    return max(0, min(x, shape[2])), max(0, min(y, shape[1])), max(0, min(z, shape[0]))
-
-
-# assuming 3d segmentation image (ZYX)
-def get_segmentation_bounds(segmentation_image, index, margin=5):
-    # find bounding box
-    b = np.argwhere(segmentation_image == index)
-    (zstart, ystart, xstart), (zstop, ystop, xstop) = b.min(0), b.max(0) + 1
-
-    # apply margins and clamp to image edges
-    # TODO: margin in z is not the same as xy
-    xstart, ystart, zstart = clamp(xstart-margin, ystart-margin, zstart-margin, segmentation_image.shape)
-    xstop, ystop, zstop = clamp(xstop+margin, ystop+margin, zstop+margin, segmentation_image.shape)
-
-    return [[xstart, xstop], [ystart, ystop], [zstart, zstop]]
-
-
-# assuming 4d image (CZYX) and bounds as [[xmin,xmax],[ymin,ymax],[zmin,zmax]]
-def crop_to_bounds(image, bounds):
-    atrim = np.copy(image[:, bounds[2][0]:bounds[2][1], bounds[1][0]:bounds[1][1], bounds[0][0]:bounds[0][1]])
-    return atrim
-
-
-def image_to_mask(image3d, index, mask_positive_value=1):
-    return np.where(image3d == index, mask_positive_value, 0).astype(image3d.dtype)
-
-
-def normalize_path(path):
-    # expects windows paths to start with \\aibsdata !!
-    # windows: \\\\aibsdata\\aics
-    windowsroot = '\\\\aibsdata\\aics\\'
-    # mac:     /Volumes/aics (???)
-    macroot = '/Volumes/aics/'
-    # linux:   /data/aics
-    linuxroot = '/data/aics/'
-
-    # 1. strip away the root.
-    if path.startswith(windowsroot):
-        path = path[len(windowsroot):]
-    elif path.startswith(linuxroot):
-        path = path[len(linuxroot):]
-    elif path.startswith(macroot):
-        path = path[len(macroot):]
-    else:
-        # if the path does not reference a known root, don't try to change it.
-        # it's probably a local path.
-        return path
-
-    # 2. split the path up into a list of dirs
-    path_as_list = re.split(r'\\|/', path)
-
-    # 3. insert the proper system root for this platform (without the trailing slash)
-    dest_root = ''
-    if sys.platform.startswith('darwin'):
-        dest_root = macroot[:-1]
-    elif sys.platform.startswith('linux'):
-        dest_root = linuxroot[:-1]
-    else:
-        dest_root = windowsroot[:-1]
-
-    path_as_list.insert(0, dest_root)
-
-    out_path = os.path.join(*path_as_list)
-    return out_path
+if __name__ == "__main__":
+    print (sys.argv)
+    main()
+    sys.exit(0)
