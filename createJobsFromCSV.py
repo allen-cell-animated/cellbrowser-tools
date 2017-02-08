@@ -91,6 +91,8 @@ def main():
             for row in reader:
                 if row[first_field].startswith("#"):
                     continue
+                if row[first_field] == "":
+                    continue
 
                 info = cellJob.CellJob(row)
                 info.cbrAddToDb = True
