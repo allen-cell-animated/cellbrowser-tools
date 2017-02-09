@@ -192,7 +192,7 @@ class ImageProcessor:
                                                 image_file],
                                                stdin=None, stderr=None, shell=False)
         # omexml = ET.fromstring(omexmlstring, ET.XMLParser(encoding='ISO-8859-1'))
-        omexml = OMEXML(xml=omexmlstring)
+        self.omexml = OMEXML(xml=omexmlstring)
         # TODO dump this to a file someplace! (use cmd line args in bftools showinf above?)
 
         cr = CziReader(image_file)
@@ -216,7 +216,7 @@ class ImageProcessor:
                 assert seg.shape[1] == image.shape[2]
                 assert seg.shape[2] == image.shape[3]
                 # append channels containing segmentations
-                omexml.append_channel(nch+i, self.channels[nch+i])
+                self.omexml.append_channel(nch+i, self.channels[nch+i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
                 image = np.append(image, [seg], axis=0)
                 self.seg_indices.append(image.shape[0] - 1)
@@ -321,7 +321,7 @@ class ImageProcessor:
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
             with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
-                writer.save(transposed_image, channel_names=self.channels, channel_colors=self.channel_colors,
+                writer.save(transposed_image, omexml=self.omexml, channel_names=self.channels, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
 
         if self.row.cbrAddToDb:
