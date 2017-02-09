@@ -162,7 +162,9 @@ class ImageProcessor:
         omexmlstring = subprocess.check_output([os.path.join('.', 'bftools', showinf), '-omexml-only', '-nopix', '-nometa',
                                                 image_file],
                                                stdin=None, stderr=None, shell=False)
-        omexml = ET.fromstring(omexmlstring, ET.XMLParser(encoding='ISO-8859-1'))
+        # omexml = ET.fromstring(omexmlstring, ET.XMLParser(encoding='ISO-8859-1'))
+        omexml = OMEXML(xml=omexmlstring)
+        # TODO dump this to a file someplace! (use cmd line args in bftools showinf above?)
 
         cr = CziReader(image_file)
         image = cr.load()
@@ -173,7 +175,10 @@ class ImageProcessor:
         # image shape from czi assumed to be ZCYX
         # assume no T dimension for now
         image = image[0, :, :, :, :].transpose(1, 0, 2, 3)
+        nch = cr.size_c()
 
+        self.seg_indices = []
+        i = 0
         for f in file_list:
             file_ext = os.path.splitext(f)[1]
             if file_ext == '.tiff':
@@ -182,9 +187,11 @@ class ImageProcessor:
                 assert seg.shape[1] == image.shape[2]
                 assert seg.shape[2] == image.shape[3]
                 # append channels containing segmentations
+                omexml.append_channel(nch+i, channels[nch+i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
                 image = np.append(image, [seg], axis=0)
                 self.seg_indices.append(image.shape[0] - 1)
+                i += 1
             else:
                 raise ValueError("Image is not a tiff segmentation file!")
 
