@@ -216,7 +216,7 @@ class ImageProcessor:
                 assert seg.shape[1] == image.shape[2]
                 assert seg.shape[2] == image.shape[3]
                 # append channels containing segmentations
-                omexml.append_channel(nch+i, channels[nch+i])
+                omexml.append_channel(nch+i, self.channels[nch+i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
                 image = np.append(image, [seg], axis=0)
                 self.seg_indices.append(image.shape[0] - 1)
