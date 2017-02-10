@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from processImageWithSegmentation import do_main
-import jobScheduler
+import job_scheduler
 
 
 # cbrImageLocation path to cellbrowser images
@@ -41,8 +41,8 @@ def generate_sh_for_row(outdir, i, subdir, info, do_run):
         if do_run == "cluster":
             with open('preferences.json') as jsonreader:
                 json_obj = json.load(jsonreader)
-            logger = jobScheduler.get_logger('test/logs')
-            jobScheduler.submit_job(path, json_obj, logger)
+            logger = job_scheduler.get_logger('test/logs')
+            job_scheduler.submit_job(path, json_obj, logger)
 
 
 def main():
@@ -50,6 +50,7 @@ def main():
                                                  'and set up a job script for each row.'
                                                  'Example: python createJobsFromCSV.py /path/to/csv')
     parser.add_argument('input', nargs='+', help='input csv files')
+    # TODO: set arg to copy each indiv file to another output
     parser.add_argument('--outpath', '-o', help='output path', default='test')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
@@ -140,7 +141,6 @@ def main():
                 if args.run:
                     generate_sh_for_row(output_dir, i, subdir, info, "run")
                 elif args.cluster:
-                    # TODO: set arg to copy each indiv file to another output
                     generate_sh_for_row(output_dir, i, subdir, info, "cluster")
                 else:
                     generate_sh_for_row(output_dir, i, subdir, info, "")

@@ -8,6 +8,8 @@ import numpy as np
 import os
 import scipy
 import sys
+from skimage.measure import block_reduce
+import skimage.transform as t
 
 z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
@@ -103,12 +105,10 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 #     [255.0/255.0, 109.0/255.0, 182.0/255.0]
 # ]
 # pass in a xyzc image!
-def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0],
-                                                                     [255.0/255.0, 0.0/255.0, 255.0/255.0],
-                                                                     [255.0/255.0, 255.0/255.0, 0.0/255.0]],
+def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
                              seg_channel_index=-1, size=128):
 
-    # assume all images have same shape!!!
+    # assume all images have same shape!
     imsize = np.array(im1[0].shape)
     assert len(imsize) == 3
 
@@ -124,7 +124,7 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.
 
     # apply the cell segmentation mask.  bye bye to data outside the cell
     for i in range(im1.shape[0]):
-        im1[i,:,:,:] = mask_image(im1[i,:,:,:], im1[seg_channel_index,:,:,:])
+        im1[i, :, :, :] = mask_image(im1[i, :, :, :], im1[seg_channel_index, :, :, :])
     # im1 = [mask_image(im, im1[seg_channel_index]) for im in im1]
     mask = matproj(im1[seg_channel_index], z_axis_index)
     # pngwriter = pngWriter.PngWriter('test/oMask.png')
@@ -162,13 +162,13 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.
     # comp /= comp.max()
     return comp
 
+
 def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
                              colors=_cmy, size=128):
     # assume all images have same shape!
     imsize = np.array(im1[0].shape)
     im1 = im1[0:3, :, :, :]
 
-    # TODO: Are these the only asserts we want to try?
     assert len(imsize) == 3
     assert max(memb_index, struct_index, nuc_index) <= im1.shape[0] - 1
 
@@ -181,7 +181,7 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
                            ))
     shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
-    num_noise_floor_bins = 16
+    num_noise_floor_bins = 12
     comp = np.zeros(shape_out_rgb)
     channel_indices = [memb_index, struct_index, nuc_index]
     rgb_image = im1[:, 0, :, :].astype('float')
@@ -205,28 +205,18 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
 
         imdbl = np.asarray(thumb).astype('double')
         im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
-        if i == nuc_index:
-            average = np.average(im_proj)
-            peaks = im_proj > average
-            # TODO: GET THIS TO WORK
-            impmax = im_proj.max()
-            im_proj[peaks] *= 4.5
-        # elif i == struct_index:
-        #     average = np.average(im_proj)
-        #     im_proj -= average
-        #     im_proj[im_proj < 0] = 0
 
         rgb_image[i] = im_proj
 
-    # TODO: Should these be parameters for this function?
     channel_contrasts = [15.0, 10.0, 10.0]
-
-    # TODO: Possibly mask out background noise by finding middle point between min and avg and zeroing lower values
-    # TODO: Can these for loops be condensed?
+    # TODO: Should these be parameters for this function?
     for channel in channel_indices:
-        # normalize the channel to values from 0 to 1
         rgb_image[channel] /= np.max(rgb_image[channel])
-        # scale the whole channel to a max equivalent to the correct contrast ratio
+        # channel_max = np.max(rgb_image[channel])
+        # channel_avg = np.median(rgb_image[channel])
+        # channel_contrasts.append(channel_max / channel_avg)
+
+    for channel in channel_indices:
         rgb_image[channel] *= channel_contrasts[channel]
 
     for i in range(rgb_image.shape[0]):
@@ -237,10 +227,12 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         # inject color.  careful of type mismatches.
         rgb_out *= colors[i]
 
-        rgb_out = imresize(rgb_out, shape_out_rgb)
-        comp += rgb_out
+        # TODO: This assumes the image is always square, is this actually the case?
+        downscale_factor = (im1.shape[3] / size)
+        pyramid = t.pyramid_reduce(rgb_out, downscale=downscale_factor)
+        comp += pyramid
 
-    # returns a CXY array for the pngwriter
+    # returns a CYX array for the pngwriter
     return comp.transpose((2, 0, 1))
 
 

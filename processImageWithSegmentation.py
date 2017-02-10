@@ -109,6 +109,7 @@ def normalize_path(path):
     out_path = os.path.join(*path_as_list)
     return out_path
 
+
 class ImageProcessor:
 
     # to clarify my reasoning for these specific methods and variables in this class...
@@ -210,7 +211,7 @@ class ImageProcessor:
         base = os.path.splitext(base)[0]
 
         if self.row.cbrGenerateFullFieldImages:
-            print("generating full field images...", end="")
+            print("generating full field images...")
             # necessary for bisque metadata, this is the config for a fullfield image
             self.row.cbrBounds = None
             self.row.cbrCellIndex = 0
@@ -220,18 +221,20 @@ class ImageProcessor:
             memb_index, nuc_index, struct_index = self.row.memChannel - 1, self.row.nucChannel - 1, self.row.structureChannel - 1
 
             if self.row.cbrGenerateThumbnail:
+                print("    making thumbnail...", end="")
                 ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                print("done")
             else:
                 ffthumb = None
 
             if self.row.cbrGenerateCellImage:
+                print("    making image...", end="")
                 im_to_save = self.image
+                print("done")
             else:
                 im_to_save = None
 
             self._save_and_post(image=im_to_save, thumbnail=ffthumb)
-
-            print("done")
 
         if self.row.cbrGenerateSegmentedImages:
             # assumption: less than 256 cells segmented in the file.
@@ -257,17 +260,21 @@ class ImageProcessor:
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
+                    print("    making thumbnail...", end="")
                     thumbnail = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[int(self.row.nucChannel),
                                                                                                      int(self.row.memChannel),
                                                                                                      int(self.row.structureChannel)],
                                                                     size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     # making it CYX for the png writer
                     thumb = thumbnail.transpose(2, 0, 1)
+                    print("done")
                 else:
                     thumb = None
 
                 if not self.row.cbrGenerateCellImage:
                     cropped = None
+                else:
+                    print("    making image...done")
 
                 self.row.cbrCellIndex = i
                 self.row.cbrSourceImageName = base
