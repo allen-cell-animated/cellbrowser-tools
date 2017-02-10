@@ -50,7 +50,7 @@ def main():
                                                  'and set up a job script for each row.'
                                                  'Example: python createJobsFromCSV.py /path/to/csv')
     parser.add_argument('input', nargs='+', help='input csv files')
-    parser.add_argument('--outpath', '-o', help='output path', default='test')
+    parser.add_argument('--outpath', '-o', help='output path for job files', default='test')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
     group = parser.add_mutually_exclusive_group()
