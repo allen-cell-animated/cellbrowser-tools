@@ -209,13 +209,14 @@ class ImageProcessor:
         image = cr.load()
         cmeta = cr.get_metadata()
         # image = CziReader(image_file).load()
-        assert len(image.shape) == 5
-        assert image.shape[0] == 1
+        if len(image.shape) == 5 and image.shape[0] == 1:
+            image = image[0, :, :, :, :]
+        assert len(image.shape) == 4
         # image shape from czi assumed to be ZCYX
         # assume no T dimension for now
-        image = image[0, :, :, :, :].transpose(1, 0, 2, 3)
-        nch = cr.size_c()
+        image = image.transpose(1, 0, 2, 3)
 
+        nch = cr.size_c()
         self.seg_indices = []
         i = 0
         for f in file_list:
