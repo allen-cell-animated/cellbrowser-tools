@@ -22,9 +22,9 @@ def getsheets(inputfile):
     for x in df1.sheet_names:
         # out to csv
         print(x + '.csv', 'Done!')
-        df2 = pd.read_excel(inputfile, sheetname=x)
+        df2 = pd.read_excel(inputfile, sheetname=x, encoding='iso-8859-1')
         filename = os.path.join(name, x + '.csv')
-        df2.to_csv(filename, index=False)
+        df2.to_csv(filename, index=False, encoding='utf-8')
     print('\nAll Done!')
 
 
