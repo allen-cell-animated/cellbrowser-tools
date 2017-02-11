@@ -146,8 +146,14 @@ class ImageProcessor:
 
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
-        self.png_dir = os.path.join(normalize_path(self.row.cbrThumbnailLocation), self.file_name)
-        self.ometif_dir = os.path.join(normalize_path(self.row.cbrImageLocation), self.file_name)
+        thumbnaildir = normalize_path(self.row.cbrThumbnailLocation)
+        if not os.path.exists(thumbnaildir):
+            os.makedirs(thumbnaildir)
+        self.png_dir = os.path.join(thumbnaildir, self.file_name)
+        ometifdir = normalize_path(self.row.cbrImageLocation)
+        if not os.path.exists(ometifdir):
+            os.makedirs(ometifdir)
+        self.ometif_dir = os.path.join(ometifdir, self.file_name)
         self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
 
     def add_segs_to_img(self):
