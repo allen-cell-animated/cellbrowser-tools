@@ -173,12 +173,13 @@ class ImageProcessor:
         file_list.append(cell_seg_file)
 
         struct_seg_path = self.row.structureSegOutputFolder
-        struct_seg_path = normalize_path(struct_seg_path)
+        if not struct_seg_path.startswith('N/A'):
+            struct_seg_path = normalize_path(struct_seg_path)
 
-        # structure segmentation
-        struct_seg_file = os.path.join(struct_seg_path, self.row.structureSegOutputFilename)
-        # print(struct_seg_file)
-        file_list.append(struct_seg_file)
+            # structure segmentation
+            struct_seg_file = os.path.join(struct_seg_path, self.row.structureSegOutputFilename)
+            # print(struct_seg_file)
+            file_list.append(struct_seg_file)
 
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
         image_file = normalize_path(image_file)
