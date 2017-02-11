@@ -6,6 +6,7 @@
 from __future__ import print_function
 from aicsimagetools import *
 import argparse
+import copy
 import json
 import numpy as np
 import os
@@ -53,6 +54,8 @@ def clamp(x, y, z, shape):
 def get_segmentation_bounds(segmentation_image, index, margin=5):
     # find bounding box
     b = np.argwhere(segmentation_image == index)
+    # ths plus-1 means these bounds are min-inclusive and max-exclusive.
+    # in other words, looping for i = start; i < stop; ++i
     (zstart, ystart, xstart), (zstop, ystop, xstop) = b.min(0), b.max(0) + 1
 
     # apply margins and clamp to image edges
@@ -217,7 +220,7 @@ class ImageProcessor:
                 assert seg.shape[1] == image.shape[2]
                 assert seg.shape[2] == image.shape[3]
                 # append channels containing segmentations
-                self.omexml.append_channel(nch+i, self.channels[nch+i])
+                self.omexml.image().Pixels.append_channel(nch+i, self.channels[nch+i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
                 image = np.append(image, [seg], axis=0)
                 self.seg_indices.append(image.shape[0] - 1)
@@ -252,7 +255,7 @@ class ImageProcessor:
             else:
                 im_to_save = None
 
-            self._save_and_post(image=im_to_save, thumbnail=ffthumb)
+            self._save_and_post(image=im_to_save, thumbnail=ffthumb, omexml=self.omexml)
 
             print("done")
 
@@ -289,19 +292,45 @@ class ImageProcessor:
                 else:
                     thumb = None
 
-                if not self.row.cbrGenerateCellImage:
-                    cropped = None
-
                 self.row.cbrCellIndex = i
                 self.row.cbrSourceImageName = base
                 self.row.cbrCellName = base + '_' + str(i)
                 self.row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
                                       'ymin': bounds[1][0], 'ymax': bounds[1][1],
                                       'zmin': bounds[2][0], 'zmax': bounds[2][1]}
-                self._save_and_post(image=cropped, thumbnail=thumb, seg_cell_index=i)
+
+                for bn in self.row.cbrBounds:
+                    print(bn, self.row.cbrBounds[bn])
+                # copy self.omexml for output
+                copyxml = None
+                copied = copy.deepcopy(self.omexml.dom)
+                copyxml = OMEXML(rootnode=copied)
+                # now fix it up
+                pixels = copyxml.image().Pixels
+                pixels.set_SizeX(cropped.shape[3])
+                pixels.set_SizeY(cropped.shape[2])
+                pixels.set_SizeZ(cropped.shape[1])
+                # if sizeZ changed, then we have to use bounds to fix up the plane elements
+                minz = bounds[2][0]
+                maxz = bounds[2][1]
+                planes = []
+                for pi in range(pixels.get_plane_count()):
+                    planes.append(pixels.Plane(pi))
+                for p in planes:
+                    pz = p.get_TheZ()
+                    # TODO: CONFIRM THAT THIS IS CORRECT!!
+                    if pz >= maxz or pz < minz:
+                        pixels.node.remove(p.node)
+                    else:
+                        p.set_TheZ(pz-minz)
+
+                if not self.row.cbrGenerateCellImage:
+                    cropped = None
+
+                self._save_and_post(image=cropped, thumbnail=thumb, seg_cell_index=i, omexml=copyxml)
             print("done")
 
-    def _save_and_post(self, image, thumbnail, seg_cell_index=0):
+    def _save_and_post(self, image, thumbnail, seg_cell_index=0, omexml=None):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
         physical_size = [self.row.xyPixelSize, self.row.xyPixelSize, self.row.zPixelSize]
@@ -322,7 +351,7 @@ class ImageProcessor:
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
             with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
-                writer.save(transposed_image, omexml=self.omexml, channel_names=self.channels, channel_colors=self.channel_colors,
+                writer.save(transposed_image, omexml=omexml, channel_names=self.channels, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
 
         if self.row.cbrAddToDb:
