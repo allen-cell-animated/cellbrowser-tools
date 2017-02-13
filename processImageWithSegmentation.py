@@ -210,7 +210,9 @@ class ImageProcessor:
         showinf = 'showinf'
         if sys.platform.startswith('win'):
             showinf += '.bat'
-        omexmlstring = subprocess.check_output([os.path.join('.', 'bftools', showinf), '-omexml-only', '-nopix', '-nometa',
+
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        omexmlstring = subprocess.check_output([os.path.join(dir_path, 'bftools', showinf), '-omexml-only', '-nopix', '-nometa',
                                                 image_file],
                                                stdin=None, stderr=None, shell=False)
         # omexml = ET.fromstring(omexmlstring, ET.XMLParser(encoding='ISO-8859-1'))
