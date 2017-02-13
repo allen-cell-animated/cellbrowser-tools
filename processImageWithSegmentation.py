@@ -124,7 +124,7 @@ class ImageProcessor:
     def __init__(self, info):
         self.row = info
 
-        self.channels = ['MEMB', 'STRUCT', 'DNA', 'TRANS', 'SEG_DNA', 'SEG_MEMB', 'SEG_STRUCT']
+        self.channels = ['OBS_Memb', 'OBS_STRUCT', 'OBS_DNA', 'OBS_Trans', 'SEG_DNA', 'SEG_Memb', 'SEG_STRUCT']
         self.channel_colors = [
             _rgba255(255, 255, 0, 255),
             _rgba255(255, 0, 255, 255),
@@ -166,20 +166,31 @@ class ImageProcessor:
         if not os.path.exists(thumbnaildir):
             os.makedirs(thumbnaildir)
 
+        # start with 4 nameless channels for membrane, structure, nucleus and transmitted light
+        # there is an assumption here that the indices range from 1 to 4
+        self.channel_names = [None]*4
+        self.channel_names[self.memChannel-1] = "OBS_Memb"
+        self.channel_names[self.nucChannel-1] = "OBS_DNA"
+        self.channel_names[self.structureChannel-1] = "OBS_STRUCT"
+        self.channel_names[self.lightChannel-1] = "OBS_Trans"
+
         print("loading segmentations for " + file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
         seg_path = normalize_path(seg_path)
         # print(seg_path)
         file_list = []
+
         # nucleus segmentation
         nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
         # print(nuc_seg_file)
         file_list.append(nuc_seg_file)
+        self.channel_names.append("SEG_DNA")
 
         # cell segmentation
         cell_seg_file = os.path.join(seg_path, self.row.outputCellSegWholeFilename)
         # print(cell_seg_file)
         file_list.append(cell_seg_file)
+        self.channel_names.append("SEG_Memb")
 
         struct_seg_path = self.row.structureSegOutputFolder
         if not struct_seg_path.startswith('N/A'):
@@ -189,6 +200,7 @@ class ImageProcessor:
             struct_seg_file = os.path.join(struct_seg_path, self.row.structureSegOutputFilename)
             # print(struct_seg_file)
             file_list.append(struct_seg_file)
+            self.channel_names.append("SEG_STRUCT")
 
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
         image_file = normalize_path(image_file)
@@ -362,6 +374,7 @@ class ImageProcessor:
                             pixels_physical_size=physical_size)
 
         if self.row.cbrAddToDb:
+            self.row.channelNames = self.channel_names
             self.row.cbrThumbnailURL = png_url
             session_info = {
                 'root': 'http://10.128.62.104',

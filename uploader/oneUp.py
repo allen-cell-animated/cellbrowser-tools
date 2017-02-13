@@ -78,6 +78,12 @@ def oneUp(sessionInfo, dict, outfile):
     etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
     etree.SubElement(resource, 'tag', name='segmentationVersion', value=cbrSegmentationVersion, permission=perm)
 
+    # add a tag for each channel name, by index
+    if dict['channelNames'] is not None:
+        channel_names = dict['channelNames']
+        for i in range(len(channel_names)):
+            etree.SubElement(resource, 'tag', name='channelLabel_'+str(i), value=channel_names[i], permission=perm)
+
     # assume bounding box exists...
     if dict['cbrBounds'] is not None:
         b = dict['cbrBounds']
