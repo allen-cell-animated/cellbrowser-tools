@@ -7,6 +7,7 @@ from __future__ import print_function
 from aicsimagetools import *
 import argparse
 import copy
+import errno
 import json
 import numpy as np
 import os
@@ -114,6 +115,15 @@ def normalize_path(path):
     out_path = os.path.join(*path_as_list)
     return out_path
 
+def make_dir(dirname):
+    if not os.path.exists(dirname):
+        try:
+            os.makedirs(dirname)
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+            pass
+
 class ImageProcessor:
 
     # to clarify my reasoning for these specific methods and variables in this class...
@@ -147,12 +157,12 @@ class ImageProcessor:
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
         thumbnaildir = normalize_path(self.row.cbrThumbnailLocation)
-        if not os.path.exists(thumbnaildir):
-            os.makedirs(thumbnaildir)
+        make_dir(thumbnaildir)
+
         self.png_dir = os.path.join(thumbnaildir, self.file_name)
         ometifdir = normalize_path(self.row.cbrImageLocation)
-        if not os.path.exists(ometifdir):
-            os.makedirs(ometifdir)
+        make_dir(ometifdir)
+
         self.ometif_dir = os.path.join(ometifdir, self.file_name)
         self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
 
@@ -160,11 +170,10 @@ class ImageProcessor:
         file_name = os.path.splitext(os.path.basename(self.row.inputFilename))[0]
 
         outdir = self.row.cbrImageLocation
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
+        make_dir(outdir)
+
         thumbnaildir = self.row.cbrThumbnailLocation
-        if not os.path.exists(thumbnaildir):
-            os.makedirs(thumbnaildir)
+        make_dir(thumbnaildir)
 
         # start with 4 nameless channels for membrane, structure, nucleus and transmitted light
         # there is an assumption here that the indices range from 1 to 4
