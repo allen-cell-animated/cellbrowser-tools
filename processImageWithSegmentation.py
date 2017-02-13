@@ -169,10 +169,10 @@ class ImageProcessor:
         # start with 4 nameless channels for membrane, structure, nucleus and transmitted light
         # there is an assumption here that the indices range from 1 to 4
         self.channel_names = [None]*4
-        self.channel_names[self.memChannel-1] = "OBS_Memb"
-        self.channel_names[self.nucChannel-1] = "OBS_DNA"
-        self.channel_names[self.structureChannel-1] = "OBS_STRUCT"
-        self.channel_names[self.lightChannel-1] = "OBS_Trans"
+        self.channel_names[self.row.memChannel-1] = "OBS_Memb"
+        self.channel_names[self.row.nucChannel-1] = "OBS_DNA"
+        self.channel_names[self.row.structureChannel-1] = "OBS_STRUCT"
+        self.channel_names[self.row.lightChannel-1] = "OBS_Trans"
 
         print("loading segmentations for " + file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
