@@ -175,13 +175,13 @@ class ImageProcessor:
         thumbnaildir = self.row.cbrThumbnailLocation
         make_dir(thumbnaildir)
 
-        # start with 4 nameless channels for membrane, structure, nucleus and transmitted light
-        # there is an assumption here that the indices range from 1 to 4
-        self.channel_names = [None]*4
-        self.channel_names[self.row.memChannel-1] = "OBS_Memb"
-        self.channel_names[self.row.nucChannel-1] = "OBS_DNA"
-        self.channel_names[self.row.structureChannel-1] = "OBS_STRUCT"
-        self.channel_names[self.row.lightChannel-1] = "OBS_Trans"
+        # start with 4 channels for membrane, structure, nucleus and transmitted light
+        self.channel_names = [
+            "OBS_Memb",
+            "OBS_STRUCT",
+            "OBS_DNA",
+            "OBS_Trans"
+        ]
 
         print("loading segmentations for " + file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
@@ -215,7 +215,7 @@ class ImageProcessor:
         image_file = normalize_path(image_file)
         # print(image_file)
 
-        # obtain OME XML metadata from original microscopy image
+        # 1. obtain OME XML metadata from original microscopy image
         showinf = 'showinf'
         if sys.platform.startswith('win'):
             showinf += '.bat'
@@ -228,6 +228,7 @@ class ImageProcessor:
         self.omexml = OMEXML(xml=omexmlstring)
         # TODO dump this to a file someplace! (use cmd line args in bftools showinf above?)
 
+        # 2. obtain relevant channels from original image file
         cr = CziReader(image_file)
         image = cr.load()
         cmeta = cr.get_metadata()
@@ -238,6 +239,56 @@ class ImageProcessor:
         # image shape from czi assumed to be ZCYX
         # assume no T dimension for now
         image = image.transpose(1, 0, 2, 3)
+        # assumption: channel indices are one-based.
+        self.channel_indices = [
+            self.row.memChannel-1,
+            self.row.structureChannel-1,
+            self.row.nucChannel-1,
+            self.row.lightChannel-1
+        ]
+        # image.shape[0] is num of channels.
+        assert(image.shape[0] > max(self.channel_indices))
+        orig_num_channels = image.shape[0]
+        image = np.array([
+            image[self.channel_indices[0]],
+            image[self.channel_indices[1]],
+            image[self.channel_indices[2]],
+            image[self.channel_indices[3]]
+        ])
+        channels_to_remove = [x for x in range(orig_num_channels) if not x in self.channel_indices]
+
+
+        # 3. fix up XML to reorder channels
+        # we want to preserve all channel and plane data for the channels we are keeping!
+        # rename:
+        #   channel_indices[0] to channel0
+        #   channel_indices[1] to channel1
+        #   channel_indices[2] to channel2
+        #   channel_indices[3] to channel3
+        pix = self.omexml.image().Pixels
+        chxml = [
+            pix.Channel(self.channel_indices[0]),
+            pix.Channel(self.channel_indices[1]),
+            pix.Channel(self.channel_indices[2]),
+            pix.Channel(self.channel_indices[3])
+        ]
+        planes = [
+            pix.get_planes_of_channel(self.channel_indices[0]),
+            pix.get_planes_of_channel(self.channel_indices[1]),
+            pix.get_planes_of_channel(self.channel_indices[2]),
+            pix.get_planes_of_channel(self.channel_indices[3])
+        ]
+        for i in channels_to_remove:
+            pix.remove_channel(i)
+        # reset all plane indices
+        for i in range(len(planes)):
+            for j in planes[i]:
+                j.set("TheC", str(i))
+        chxml[0].ID = 'Channel:0:0'
+        chxml[1].ID = 'Channel:0:1'
+        chxml[2].ID = 'Channel:0:2'
+        chxml[3].ID = 'Channel:0:3'
+        pix.set_SizeC(4)
 
         nch = cr.size_c()
         self.seg_indices = []
