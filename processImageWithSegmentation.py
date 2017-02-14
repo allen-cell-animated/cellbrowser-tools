@@ -316,6 +316,9 @@ class ImageProcessor:
         base = os.path.basename(self.image_file)
         base = os.path.splitext(base)[0]
 
+        # before this, indices have been re-organized in add_segs_to_img (in __init__)
+        memb_index, nuc_index, struct_index = 0,2,1
+
         if self.row.cbrGenerateFullFieldImages:
             print("generating full field images...", end="")
             # necessary for bisque metadata, this is the config for a fullfield image
@@ -323,8 +326,6 @@ class ImageProcessor:
             self.row.cbrCellIndex = 0
             self.row.cbrSourceImageName = None
             self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
-
-            memb_index, nuc_index, struct_index = self.row.memChannel - 1, self.row.nucChannel - 1, self.row.structureChannel - 1
 
             if self.row.cbrGenerateThumbnail:
                 ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
@@ -364,9 +365,9 @@ class ImageProcessor:
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
-                    thumbnail = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[int(self.row.nucChannel),
-                                                                                                     int(self.row.memChannel),
-                                                                                                     int(self.row.structureChannel)],
+                    thumbnail = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index,
+                                                                                                     memb_index,
+                                                                                                     struct_index],
                                                                     size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     # making it CYX for the png writer
                     thumb = thumbnail.transpose(2, 0, 1)
