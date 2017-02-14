@@ -345,10 +345,10 @@ class ImageProcessor:
             # assumption: less than 256 cells segmented in the file.
             # assumption: cell segmentation is a numeric index in the pixels
             cell_segmentation_image = self.image[self.seg_indices[1], :, :, :]
-            h = np.histogram(cell_segmentation_image, bins=range(0, 256))
             # which bins have segmented pixels?
             # note that this includes zeroes, which is to be ignored.
-            h0 = np.nonzero(h[0])[0]
+            h0 = np.unique(cell_segmentation_image)
+            h0 = h0[h0 > 0]
             # for each cell segmented from this image:
             print("generating segmented images...", end="")
             for i in h0:
