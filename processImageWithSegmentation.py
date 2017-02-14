@@ -290,7 +290,7 @@ class ImageProcessor:
         chxml[3].ID = 'Channel:0:3'
         pix.set_SizeC(4)
 
-        nch = cr.size_c()
+        nch = 4
         self.seg_indices = []
         i = 0
         for f in file_list:
