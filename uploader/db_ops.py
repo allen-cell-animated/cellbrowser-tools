@@ -5,6 +5,7 @@ import db_api
 # deleteImagesByName('20160708_C01*')
 def deleteImagesByName(namestr):
     xml = db_api.DbApi.getImagesByName(namestr)
+    print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
     for i in xml:
         imid = i.get("resource_uniq")
         print(imid)
@@ -40,3 +41,8 @@ def addIsCroppedTag():
                 db_api.DbApi.addTag(xml.get("resource_uniq"), "isCropped", "false")
     visitor.counter = 0
     db_api.DbApi.forEachImageByName('*', visitor)
+
+
+def countImagesByName(namestr):
+    xml = db_api.DbApi.getImagesByName(namestr)
+    print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
