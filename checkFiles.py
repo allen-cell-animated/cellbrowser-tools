@@ -40,10 +40,9 @@ def cli():
     s = big_frame.to_csv(None, index=False, encoding='utf-8')
 
     if args.compare:
-        s = s.split('\n')
+        s = s.replace(',','').split('\n')
         f = listfiles(args.compare)
-        print(list(set(f) - set(s)))
-        print(list(set(s) - set(f)))
+        print(sorted(list(set(f) ^ set(s))))
     else:
         print(s)
 
