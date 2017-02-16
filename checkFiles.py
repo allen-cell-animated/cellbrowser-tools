@@ -7,13 +7,13 @@ import sys
 
 
 def listfiles(dirname):
-    f = []
+    flist = []
     for dirpath, dirnames, filenames in os.walk(dirname):
         for filename in [f for f in filenames if f.endswith(".ome.tif")]:
-            f.append(filename)
+            flist.append(filename)
             # print(filename)
             # print os.path.join(dirpath, filename)
-    return f
+    return flist
 
 def cli():
     parser = argparse.ArgumentParser(description='Process data set defined in input files')
