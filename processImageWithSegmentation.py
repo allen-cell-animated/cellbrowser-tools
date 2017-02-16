@@ -202,7 +202,7 @@ class ImageProcessor:
         self.channel_names.append("SEG_Memb")
 
         struct_seg_path = self.row.structureSegOutputFolder
-        if not struct_seg_path.startswith('N/A'):
+        if struct_seg_path != '' and not struct_seg_path.startswith('N/A'):
             struct_seg_path = normalize_path(struct_seg_path)
 
             # structure segmentation
@@ -296,7 +296,7 @@ class ImageProcessor:
         i = 0
         for f in file_list:
             file_ext = os.path.splitext(f)[1]
-            if file_ext == '.tiff':
+            if file_ext == '.tiff' or file_ext == '.tif':
                 seg = TifReader(f).load()
                 assert seg.shape[0] == image.shape[1]
                 assert seg.shape[1] == image.shape[2]
