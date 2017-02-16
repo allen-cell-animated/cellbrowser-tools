@@ -8,42 +8,44 @@ import db_api
 import os
 
 
+# TODO encode this table in db or someplace else?
+proteinToStructure = {
+    'ALPHAACTININ': 'Membrane',
+    'PAXILLIN': 'Adhesions',
+    'PAXILIN': 'Adhesions',
+    'TOM20': 'Mitochondria',
+    'ALPHATUBULIN': 'Microtubules',
+    'LAMINB1': 'Nucleus',
+    'DESMOPLAKIN': 'Cell-cell junctions',
+    'SEC61BETA': 'Endoplasmic reticulum',
+    'SEC61B': 'Endoplasmic reticulum',
+    'FIBRILLARIN': 'Nucleolus',
+    'BETAACTIN': 'Actin',
+    'VIMENTIN': 'Intermediate filaments',
+    'LAMP1': 'Lysosome',
+    'ZO1': 'Tight junctions',
+    'MYOSINIIB': 'Myosin',
+    'BETAGALACTOSIDEALPHA26SIALYLTRANSFERASE1': 'Golgi',
+    'ST6GAL1': 'Golgi',
+    'LC3': 'Autophagosomes',
+    'CENTRIN': 'Centrosome',
+    'GFP': 'Cytoplasm',
+    'PMP34': 'Peroxisomes',
+    'CAAX': 'Plasma membrane'
+}
+
 # create xml bundle for the bisque database entry pointing to this image.
 # dict should have: source,xmin,xmax,ymin,ymax,zmin,zmax,imageName,imagePath,thumbnailPath
 def oneUp(sessionInfo, dict, outfile):
     api = db_api.DbApi()
     api.setSessionInfo(sessionInfo)
 
+    cbrSegmentationVersion = dict['Version']
     cbrImageLocation = dict['cbrImageLocation']
     cbrThumbnailURL = dict['cbrThumbnailURL']
     cbrCellName = dict['cbrCellName']
     structureProteinName = dict['structureProteinName']
 
-    # TODO encode this table in db or someplace else?
-    proteinToStructure = {
-        'ALPHAACTININ': 'Membrane',
-        'PAXILLIN': 'Adhesions',
-        'PAXILIN': 'Adhesions',
-        'TOM20': 'Mitochondria',
-        'ALPHATUBULIN': 'Microtubules',
-        'LAMINB1': 'Nucleus',
-        'DESMOPLAKIN': 'Cell-cell junctions',
-        'SEC61BETA': 'Endoplasmic reticulum',
-        'SEC61B': 'Endoplasmic reticulum',
-        'FIBRILLARIN': 'Nucleolus',
-        'BETAACTIN': 'Actin',
-        'VIMENTIN': 'Intermediate filaments',
-        'LAMP1': 'Lysosome',
-        'ZO1': 'Tight junctions',
-        'MYOSINIIB': 'Myosin',
-        'BETAGALACTOSIDEALPHA26SIALYLTRANSFERASE1': 'Golgi',
-        'ST6GAL1': 'Golgi',
-        'LC3': 'Autophagosomes',
-        'CENTRIN': 'Centrosome',
-        'GFP': 'Cytoplasm',
-        'PMP34': 'Peroxisomes',
-        'CAAX': 'Plasma membrane'
-    }
     # strip spaces and hyphens for dictionary lookup.
     structureProteinKey = structureProteinName.replace('-', '').replace(' ', '').replace(',', '').upper()
     structureName = proteinToStructure.get(structureProteinKey)
@@ -74,6 +76,13 @@ def oneUp(sessionInfo, dict, outfile):
     etree.SubElement(resource, 'tag', name='structureName', value=structureName, permission=perm)
     # this batch of images are all from microscope and not simulated.
     etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
+    etree.SubElement(resource, 'tag', name='segmentationVersion', value=cbrSegmentationVersion, permission=perm)
+
+    # add a tag for each channel name, by index
+    if dict['channelNames'] is not None:
+        channel_names = dict['channelNames']
+        for i in range(len(channel_names)):
+            etree.SubElement(resource, 'tag', name='channelLabel_'+str(i), value=channel_names[i], permission=perm)
 
     # assume bounding box exists...
     if dict['cbrBounds'] is not None:

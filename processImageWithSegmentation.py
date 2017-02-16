@@ -6,15 +6,19 @@
 from __future__ import print_function
 from aicsimagetools import *
 import argparse
+import copy
+import errno
 import json
 import numpy as np
 import os
 import re
+import subprocess
 import sys
 import cellJob
 import thumbnail2
 from uploader import oneUp
 import pprint
+import xml.etree.ElementTree as ET
 
 
 def _int32(x):
@@ -51,6 +55,8 @@ def clamp(x, y, z, shape):
 def get_segmentation_bounds(segmentation_image, index, margin=5):
     # find bounding box
     b = np.argwhere(segmentation_image == index)
+    # ths plus-1 means these bounds are min-inclusive and max-exclusive.
+    # in other words, looping for i = start; i < stop; ++i
     (zstart, ystart, xstart), (zstop, ystop, xstop) = b.min(0), b.max(0) + 1
 
     # apply margins and clamp to image edges
@@ -110,6 +116,14 @@ def normalize_path(path):
     out_path = os.path.join(*path_as_list)
     return out_path
 
+def make_dir(dirname):
+    if not os.path.exists(dirname):
+        try:
+            os.makedirs(dirname)
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+            pass
 
 class ImageProcessor:
 
@@ -121,7 +135,7 @@ class ImageProcessor:
     def __init__(self, info):
         self.row = info
 
-        self.channels = ['MEMB', 'STRUCT', 'DNA', 'TRANS', 'SEG_DNA', 'SEG_MEMB', 'SEG_STRUCT']
+        self.channels = ['OBS_Memb', 'OBS_STRUCT', 'OBS_DNA', 'OBS_Trans', 'SEG_DNA', 'SEG_Memb', 'SEG_STRUCT']
         self.channel_colors = [
             _rgba255(255, 255, 0, 255),
             _rgba255(255, 0, 255, 255),
@@ -143,64 +157,157 @@ class ImageProcessor:
 
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
-        self.png_dir = os.path.join(normalize_path(self.row.cbrThumbnailLocation), self.file_name)
-        self.ometif_dir = os.path.join(normalize_path(self.row.cbrImageLocation), self.file_name)
+        thumbnaildir = normalize_path(self.row.cbrThumbnailLocation)
+        make_dir(thumbnaildir)
+
+        self.png_dir = os.path.join(thumbnaildir, self.file_name)
+        ometifdir = normalize_path(self.row.cbrImageLocation)
+        make_dir(ometifdir)
+
+        self.ometif_dir = os.path.join(ometifdir, self.file_name)
         self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
 
     def add_segs_to_img(self):
         file_name = os.path.splitext(os.path.basename(self.row.inputFilename))[0]
 
         outdir = self.row.cbrImageLocation
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
+        make_dir(outdir)
+
         thumbnaildir = self.row.cbrThumbnailLocation
-        if not os.path.exists(thumbnaildir):
-            os.makedirs(thumbnaildir)
+        make_dir(thumbnaildir)
+
+        # start with 4 channels for membrane, structure, nucleus and transmitted light
+        self.channel_names = [
+            "OBS_Memb",
+            "OBS_STRUCT",
+            "OBS_DNA",
+            "OBS_Trans"
+        ]
 
         print("loading segmentations for " + file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
         seg_path = normalize_path(seg_path)
         # print(seg_path)
         file_list = []
+
         # nucleus segmentation
         nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
         # print(nuc_seg_file)
         file_list.append(nuc_seg_file)
+        self.channel_names.append("SEG_DNA")
 
         # cell segmentation
         cell_seg_file = os.path.join(seg_path, self.row.outputCellSegWholeFilename)
         # print(cell_seg_file)
         file_list.append(cell_seg_file)
+        self.channel_names.append("SEG_Memb")
 
         struct_seg_path = self.row.structureSegOutputFolder
-        struct_seg_path = normalize_path(struct_seg_path)
+        if struct_seg_path != '' and not struct_seg_path.startswith('N/A'):
+            struct_seg_path = normalize_path(struct_seg_path)
 
-        # structure segmentation
-        struct_seg_file = os.path.join(struct_seg_path, self.row.structureSegOutputFilename)
-        # print(struct_seg_file)
-        file_list.append(struct_seg_file)
+            # structure segmentation
+            struct_seg_file = os.path.join(struct_seg_path, self.row.structureSegOutputFilename)
+            # print(struct_seg_file)
+            file_list.append(struct_seg_file)
+            self.channel_names.append("SEG_STRUCT")
 
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
         image_file = normalize_path(image_file)
         # print(image_file)
-        image = CziReader(image_file).load()
-        assert len(image.shape) == 5
-        assert image.shape[0] == 1
+
+        # 1. obtain OME XML metadata from original microscopy image
+        showinf = 'showinf'
+        if sys.platform.startswith('win'):
+            showinf += '.bat'
+
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        omexmlstring = subprocess.check_output([os.path.join(dir_path, 'bftools', showinf), '-omexml-only', '-nopix', '-nometa',
+                                                image_file],
+                                               stdin=None, stderr=None, shell=False)
+        # omexml = ET.fromstring(omexmlstring, ET.XMLParser(encoding='ISO-8859-1'))
+        self.omexml = OMEXML(xml=omexmlstring)
+        # TODO dump this to a file someplace! (use cmd line args in bftools showinf above?)
+
+        # 2. obtain relevant channels from original image file
+        cr = CziReader(image_file)
+        image = cr.load()
+        cmeta = cr.get_metadata()
+        # image = CziReader(image_file).load()
+        if len(image.shape) == 5 and image.shape[0] == 1:
+            image = image[0, :, :, :, :]
+        assert len(image.shape) == 4
         # image shape from czi assumed to be ZCYX
         # assume no T dimension for now
-        image = image[0, :, :, :, :].transpose(1, 0, 2, 3)
+        image = image.transpose(1, 0, 2, 3)
+        # assumption: channel indices are one-based.
+        self.channel_indices = [
+            self.row.memChannel-1,
+            self.row.structureChannel-1,
+            self.row.nucChannel-1,
+            self.row.lightChannel-1
+        ]
+        # image.shape[0] is num of channels.
+        assert(image.shape[0] > max(self.channel_indices))
+        orig_num_channels = image.shape[0]
+        image = np.array([
+            image[self.channel_indices[0]],
+            image[self.channel_indices[1]],
+            image[self.channel_indices[2]],
+            image[self.channel_indices[3]]
+        ])
+        channels_to_remove = [x for x in range(orig_num_channels) if not x in self.channel_indices]
 
+
+        # 3. fix up XML to reorder channels
+        # we want to preserve all channel and plane data for the channels we are keeping!
+        # rename:
+        #   channel_indices[0] to channel0
+        #   channel_indices[1] to channel1
+        #   channel_indices[2] to channel2
+        #   channel_indices[3] to channel3
+        # FIXME There's got to be a more concise way to do this.  Use len(channel_indices) please!
+        pix = self.omexml.image().Pixels
+        chxml = [
+            pix.Channel(self.channel_indices[0]),
+            pix.Channel(self.channel_indices[1]),
+            pix.Channel(self.channel_indices[2]),
+            pix.Channel(self.channel_indices[3])
+        ]
+        planes = [
+            pix.get_planes_of_channel(self.channel_indices[0]),
+            pix.get_planes_of_channel(self.channel_indices[1]),
+            pix.get_planes_of_channel(self.channel_indices[2]),
+            pix.get_planes_of_channel(self.channel_indices[3])
+        ]
+        for i in channels_to_remove:
+            pix.remove_channel(i)
+        # reset all plane indices
+        for i in range(len(planes)):
+            for j in planes[i]:
+                j.set("TheC", str(i))
+        chxml[0].ID = 'Channel:0:0'
+        chxml[1].ID = 'Channel:0:1'
+        chxml[2].ID = 'Channel:0:2'
+        chxml[3].ID = 'Channel:0:3'
+        pix.set_SizeC(4)
+
+        nch = 4
+        self.seg_indices = []
+        i = 0
         for f in file_list:
             file_ext = os.path.splitext(f)[1]
-            if file_ext == '.tiff':
+            if file_ext == '.tiff' or file_ext == '.tif':
                 seg = TifReader(f).load()
                 assert seg.shape[0] == image.shape[1]
                 assert seg.shape[1] == image.shape[2]
                 assert seg.shape[2] == image.shape[3]
                 # append channels containing segmentations
+                self.omexml.image().Pixels.append_channel(nch+i, self.channels[nch+i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
                 image = np.append(image, [seg], axis=0)
                 self.seg_indices.append(image.shape[0] - 1)
+                i += 1
             else:
                 raise ValueError("Image is not a tiff segmentation file!")
 
@@ -211,6 +318,9 @@ class ImageProcessor:
         base = os.path.basename(self.image_file)
         base = os.path.splitext(base)[0]
 
+        # before this, indices have been re-organized in add_segs_to_img (in __init__)
+        memb_index, nuc_index, struct_index = 0,2,1
+
         if self.row.cbrGenerateFullFieldImages:
             print("generating full field images...")
             # necessary for bisque metadata, this is the config for a fullfield image
@@ -218,8 +328,6 @@ class ImageProcessor:
             self.row.cbrCellIndex = 0
             self.row.cbrSourceImageName = None
             self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
-
-            memb_index, nuc_index, struct_index = self.row.memChannel - 1, self.row.nucChannel - 1, self.row.structureChannel - 1
 
             if self.row.cbrGenerateThumbnail:
                 print("    making thumbnail...", end="")
@@ -238,16 +346,16 @@ class ImageProcessor:
             else:
                 im_to_save = None
 
-            self._save_and_post(image=im_to_save, thumbnail=ffthumb)
+            self._save_and_post(image=im_to_save, thumbnail=ffthumb, omexml=self.omexml)
 
         if self.row.cbrGenerateSegmentedImages:
             # assumption: less than 256 cells segmented in the file.
             # assumption: cell segmentation is a numeric index in the pixels
             cell_segmentation_image = self.image[self.seg_indices[1], :, :, :]
-            h = np.histogram(cell_segmentation_image, bins=range(0, 256))
             # which bins have segmented pixels?
             # note that this includes zeroes, which is to be ignored.
-            h0 = np.nonzero(h[0])[0]
+            h0 = np.unique(cell_segmentation_image)
+            h0 = h0[h0 > 0]
             # for each cell segmented from this image:
             print("generating segmented images...", end="")
             for i in h0:
@@ -264,10 +372,10 @@ class ImageProcessor:
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
+                    thumbnail = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index,
+                                                                                                     memb_index,
+                                                                                                     struct_index],
                     print("    making thumbnail...", end="")
-                    thumbnail = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[int(self.row.nucChannel),
-                                                                                                     int(self.row.memChannel),
-                                                                                                     int(self.row.structureChannel)],
                                                                     size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     # making it CYX for the png writer
                     thumb = thumbnail.transpose(2, 0, 1)
@@ -286,10 +394,39 @@ class ImageProcessor:
                 self.row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
                                       'ymin': bounds[1][0], 'ymax': bounds[1][1],
                                       'zmin': bounds[2][0], 'zmax': bounds[2][1]}
-                self._save_and_post(image=cropped, thumbnail=thumb, seg_cell_index=i)
+
+                for bn in self.row.cbrBounds:
+                    print(bn, self.row.cbrBounds[bn])
+                # copy self.omexml for output
+                copyxml = None
+                copied = copy.deepcopy(self.omexml.dom)
+                copyxml = OMEXML(rootnode=copied)
+                # now fix it up
+                pixels = copyxml.image().Pixels
+                pixels.set_SizeX(cropped.shape[3])
+                pixels.set_SizeY(cropped.shape[2])
+                pixels.set_SizeZ(cropped.shape[1])
+                # if sizeZ changed, then we have to use bounds to fix up the plane elements
+                minz = bounds[2][0]
+                maxz = bounds[2][1]
+                planes = []
+                for pi in range(pixels.get_plane_count()):
+                    planes.append(pixels.Plane(pi))
+                for p in planes:
+                    pz = p.get_TheZ()
+                    # TODO: CONFIRM THAT THIS IS CORRECT!!
+                    if pz >= maxz or pz < minz:
+                        pixels.node.remove(p.node)
+                    else:
+                        p.set_TheZ(pz-minz)
+
+                if not self.row.cbrGenerateCellImage:
+                    cropped = None
+
+                self._save_and_post(image=cropped, thumbnail=thumb, seg_cell_index=i, omexml=copyxml)
             print("done")
 
-    def _save_and_post(self, image, thumbnail, seg_cell_index=0):
+    def _save_and_post(self, image, thumbnail, seg_cell_index=0, omexml=None):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
         physical_size = [self.row.xyPixelSize, self.row.xyPixelSize, self.row.zPixelSize]
@@ -310,10 +447,11 @@ class ImageProcessor:
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
             with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
-                writer.save(transposed_image, channel_names=self.channels, channel_colors=self.channel_colors,
+                writer.save(transposed_image, omexml=omexml, channel_names=self.channels, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
 
         if self.row.cbrAddToDb:
+            self.row.channelNames = self.channel_names
             self.row.cbrThumbnailURL = png_url
             session_info = {
                 'root': 'http://10.128.62.104',

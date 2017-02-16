@@ -50,9 +50,13 @@ def main():
                                                  'and set up a job script for each row.'
                                                  'Example: python createJobsFromCSV.py /path/to/csv')
     parser.add_argument('input', nargs='+', help='input csv files')
-    # TODO: set arg to copy each indiv file to another output
-    parser.add_argument('--outpath', '-o', help='output path', default='dryrun')
+    parser.add_argument('--outpath', '-o', help='output path for job files', default='dryrun')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
+
+    # assuming naming from CSV.  dataroot + dataset + csvname + image names
+    parser.add_argument('--dataset', help='output directory name for whole batch', default='')
+    # database location.  TODO: provide no default and force it to be explicit?
+    parser.add_argument('--dburi', help='database url', default='http://10.128.62.104')
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--dryrun', '-d', help='write only to local dir and do not add to db', action='store_true')
@@ -97,9 +101,16 @@ def main():
 
                 info = cellJob.CellJob(row)
                 info.cbrAddToDb = True
-                info.cbrImageLocation = '/data/aics/AnimatedCellExplorer/CellViewer/batch1/' + subdir
-                info.cbrThumbnailLocation = '/data/aics/software_it/danielt/demos/bisque/thumbnails/' + subdir
-                info.cbrThumbnailURL = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/' + subdir
+
+                info.cbrDataRoot = '/data/aics/software_it/danielt/images/AICS/bisque/'
+                info.cbrThumbnailRoot = '/data/aics/software_it/danielt/demos/bisque/thumbnails/'
+                info.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
+
+                info.cbrDatasetName = 'nuc_cell_seg_delivery_20170210'
+                info.cbrImageLocation = info.cbrDataRoot + info.cbrDatasetName + '/' + subdir
+                info.cbrThumbnailLocation = info.cbrThumbnailRoot + info.cbrDatasetName + '/' + subdir
+                info.cbrThumbnailURL = info.cbrThumbnailWebRoot + info.cbrDatasetName + '/' + subdir
+
                 if args.all:
                     info.cbrAddToDb = True
                     info.cbrGenerateThumbnail = True
