@@ -100,7 +100,8 @@ def normalize_path(path):
     if sys.platform.startswith('darwin'):
         dest_root = macroot[:-1]
     elif sys.platform.startswith('linux'):
-        dest_root = linuxroot[:-1]
+        # TODO: Is this the right way to fix this?
+        dest_root = "/run/user/1000/gvfs/smb-share:server=aibsdata,share=aics"
     else:
         dest_root = windowsroot[:-1]
 
@@ -222,7 +223,10 @@ class ImageProcessor:
 
             if self.row.cbrGenerateThumbnail:
                 print("    making thumbnail...", end="")
-                ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                ffthumb, output_channels = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                for chanimage, name in output_channels:
+                    with pngWriter.PngWriter(self.png_dir + name + ".png", overwrite_file=True) as writer:
+                        writer.save(chanimage)
                 print("done")
             else:
                 ffthumb = None

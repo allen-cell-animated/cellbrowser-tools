@@ -181,8 +181,8 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
                            ))
     shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
-    num_noise_floor_bins = 12
-    comp = np.zeros(shape_out_rgb)
+    num_noise_floor_bins = 7
+
     channel_indices = [memb_index, struct_index, nuc_index]
     rgb_image = im1[:, 0, :, :].astype('float')
     for i in channel_indices:
@@ -203,23 +203,19 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         thmax = thumb.max()
         thumb /= thmax
 
+        # thresh = np.mean(thumb)
+        # thumb[thumb < thresh] = 0
+
         imdbl = np.asarray(thumb).astype('double')
         im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
 
         rgb_image[i] = im_proj
 
-    channel_contrasts = [15.0, 10.0, 10.0]
-    # TODO: Should these be parameters for this function?
-    for channel in channel_indices:
-        rgb_image[channel] /= np.max(rgb_image[channel])
-        # channel_max = np.max(rgb_image[channel])
-        # channel_avg = np.median(rgb_image[channel])
-        # channel_contrasts.append(channel_max / channel_avg)
-
-    for channel in channel_indices:
-        rgb_image[channel] *= channel_contrasts[channel]
-
-    for i in range(rgb_image.shape[0]):
+    output_channels = []
+    channel_name = ["MEM", "STRUCT", "NUC"]
+    downscale_factor = (im1.shape[3] / size)
+    inter = np.zeros([1024, 1024, 3])
+    for i in range(rgb_image.shape[0] - 1, -1, -1):
         # turn into RGB
         rgb_out = np.expand_dims(rgb_image[i], 2)
         rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
@@ -227,13 +223,31 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         # inject color.  careful of type mismatches.
         rgb_out *= colors[i]
 
-        # TODO: This assumes the image is always square, is this actually the case?
-        downscale_factor = (im1.shape[3] / size)
-        pyramid = t.pyramid_reduce(rgb_out, downscale=downscale_factor)
-        comp += pyramid
+        # normalize contrast
+        rgb_out /= np.max(rgb_out)
 
+        nonzeros = rgb_out[np.nonzero(rgb_out)]
+        print("Max: " + str(np.max(nonzeros)))
+        print("Min: " + str(np.min(nonzeros)))
+        print("Median: " + str(np.median(nonzeros)))
+        print("Mean: " + str(np.mean(nonzeros)))
+        threshold = np.mean(nonzeros) - (np.median(nonzeros) / 2)
+        print("Threshold: " + str(threshold))
+
+        channel_inter = np.zeros([1024, 1024, 3])
+        for x in range(rgb_out.shape[0]):
+            for y in range(rgb_out.shape[1]):
+                summation = rgb_out[x, y].sum() / rgb_out.shape[2]
+                if summation > threshold:
+                    inter[x, y] = rgb_out[x, y]
+                    channel_inter[x, y] = rgb_out[x, y]
+
+        channel = t.pyramid_reduce(channel_inter, downscale=downscale_factor)
+        # TODO: This assumes the image is always square, is this actually the case?
+        output_channels.append((np.transpose(channel, (2, 0, 1)), channel_name[i]))
     # returns a CYX array for the pngwriter
-    return comp.transpose((2, 0, 1))
+    comp = t.pyramid_reduce(inter, downscale=downscale_factor)
+    return comp.transpose((2, 0, 1)), output_channels
 
 
 def main():

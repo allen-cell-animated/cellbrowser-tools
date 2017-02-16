@@ -38,11 +38,11 @@ def generate_sh_for_row(outdir, i, subdir, info, do_run):
         with open(path, 'w') as fp:
             fp.write(script_string)
             fp.write(os.linesep)
-        if do_run == "cluster":
-            with open('preferences.json') as jsonreader:
-                json_obj = json.load(jsonreader)
-            logger = job_scheduler.get_logger('test/logs')
-            job_scheduler.submit_job(path, json_obj, logger)
+        # if do_run == "cluster":
+        #     with open('preferences.json') as jsonreader:
+        #         json_obj = json.load(jsonreader)
+        #     logger = job_scheduler.get_logger('test/logs')
+        #     job_scheduler.submit_job(path, json_obj, logger)
 
 
 def main():
@@ -51,7 +51,7 @@ def main():
                                                  'Example: python createJobsFromCSV.py /path/to/csv')
     parser.add_argument('input', nargs='+', help='input csv files')
     # TODO: set arg to copy each indiv file to another output
-    parser.add_argument('--outpath', '-o', help='output path', default='test')
+    parser.add_argument('--outpath', '-o', help='output path', default='dryrun')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
     group = parser.add_mutually_exclusive_group()
