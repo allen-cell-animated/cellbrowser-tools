@@ -10,7 +10,7 @@ import os
 
 # TODO encode this table in db or someplace else?
 proteinToStructure = {
-    'ALPHAACTININ': 'Membrane',
+    'ALPHAACTININ': 'Actin',
 
     'PAXILLIN': 'Adhesions',
     'PAXILIN': 'Adhesions',
