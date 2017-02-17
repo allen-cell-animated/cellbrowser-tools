@@ -45,6 +45,8 @@ def oneUp(sessionInfo, dict, outfile):
     cbrThumbnailURL = dict['cbrThumbnailURL']
     cbrCellName = dict['cbrCellName']
     structureProteinName = dict['structureProteinName']
+    cbrDataRoot = dict['cbrDataRoot']
+    cbrThumbnailWebRoot = dict['cbrThumbnailWebRoot']
 
     # strip spaces and hyphens for dictionary lookup.
     structureProteinKey = structureProteinName.replace('-', '').replace(' ', '').replace(',', '').upper()
@@ -60,18 +62,20 @@ def oneUp(sessionInfo, dict, outfile):
 
     tifext = '.ome.tif'
     fullpath = cbrImageLocation + '/' + cbrCellName + tifext
+    relpath = fullpath.replace(cbrDataRoot, '')
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = cbrThumbnailURL
+    relpath_thumbnail = thumbnail.replace(cbrThumbnailWebRoot, '')
     resource = etree.Element('image',
                              name=cbrCellName + tifext,
-                             value=fullpath)
+                             value=relpath)
     resource.set('permission', perm)
 
     etree.SubElement(resource, 'tag', name='name', value=cbrCellName, permission=perm)
     # filename is auto inserted by bisque
     # etree.SubElement(resource, 'tag', name='filename', value=cbrCellName+tifext, permission=perm)
 
-    etree.SubElement(resource, 'tag', name='thumbnail', value=thumbnail, permission=perm)
+    etree.SubElement(resource, 'tag', name='thumbnail', value=relpath_thumbnail, permission=perm)
     etree.SubElement(resource, 'tag', name='structureProteinName', value=structureProteinName, permission=perm)
     etree.SubElement(resource, 'tag', name='structureName', value=structureName, permission=perm)
     # this batch of images are all from microscope and not simulated.
