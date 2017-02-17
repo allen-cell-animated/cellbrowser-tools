@@ -331,10 +331,10 @@ class ImageProcessor:
 
             if self.row.cbrGenerateThumbnail:
                 print("    making thumbnail...", end="")
-                ffthumb, output_channels = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
-                for chanimage, name in output_channels:
-                    with pngWriter.PngWriter(self.png_dir + name + ".png", overwrite_file=True) as writer:
-                        writer.save(chanimage)
+                ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                # for chanimage, name in output_channels:
+                #     with pngWriter.PngWriter(self.png_dir + name + ".png", overwrite_file=True) as writer:
+                #         writer.save(chanimage)
                 print("done")
             else:
                 ffthumb = None
@@ -372,21 +372,44 @@ class ImageProcessor:
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
-                    thumbnail = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index,
-                                                                                                     memb_index,
-                                                                                                     struct_index],
                     print("    making thumbnail...", end="")
+                    thumb = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
                                                                     size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     # making it CYX for the png writer
-                    thumb = thumbnail.transpose(2, 0, 1)
+                    # thumb = thumbnail.transpose(2, 0, 1)
                     print("done")
                 else:
                     thumb = None
 
                 if not self.row.cbrGenerateCellImage:
                     cropped = None
+                    copyxml = None
                 else:
-                    print("    making image...done")
+                    print("    making image...", end="")
+                    for bn in self.row.cbrBounds:
+                        print(bn, self.row.cbrBounds[bn])
+                    # copy self.omexml for output
+                    copied = copy.deepcopy(self.omexml.dom)
+                    copyxml = OMEXML(rootnode=copied)
+                    # now fix it up
+                    pixels = copyxml.image().Pixels
+                    pixels.set_SizeX(cropped.shape[3])
+                    pixels.set_SizeY(cropped.shape[2])
+                    pixels.set_SizeZ(cropped.shape[1])
+                    # if sizeZ changed, then we have to use bounds to fix up the plane elements
+                    minz = bounds[2][0]
+                    maxz = bounds[2][1]
+                    planes = []
+                    for pi in range(pixels.get_plane_count()):
+                        planes.append(pixels.Plane(pi))
+                    for p in planes:
+                        pz = p.get_TheZ()
+                        # TODO: CONFIRM THAT THIS IS CORRECT!!
+                        if pz >= maxz or pz < minz:
+                            pixels.node.remove(p.node)
+                        else:
+                            p.set_TheZ(pz - minz)
+                    print("done")
 
                 self.row.cbrCellIndex = i
                 self.row.cbrSourceImageName = base
@@ -395,33 +418,7 @@ class ImageProcessor:
                                       'ymin': bounds[1][0], 'ymax': bounds[1][1],
                                       'zmin': bounds[2][0], 'zmax': bounds[2][1]}
 
-                for bn in self.row.cbrBounds:
-                    print(bn, self.row.cbrBounds[bn])
-                # copy self.omexml for output
-                copyxml = None
-                copied = copy.deepcopy(self.omexml.dom)
-                copyxml = OMEXML(rootnode=copied)
-                # now fix it up
-                pixels = copyxml.image().Pixels
-                pixels.set_SizeX(cropped.shape[3])
-                pixels.set_SizeY(cropped.shape[2])
-                pixels.set_SizeZ(cropped.shape[1])
-                # if sizeZ changed, then we have to use bounds to fix up the plane elements
-                minz = bounds[2][0]
-                maxz = bounds[2][1]
-                planes = []
-                for pi in range(pixels.get_plane_count()):
-                    planes.append(pixels.Plane(pi))
-                for p in planes:
-                    pz = p.get_TheZ()
-                    # TODO: CONFIRM THAT THIS IS CORRECT!!
-                    if pz >= maxz or pz < minz:
-                        pixels.node.remove(p.node)
-                    else:
-                        p.set_TheZ(pz-minz)
 
-                if not self.row.cbrGenerateCellImage:
-                    cropped = None
 
                 self._save_and_post(image=cropped, thumbnail=thumb, seg_cell_index=i, omexml=copyxml)
             print("done")

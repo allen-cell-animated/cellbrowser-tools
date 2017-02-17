@@ -8,7 +8,6 @@ import numpy as np
 import os
 import scipy
 import sys
-from skimage.measure import block_reduce
 import skimage.transform as t
 
 z_axis_index = 0
@@ -73,7 +72,7 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
     shY = projy.shape
     assert (len(shZ) == len(shY) == len(shX) == 3)
 
-    im_all = np.zeros(np.hstack((sx+sz, sy+sz, 3)))
+    im_all = np.zeros(np.hstack((sx + sz, sy + sz, 3)))
     # imz is xXy
     im_all[0:sx, sz:] = projz
     # imy is zXx (so transpose it)
@@ -85,6 +84,7 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
         im_all = im_all / np.max(im_all.flatten())
 
     return im_all
+
 
 # # max, sum, min, mean, inv_sum
 # def generate_thumbnail(w,h, src_img, colors, slices, projection_axis, projection_type='max'):
@@ -108,59 +108,63 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
                              seg_channel_index=-1, size=128):
 
-    # assume all images have same shape!
-    imsize = np.array(im1[0].shape)
-    assert len(imsize) == 3
+    return make_fullfield_thumbnail(im1, memb_index=channel_indices[0], struct_index=channel_indices[1],
+                             nuc_index=channel_indices[2], size=size)
 
-    # size down to this edge size, maintaining aspect ratio.
-    # note that this resizing results in all cell thumbnails being about the same size
-    max_edge = size
-    # keep same number of z slices.
-    shape_out = np.hstack((imsize[0],
-                           max_edge if imsize[1] > imsize[2] else max_edge*imsize[1]/imsize[2],
-                           max_edge if imsize[1] < imsize[2] else max_edge*imsize[2]/imsize[1]
-                           ))
-    shape_out_rgb = (shape_out[1], shape_out[2], 3)
-
-    # apply the cell segmentation mask.  bye bye to data outside the cell
-    for i in range(im1.shape[0]):
-        im1[i, :, :, :] = mask_image(im1[i, :, :, :], im1[seg_channel_index, :, :, :])
-    # im1 = [mask_image(im, im1[seg_channel_index]) for im in im1]
-    mask = matproj(im1[seg_channel_index], z_axis_index)
-    # pngwriter = pngWriter.PngWriter('test/oMask.png')
-    # pngwriter.save(mask)
-
-    num_noise_floor_bins = 16
-    comp = np.zeros(shape_out_rgb)
-    for i in range(3):
-        ch = channel_indices[i]
-        # try to subtract out the noise floor.
-        # range is chosen to ignore zeros due to masking.  alternative is to pass mask image as weights=im1[-1]
-        immin = im1[ch].min()
-        immax = im1[ch].max()
-        hi, bin_edges = np.histogram(im1[ch], bins=num_noise_floor_bins, range=(max(1, immin), immax))
-        # hi, bin_edges = np.histogram(im1[0], bins=16, weights=im1[-1])
-        # index of tallest peak in histogram
-        peakind = np.argmax(hi)
-        # subtract this out
-        thumb = im1[ch].astype(np.float32)
-        # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
-        if i != 0:
-            thumb -= bin_edges[peakind]
-        # don't go negative
-        thumb[thumb < 0] = 0
-        # renormalize
-        thmax = thumb.max()
-        thumb /= thmax
-
-        # resize before projection?
-        # thumb = imresize(thumb, shape_out)
-        rgbproj = make_rgb_proj(thumb, z_axis_index, colors[i])
-        rgbproj = imresize(rgbproj, shape_out_rgb)
-        comp += rgbproj
-    # renormalize
-    # comp /= comp.max()
-    return comp
+    #
+    # # assume all images have same shape!
+    # imsize = np.array(im1[0].shape)
+    # assert len(imsize) == 3
+    #
+    # # size down to this edge size, maintaining aspect ratio.
+    # # note that this resizing results in all cell thumbnails being about the same size
+    # max_edge = size
+    # # keep same number of z slices.
+    # shape_out = np.hstack((imsize[0],
+    #                        max_edge if imsize[1] > imsize[2] else max_edge * imsize[1] / imsize[2],
+    #                        max_edge if imsize[1] < imsize[2] else max_edge * imsize[2] / imsize[1]
+    #                        ))
+    # shape_out_rgb = (shape_out[1], shape_out[2], 3)
+    #
+    # # apply the cell segmentation mask.  bye bye to data outside the cell
+    # for i in range(im1.shape[0]):
+    #     im1[i, :, :, :] = mask_image(im1[i, :, :, :], im1[seg_channel_index, :, :, :])
+    # # im1 = [mask_image(im, im1[seg_channel_index]) for im in im1]
+    # mask = matproj(im1[seg_channel_index], z_axis_index)
+    # # pngwriter = pngWriter.PngWriter('test/oMask.png')
+    # # pngwriter.save(mask)
+    #
+    # num_noise_floor_bins = 16
+    # comp = np.zeros(shape_out_rgb)
+    # for i in range(3):
+    #     ch = channel_indices[i]
+    #     # try to subtract out the noise floor.
+    #     # range is chosen to ignore zeros due to masking.  alternative is to pass mask image as weights=im1[-1]
+    #     immin = im1[ch].min()
+    #     immax = im1[ch].max()
+    #     hi, bin_edges = np.histogram(im1[ch], bins=num_noise_floor_bins, range=(max(1, immin), immax))
+    #     # hi, bin_edges = np.histogram(im1[0], bins=16, weights=im1[-1])
+    #     # index of tallest peak in histogram
+    #     peakind = np.argmax(hi)
+    #     # subtract this out
+    #     thumb = im1[ch].astype(np.float32)
+    #     # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
+    #     if i != 0:
+    #         thumb -= bin_edges[peakind]
+    #     # don't go negative
+    #     thumb[thumb < 0] = 0
+    #     # renormalize
+    #     thmax = thumb.max()
+    #     thumb /= thmax
+    #
+    #     # resize before projection?
+    #     # thumb = imresize(thumb, shape_out)
+    #     rgbproj = make_rgb_proj(thumb, z_axis_index, colors[i])
+    #     rgbproj = imresize(rgbproj, shape_out_rgb)
+    #     comp += rgbproj
+    # # renormalize
+    # # comp /= comp.max()
+    # return comp
 
 
 def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
@@ -176,8 +180,8 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
     max_edge = size
     # keep same number of z slices.
     shape_out = np.hstack((imsize[0],
-                           max_edge if imsize[1] > imsize[2] else max_edge*imsize[1]/imsize[2],
-                           max_edge if imsize[1] < imsize[2] else max_edge*imsize[2]/imsize[1]
+                           max_edge if imsize[1] > imsize[2] else max_edge * imsize[1] / imsize[2],
+                           max_edge if imsize[1] < imsize[2] else max_edge * imsize[2] / imsize[1]
                            ))
     shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
@@ -211,11 +215,13 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
 
         rgb_image[i] = im_proj
 
-    output_channels = []
-    channel_name = ["MEM", "STRUCT", "NUC"]
+    # output_channels = []
+    # channel_name = ["MEM", "STRUCT", "NUC"]
     downscale_factor = (im1.shape[3] / size)
-    inter = np.zeros([1024, 1024, 3])
-    for i in range(rgb_image.shape[0] - 1, -1, -1):
+    # Generating an XYC array
+    inter = np.zeros((im1.shape[2], im1.shape[3], im1.shape[0]))
+    # TODO: Can this loop be combined with the above one?
+    for i in [struct_index, memb_index, nuc_index]:
         # turn into RGB
         rgb_out = np.expand_dims(rgb_image[i], 2)
         rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
@@ -227,33 +233,39 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         rgb_out /= np.max(rgb_out)
 
         nonzeros = rgb_out[np.nonzero(rgb_out)]
-        print("Max: " + str(np.max(nonzeros)))
+        print("\nMax: " + str(np.max(nonzeros)))
         print("Min: " + str(np.min(nonzeros)))
         print("Median: " + str(np.median(nonzeros)))
         print("Mean: " + str(np.mean(nonzeros)))
-        threshold = np.mean(nonzeros) - (np.median(nonzeros) / 2)
+        threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
         print("Threshold: " + str(threshold))
 
-        channel_inter = np.zeros([1024, 1024, 3])
+        total = float((rgb_out.shape[0] * rgb_out.shape[1]))
+        cutout = 0.0
+        # channel_inter = np.zeros(inter.shape)
         for x in range(rgb_out.shape[0]):
             for y in range(rgb_out.shape[1]):
                 summation = rgb_out[x, y].sum() / rgb_out.shape[2]
                 if summation > threshold:
                     inter[x, y] = rgb_out[x, y]
-                    channel_inter[x, y] = rgb_out[x, y]
+                else:
+                    cutout += 1.0
+                    # channel_inter[x, y] = rgb_out[x, y]
 
-        channel = t.pyramid_reduce(channel_inter, downscale=downscale_factor)
-        # TODO: This assumes the image is always square, is this actually the case?
-        output_channels.append((np.transpose(channel, (2, 0, 1)), channel_name[i]))
-    # returns a CYX array for the pngwriter
+        print("Total cut out: " + str((cutout / total) * 100.0) + "%")
+        # channel = t.pyramid_reduce(channel_inter, downscale=downscale_factor)
+        # output_channels.append((np.transpose(channel, (2, 0, 1)), channel_name[i]))
+
+    #TODO: what's our case if the downscale_factor is <= 1?
     comp = t.pyramid_reduce(inter, downscale=downscale_factor)
-    return comp.transpose((2, 0, 1)), output_channels
+    # returns a CYX array for the pngwriter
+    return comp.transpose((2, 0, 1)) #, output_channels
 
 
 def main():
     # python interleave.py --path /Volumes/aics/software_it/danielt/images/AICS/alphactinin/ --prefix img40_1
     parser = argparse.ArgumentParser(description='Generate thumbnail from a cell image. '
-                                     'Example: python thumbnail2.py /path/to/images/myImg.ome.tif 0 1 2 3')
+                                                 'Example: python thumbnail2.py /path/to/images/myImg.ome.tif 0 1 2 3')
     parser.add_argument('--path', required=True, help='input file path')
     parser.add_argument('--dna', required=True, type=int, help='dna channel index')
     parser.add_argument('--mem', required=True, type=int, help='membrane channel index')
@@ -291,12 +303,14 @@ def main():
 
     # transpose xycz to xyzc
     assert len(im1.shape) == 4
-    im1 = np.transpose(im1, (1,0,2,3))
+    im1 = np.transpose(im1, (1, 0, 2, 3))
 
-    comp = make_segmented_thumbnail(im1, channel_indices=[args.dna, args.mem, args.str], size=args.size, seg_channel_index=seg_channel_index)
+    comp = make_segmented_thumbnail(im1, channel_indices=[args.dna, args.mem, args.str], size=args.size,
+                                    seg_channel_index=seg_channel_index)
 
     pngwriter = pngWriter.PngWriter(image_out)
     pngwriter.save(comp)
+
 
 if __name__ == "__main__":
     print " ".join(sys.argv)
