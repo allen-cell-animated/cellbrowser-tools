@@ -11,26 +11,56 @@ import os
 # TODO encode this table in db or someplace else?
 proteinToStructure = {
     'ALPHAACTININ': 'Membrane',
+
     'PAXILLIN': 'Adhesions',
     'PAXILIN': 'Adhesions',
+
     'TOM20': 'Mitochondria',
+    'TOMM20': 'Mitochondria',
+
     'ALPHATUBULIN': 'Microtubules',
+    'TUBA1B': 'Microtubules',
+
     'LAMINB1': 'Nucleus',
+    'LMNB1': 'Nucleus',
+
     'DESMOPLAKIN': 'Cell-cell junctions',
+    'DSP': 'Cell-cell junctions',
+
     'SEC61BETA': 'Endoplasmic reticulum',
     'SEC61B': 'Endoplasmic reticulum',
+
     'FIBRILLARIN': 'Nucleolus',
+    'FBL': 'Nucleolus',
+
     'BETAACTIN': 'Actin',
+    'ACTB': 'Actin',
+
     'VIMENTIN': 'Intermediate filaments',
+    'VIM': 'Intermediate filaments',
+
     'LAMP1': 'Lysosome',
+
     'ZO1': 'Tight junctions',
+    'TJP1': 'Tight junctions',
+
     'MYOSINIIB': 'Myosin',
+    'MYH10': 'Myosin',
+
     'BETAGALACTOSIDEALPHA26SIALYLTRANSFERASE1': 'Golgi',
     'ST6GAL1': 'Golgi',
+
     'LC3': 'Autophagosomes',
+    'MAP1LC3B': 'Autophagosomes',
+
     'CENTRIN': 'Centrosome',
+    'CETN2': 'Centrosome',
+
     'GFP': 'Cytoplasm',
+    'AAVS1CAGGFP': 'Cytoplasm',
+
     'PMP34': 'Peroxisomes',
+
     'CAAX': 'Plasma membrane'
 }
 
