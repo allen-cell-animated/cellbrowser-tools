@@ -220,8 +220,12 @@ class ImageProcessor:
         showinf = 'showinf'
         if sys.platform.startswith('win'):
             showinf += '.bat'
+        bfconvert = 'bfconvert'
+        if sys.platform.startswith('win'):
+            bfconvert += '.bat'
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
+
         omexmlstring = subprocess.check_output([os.path.join(dir_path, 'bftools', showinf), '-omexml-only', '-nopix', '-nometa',
                                                 image_file],
                                                stdin=None, stderr=None, shell=False)
@@ -232,7 +236,6 @@ class ImageProcessor:
         # 2. obtain relevant channels from original image file
         cr = CziReader(image_file)
         image = cr.load()
-        cmeta = cr.get_metadata()
         # image = CziReader(image_file).load()
         if len(image.shape) == 5 and image.shape[0] == 1:
             image = image[0, :, :, :, :]

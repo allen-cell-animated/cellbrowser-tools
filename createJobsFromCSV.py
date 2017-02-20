@@ -105,7 +105,9 @@ def main():
                 info.cbrThumbnailRoot = '/data/aics/software_it/danielt/demos/bisque/thumbnails/'
                 info.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
 
-                info.cbrDatasetName = 'nuc_cell_seg_delivery_20170210'
+                info.cbrDatasetName = ''
+                if args.dataset:
+                    info.cbrDatasetName = args.dataset
                 info.cbrImageLocation = info.cbrDataRoot + info.cbrDatasetName + '/' + subdir
                 info.cbrThumbnailLocation = info.cbrThumbnailRoot + info.cbrDatasetName + '/' + subdir
                 info.cbrThumbnailURL = info.cbrThumbnailWebRoot + info.cbrDatasetName + '/' + subdir
