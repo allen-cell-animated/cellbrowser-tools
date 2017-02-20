@@ -10,7 +10,7 @@ import json
 import os
 import sys
 from processImageWithSegmentation import do_main
-from job_scheduler import batch_by_directory
+import jobScheduler
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
@@ -26,22 +26,23 @@ def generate_sh_for_row(outdir, i, subdir, info, do_run):
     with open(pathjson, 'w') as fp:
         json.dump(info.__dict__, fp)
 
-    script_string = "export PYTHONPATH=$PYTHONPATH$( find /data/aics/software/cellbrowser-tools/ " \
-                     "-not -path '*/\.*' -type d -printf ':%p' )\n"
-    script_string += "python /data/aics/software/cellbrowser-tools/processImageWithSegmentation.py "
-    script_string += jsonname
-    path = os.path.join(outdir, 'aicsCellJob_' + cell_job_postfix + '.sh')
-    with open(path, 'w') as fp:
-        fp.write(script_string)
-        fp.write(os.linesep)
     if do_run == "run":
         do_main(pathjson)
-    elif do_run == "cluster":
-        with open('cluster_prefs.json') as jsonreader:
-            cluster_prefs = json.load(jsonreader)
-        cluster_prefs['variable_arg'] = jsonname
-        cluster_prefs['jobname'] = jsonname[12:-5]
-        batch_by_directory.batch_by_directory(prefs=cluster_prefs)
+    else:
+        script_string = ""
+        script_string += "export PYTHONPATH=$PYTHONPATH$( find /data/aics/software/cellbrowser-tools/ " \
+                         "-not -path '*/\.*' -type d -printf ':%p' )\n"
+        script_string += "python /data/aics/software/cellbrowser-tools/processImageWithSegmentation.py "
+        script_string += jsonname
+        path = os.path.join(outdir, 'aicsCellJob_' + cell_job_postfix + '.sh')
+        with open(path, 'w') as fp:
+            fp.write(script_string)
+            fp.write(os.linesep)
+        if do_run == "cluster":
+            with open('preferences.json') as jsonreader:
+                json_obj = json.load(jsonreader)
+            logger = jobScheduler.get_logger('test/logs')
+            jobScheduler.submit_job(path, json_obj, logger)
 
 
 def main():
