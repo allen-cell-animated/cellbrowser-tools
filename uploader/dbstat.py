@@ -19,6 +19,22 @@ def main():
     }
 
     db_api.DbApi.setSessionInfo(session_dict)
+
+    # xml = db_api.DbApi.getImagesByName("20160705_S03*")
+    # print 'Retrieved ' + str(len(xml.getchildren())) + ' images with name "21060705_S03*".'
+    # names = []
+    # for element in xml:
+    #     child_el = element.find('tag[@name="isCropped"]')
+    #     nm = child_el.attrib['value']
+    #     if (nm == 'true'):
+    #         child_el = element.find('tag[@name="name"]')
+    #         nm = child_el.attrib['value']
+    #         names.append(nm)
+    # print '\n'.join(sorted(names))
+    # return
+
+
+
     # db_ops.countImagesByName(args.input)
     xml = db_api.DbApi.getImagesByTagValue("isCropped", "true")
     print 'Retrieved ' + str(len(xml.getchildren())) + ' images with "isCropped" true.'
