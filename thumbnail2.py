@@ -9,6 +9,7 @@ import os
 import scipy
 import sys
 import skimage.transform as t
+import math as m
 
 z_axis_index = 0
 _cym = [[0.0, 1.0, 1.0], [1.0, 1.0, 0.0], [1.0, 0.0, 1.0]]
@@ -44,6 +45,7 @@ def matproj(im, dim, method='max', slice_index=0):
     elif method == 'slice':
         im = im[slice_index, :, :]
 
+    # returns 2D image, YX
     return im
 
 
@@ -175,6 +177,7 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
                              colors=_cmy, size=128):
     # assume all images have same shape!
     imsize = np.array(im1[0].shape)
+    # assuming im1 has dimensionality CZYX
     im1 = im1[0:3, :, :, :]
 
     assert len(imsize) == 3
@@ -192,7 +195,6 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
     num_noise_floor_bins = 7
 
     channel_indices = [memb_index, struct_index, nuc_index]
-    rgb_image = im1[:, 0, :, :].astype('float')
 
     downscale_factor = (im1.shape[3] / size)
     # Generating an XYC array
@@ -211,9 +213,6 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
             thumb -= bin_edges[peakind]
         # don't go negative
         thumb[thumb < 0] = 0
-        # renormalize
-        thmax = thumb.max()
-        thumb /= thmax
 
         imdbl = np.asarray(thumb).astype('double')
         im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
@@ -230,10 +229,10 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         border_percent = 0.1
         im_width = rgb_out.shape[0]
         im_height = rgb_out.shape[1]
-        left_bound = border_percent * im_width
-        right_bound = (1 - border_percent) * im_width
-        bottom_bound = border_percent * im_height
-        top_bound = (1 - border_percent) * im_height
+        left_bound = m.floor(border_percent * im_width)
+        right_bound = m.ceil((1 - border_percent) * im_width)
+        bottom_bound = m.floor(border_percent * im_height)
+        top_bound = m.ceil((1 - border_percent) * im_height)
 
         foo = rgb_out[left_bound:right_bound, bottom_bound:top_bound]
         nonzeros = foo[np.nonzero(foo)]
@@ -247,7 +246,6 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
 
         total = float((rgb_out.shape[0] * rgb_out.shape[1]))
         cutout = 0.0
-        # channel_inter = np.zeros(inter.shape)
         for x in range(rgb_out.shape[0]):
             for y in range(rgb_out.shape[1]):
                 luminance = np.sum(rgb_out[x,y] * [.299, .587, .114])
@@ -256,17 +254,17 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
                     inter[x, y] = rgb_out[x, y]
                 else:
                     cutout += 1.0
-                    # channel_inter[x, y] = rgb_out[x, y]
 
         print("Total cut out: " + str((cutout / total) * 100.0) + "%")
 
-    #TODO: what's our case if the downscale_factor is <= 1?
     try:
+        # if images need to get bigger instead of smaller, this will fail
         comp = t.pyramid_reduce(inter, downscale=downscale_factor)
     except ValueError:
         comp = imresize(inter, shape_out_rgb)
-    # returns a CYX array for the pngwriter
-    return comp.transpose((2, 0, 1)) #, output_channels
+
+    # returns a CYX array for the png writer
+    return comp.transpose((2, 0, 1))
 
 
 def main():
@@ -289,8 +287,6 @@ def main():
     inpath = args.path
 
     seg_channel_index = args.seg
-
-    im1 = []
 
     if os.path.isfile(inpath):
         reader = omeTifReader.OmeTifReader(inpath)

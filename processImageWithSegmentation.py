@@ -106,7 +106,7 @@ def normalize_path(path):
     if sys.platform.startswith('darwin'):
         dest_root = macroot[:-1]
     elif sys.platform.startswith('linux'):
-        # TODO: Is this the right way to fix this?
+        # TODO: change to work on both local and remote systems
         dest_root = "/run/user/1000/gvfs/smb-share:server=aibsdata,share=aics"
     else:
         dest_root = windowsroot[:-1]
@@ -153,7 +153,17 @@ class ImageProcessor:
 
         # Setting up segmentation channels for full image
         self.seg_indices = []
-        self.image = self.add_segs_to_img()
+        try:
+            with omeTifReader.OmeTifReader(self.ometif_dir + ".ome.tif") as reader:
+                print("\nloading pre-made image for " + self.file_name + "...", end="")
+                self.image = reader.load()
+                if len(self.image.shape) == 5:
+                    self.image = self.image[0]
+                self.image = self.image.transpose((1, 0, 2, 3))
+                self.omexml = reader.get_metadata()
+                print("done")
+        except AssertionError:
+            self.image = self.add_segs_to_img()
 
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
@@ -168,8 +178,6 @@ class ImageProcessor:
         self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
 
     def add_segs_to_img(self):
-        file_name = os.path.splitext(os.path.basename(self.row.inputFilename))[0]
-
         outdir = self.row.cbrImageLocation
         make_dir(outdir)
 
@@ -184,7 +192,7 @@ class ImageProcessor:
             "OBS_Trans"
         ]
 
-        print("loading segmentations for " + file_name + "...", end="")
+        print("\nloading segmentations for " + self.file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
         seg_path = normalize_path(seg_path)
         # print(seg_path)
@@ -325,7 +333,7 @@ class ImageProcessor:
         memb_index, nuc_index, struct_index = 0,2,1
 
         if self.row.cbrGenerateFullFieldImages:
-            print("generating full field images...")
+            print("generating full fields...")
             # necessary for bisque metadata, this is the config for a fullfield image
             self.row.cbrBounds = None
             self.row.cbrCellIndex = 0
@@ -333,17 +341,14 @@ class ImageProcessor:
             self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
 
             if self.row.cbrGenerateThumbnail:
-                print("    making thumbnail...", end="")
+                print("making thumbnail...", end="")
                 ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
-                # for chanimage, name in output_channels:
-                #     with pngWriter.PngWriter(self.png_dir + name + ".png", overwrite_file=True) as writer:
-                #         writer.save(chanimage)
                 print("done")
             else:
                 ffthumb = None
 
             if self.row.cbrGenerateCellImage:
-                print("    making image...", end="")
+                print("making image...", end="")
                 im_to_save = self.image
                 print("done")
             else:
@@ -360,7 +365,7 @@ class ImageProcessor:
             h0 = np.unique(cell_segmentation_image)
             h0 = h0[h0 > 0]
             # for each cell segmented from this image:
-            print("generating segmented images...", end="")
+            print("generating segmented cells...", end="")
             for i in h0:
                 if i == 0:
                     continue
@@ -375,11 +380,9 @@ class ImageProcessor:
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
-                    print("    making thumbnail...", end="")
+                    print("making thumbnail...", end="")
                     thumb = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
                                                                     size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
-                    # making it CYX for the png writer
-                    # thumb = thumbnail.transpose(2, 0, 1)
                     print("done")
                 else:
                     thumb = None
@@ -388,7 +391,7 @@ class ImageProcessor:
                     cropped = None
                     copyxml = None
                 else:
-                    print("    making image...", end="")
+                    print("making image...", end="")
                     for bn in self.row.cbrBounds:
                         print(bn, self.row.cbrBounds[bn])
                     # copy self.omexml for output
@@ -441,16 +444,21 @@ class ImageProcessor:
             png_url += '.png'
 
         if thumbnail is not None:
+            print("saving thumbnail...", end="")
             with PngWriter(file_path=png_dir, overwrite_file=True) as writer:
                 writer.save(thumbnail)
+            print("done")
 
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
+            print("saving image...", end="")
             with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
                 writer.save(transposed_image, omexml=omexml, channel_names=self.channels, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
+            print("done")
 
         if self.row.cbrAddToDb:
+            print("adding to db...", end="")
             self.row.channelNames = self.channel_names
             self.row.cbrThumbnailURL = png_url
             session_info = {
@@ -459,6 +467,7 @@ class ImageProcessor:
                 'password': 'admin'
             }
             dbkey = oneUp.oneUp(session_info, self.row.__dict__, None)
+            print("done")
 
 
 def do_main(fname):
