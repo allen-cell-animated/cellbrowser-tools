@@ -11,7 +11,11 @@ import sys
 import skimage.transform as t
 
 z_axis_index = 0
+_cym = [[0.0, 1.0, 1.0], [1.0, 1.0, 0.0], [1.0, 0.0, 1.0]]
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
+_rgb = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+_rbg = [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
+_brg = [[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
 
 
 def imresize(im, new_size):
@@ -189,6 +193,10 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
 
     channel_indices = [memb_index, struct_index, nuc_index]
     rgb_image = im1[:, 0, :, :].astype('float')
+
+    downscale_factor = (im1.shape[3] / size)
+    # Generating an XYC array
+    inter = np.zeros((im1.shape[2], im1.shape[3], im1.shape[0]))
     for i in channel_indices:
         # subtract out the noise floor.
         immin = im1[i].min()
@@ -207,23 +215,10 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         thmax = thumb.max()
         thumb /= thmax
 
-        # thresh = np.mean(thumb)
-        # thumb[thumb < thresh] = 0
-
         imdbl = np.asarray(thumb).astype('double')
         im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
 
-        rgb_image[i] = im_proj
-
-    # output_channels = []
-    # channel_name = ["MEM", "STRUCT", "NUC"]
-    downscale_factor = (im1.shape[3] / size)
-    # Generating an XYC array
-    inter = np.zeros((im1.shape[2], im1.shape[3], im1.shape[0]))
-    # TODO: Can this loop be combined with the above one?
-    for i in [struct_index, memb_index, nuc_index]:
-        # turn into RGB
-        rgb_out = np.expand_dims(rgb_image[i], 2)
+        rgb_out = np.expand_dims(im_proj, 2)
         rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
 
         # inject color.  careful of type mismatches.
@@ -232,11 +227,21 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         # normalize contrast
         rgb_out /= np.max(rgb_out)
 
-        nonzeros = rgb_out[np.nonzero(rgb_out)]
+        border_percent = 0.1
+        im_width = rgb_out.shape[0]
+        im_height = rgb_out.shape[1]
+        left_bound = border_percent * im_width
+        right_bound = (1 - border_percent) * im_width
+        bottom_bound = border_percent * im_height
+        top_bound = (1 - border_percent) * im_height
+
+        foo = rgb_out[left_bound:right_bound, bottom_bound:top_bound]
+        nonzeros = foo[np.nonzero(foo)]
         print("\nMax: " + str(np.max(nonzeros)))
         print("Min: " + str(np.min(nonzeros)))
         print("Median: " + str(np.median(nonzeros)))
         print("Mean: " + str(np.mean(nonzeros)))
+
         threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
         print("Threshold: " + str(threshold))
 
@@ -245,19 +250,21 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         # channel_inter = np.zeros(inter.shape)
         for x in range(rgb_out.shape[0]):
             for y in range(rgb_out.shape[1]):
-                summation = rgb_out[x, y].sum() / rgb_out.shape[2]
-                if summation > threshold:
+                luminance = np.sum(rgb_out[x,y] * [.299, .587, .114])
+                avg_rgb = rgb_out[x, y].sum() / rgb_out.shape[2]
+                if avg_rgb > threshold:
                     inter[x, y] = rgb_out[x, y]
                 else:
                     cutout += 1.0
                     # channel_inter[x, y] = rgb_out[x, y]
 
         print("Total cut out: " + str((cutout / total) * 100.0) + "%")
-        # channel = t.pyramid_reduce(channel_inter, downscale=downscale_factor)
-        # output_channels.append((np.transpose(channel, (2, 0, 1)), channel_name[i]))
 
     #TODO: what's our case if the downscale_factor is <= 1?
-    comp = t.pyramid_reduce(inter, downscale=downscale_factor)
+    try:
+        comp = t.pyramid_reduce(inter, downscale=downscale_factor)
+    except ValueError:
+        comp = imresize(inter, shape_out_rgb)
     # returns a CYX array for the pngwriter
     return comp.transpose((2, 0, 1)) #, output_channels
 
