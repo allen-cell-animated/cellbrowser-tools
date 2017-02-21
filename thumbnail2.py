@@ -145,8 +145,8 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.
         # subtract this out
         thumb = im1[ch].astype(np.float32)
         # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
-        if i != 0:
-            thumb -= bin_edges[peakind]
+        # if i != 0:
+        thumb -= bin_edges[peakind]
         # don't go negative
         thumb[thumb < 0] = 0
         # renormalize
@@ -158,8 +158,9 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.
         rgbproj = make_rgb_proj(thumb, z_axis_index, colors[i])
         rgbproj = imresize(rgbproj, shape_out_rgb)
         comp += rgbproj
+        # np.copyto(comp, rgbproj, where=rgbproj>0)
     # renormalize
-    # comp /= comp.max()
+    comp /= comp.max()
     return comp
 
 def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
