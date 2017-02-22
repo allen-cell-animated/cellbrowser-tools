@@ -42,7 +42,10 @@ def main():
     parser = argparse.ArgumentParser(description="Create new batches of thumbnails for testing")
 
     parser.add_argument('input', help="directory to search in")
-    parser.add_argument('--random', '-r', type=int, help="generate thumbnails for random ometifs", default=5)
+
+    number = parser.add_mutually_exclusive_group()
+    number.add_argument('--random', '-r', type=int, help="generate thumbnails for random ometifs", default=None)
+    number.add_argument('--first', '-f', type=int, help="generate x number of thumbnails for ometifs", default=-1)
 
     args = parser.parse_args()
     rand_max = args.random
@@ -64,9 +67,12 @@ def main():
                 if random.uniform(0, rand_max) > rand_max / 2:
                     random_file_list [int(random.uniform(0, rand_max))] = ome_tif
                 k += 1
-        file_list = random_file_list
+        file_list = sorted(random_file_list)
     else:
-        file_list = only_ome_tif
+        file_list = sorted(only_ome_tif)
+
+    if args.first != -1 and args.first <= len(file_list):
+        file_list = file_list[:args.first]
     # TODO: RGB palettes get too much cut out, the threshold is much too high
     for color in color_choices:
         full_fields_color(file_list, color=color)
