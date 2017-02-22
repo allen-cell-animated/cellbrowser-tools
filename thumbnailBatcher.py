@@ -48,6 +48,10 @@ def main():
     rand_max = args.random
 
     only_ome_tif = [f for f in iglob(join(args.input, "**", "*.ome.tif"))]
+    if not only_ome_tif:
+        only_files = [join(args.input, file_name) for file_name in listdir(args.input) if
+                      isfile(join(args.input, file_name))]
+        only_ome_tif = [f for f in only_files if f.endswith(".ome.tif")]
     print(only_ome_tif)
 
     if rand_max is not None:
