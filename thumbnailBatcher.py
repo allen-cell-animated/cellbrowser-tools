@@ -42,22 +42,23 @@ def main():
     parser = argparse.ArgumentParser(description="Create new batches of thumbnails for testing")
 
     parser.add_argument('input', help="directory to search in")
-    parser.add_argument('--random', '-r', help="generate thumbnails for 20 random files", default=False, action='store_true')
+    parser.add_argument('--random', '-r', type=int, help="generate thumbnails for random ometifs", default=5)
 
     args = parser.parse_args()
+    rand_max = args.random
 
     only_ome_tif = [f for f in iglob(join(args.input, "**", "*.ome.tif"))]
     print(only_ome_tif)
 
-    if args.random:
-        if len(only_ome_tif) <= 20:
+    if rand_max is not None:
+        if len(only_ome_tif) <= rand_max:
             random_file_list = only_ome_tif
         else:
-            random_file_list = only_ome_tif[:21]
+            random_file_list = only_ome_tif[:rand_max]
             k = 1
             for ome_tif in only_ome_tif:
-                if random.uniform(0, 21) > 21 / k:
-                    random_file_list [int(random.uniform(0, 21))] = ome_tif
+                if random.uniform(0, rand_max) > rand_max / 2:
+                    random_file_list [int(random.uniform(0, rand_max))] = ome_tif
                 k += 1
         file_list = random_file_list
     else:
