@@ -188,6 +188,7 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
                            ))
     shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
+    # TODO 256
     num_noise_floor_bins = 7
 
     channel_indices = [memb_index, struct_index, nuc_index]
@@ -211,6 +212,7 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         thumb[thumb < 0] = 0
 
         imdbl = np.asarray(thumb).astype('double')
+        # TODO check and see if max proj work after masking
         im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
 
         rgb_out = np.expand_dims(im_proj, 2)
@@ -220,6 +222,7 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         rgb_out *= colors[i]
 
         # normalize contrast
+        # TODO move this to do be executed later (after thresholding)
         rgb_out /= np.max(rgb_out)
 
         border_percent = 0.1
@@ -230,23 +233,35 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         bottom_bound = m.floor(border_percent * im_height)
         top_bound = m.ceil((1 - border_percent) * im_height)
 
-        foo = rgb_out[left_bound:right_bound, bottom_bound:top_bound]
-        nonzeros = foo[np.nonzero(foo)]
+        cut_border = rgb_out[left_bound:right_bound, bottom_bound:top_bound]
+        nonzeros = cut_border[np.nonzero(cut_border)]
         print("\nMax: " + str(np.max(nonzeros)))
         print("Min: " + str(np.min(nonzeros)))
-        print("Median: " + str(np.median(nonzeros)))
-        print("Mean: " + str(np.mean(nonzeros)))
+        # print("Median: " + str(np.median(nonzeros)))
+        # print("Mean: " + str(np.mean(nonzeros)))
 
-        threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
-        print("Threshold: " + str(threshold))
+        def get_luminance(array):
+            assert len(array) == 3
+            return np.sum(array * [.299, .587, .114])
+
+        #threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
+        luminance_vals = []
+        for x in range(rgb_out.shape[0]):
+            for y in range(rgb_out.shape[1]):
+                luminance_vals.append(get_luminance(rgb_out[x,y]))
+        luminance_threshold = np.mean(luminance_vals)
+        # TODO 99.8 percentile as max
+        print("Threshold: " + str(luminance_threshold))
+        # print("Threshold: " + str(threshold))
 
         total = float((rgb_out.shape[0] * rgb_out.shape[1]))
         cutout = 0.0
         for x in range(rgb_out.shape[0]):
             for y in range(rgb_out.shape[1]):
-                # luminance = np.sum(rgb_out[x,y] * [.299, .587, .114])
-                avg_rgb = rgb_out[x, y].sum() / rgb_out.shape[2]
-                if avg_rgb > threshold:
+                luminance = get_luminance(rgb_out[x,y])
+                # avg_rgb = rgb_out[x, y].sum() / rgb_out.shape[2]
+                # if avg_rgb > threshold:
+                if luminance > luminance_threshold:
                     inter[x, y] = rgb_out[x, y]
                 else:
                     cutout += 1.0
