@@ -6,14 +6,15 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='input name query')
+    parser.add_argument('input', help='db uri', default='10.128.62.104')
+    parser.add_argument('--name', '-n', help='name match')
     args = parser.parse_args()
 
     session_dict = {
         # 'root': 'http://test-aics-01',
         # 'root': 'http://bisque-00.corp.alleninstitute.org:8080',
         # 'root': 'http://10.128.62.104:8080',
-        'root': 'http://10.128.62.104',
+        'root': 'http://'+args.input,
         'user': 'admin',
         'password': 'admin'
     }
