@@ -18,7 +18,6 @@ import cellJob
 import thumbnailGenerator
 from uploader import oneUp
 import pprint
-import xml.etree.ElementTree as ET
 
 
 def _int32(x):
@@ -161,6 +160,7 @@ class ImageProcessor:
                     self.image = self.image[0]
                 self.image = self.image.transpose((1, 0, 2, 3))
                 self.omexml = reader.get_metadata()
+                self.seg_indices = [4, 5, 6]
                 print("done")
         except AssertionError:
             self.image = self.add_segs_to_img()
@@ -392,8 +392,16 @@ class ImageProcessor:
                     copyxml = None
                 else:
                     print("making image...", end="")
-                    for bn in self.row.cbrBounds:
-                        print(bn, self.row.cbrBounds[bn])
+
+                    self.row.cbrCellIndex = i
+                    self.row.cbrSourceImageName = base
+                    self.row.cbrCellName = base + '_' + str(i)
+                    self.row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
+                                          'ymin': bounds[1][0], 'ymax': bounds[1][1],
+                                          'zmin': bounds[2][0], 'zmax': bounds[2][1]}
+
+                    # for bn in self.row.cbrBounds:
+                    #     print(bn, self.row.cbrBounds[bn])
                     # copy self.omexml for output
                     copied = copy.deepcopy(self.omexml.dom)
                     copyxml = OMEXML(rootnode=copied)
@@ -416,15 +424,6 @@ class ImageProcessor:
                         else:
                             p.set_TheZ(pz - minz)
                     print("done")
-
-                self.row.cbrCellIndex = i
-                self.row.cbrSourceImageName = base
-                self.row.cbrCellName = base + '_' + str(i)
-                self.row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
-                                      'ymin': bounds[1][0], 'ymax': bounds[1][1],
-                                      'zmin': bounds[2][0], 'zmax': bounds[2][1]}
-
-
 
                 self._save_and_post(image=cropped, thumbnail=thumb, seg_cell_index=i, omexml=copyxml)
             print("done")
