@@ -15,7 +15,7 @@ import re
 import subprocess
 import sys
 import cellJob
-import thumbnail2
+import thumbnailGenerator
 from uploader import oneUp
 import pprint
 import xml.etree.ElementTree as ET
@@ -342,7 +342,7 @@ class ImageProcessor:
 
             if self.row.cbrGenerateThumbnail:
                 print("making thumbnail...", end="")
-                ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                ffthumb = thumbnailGenerator.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
                 print("done")
             else:
                 ffthumb = None
@@ -381,8 +381,8 @@ class ImageProcessor:
 
                 if self.row.cbrGenerateThumbnail:
                     print("making thumbnail...", end="")
-                    thumb = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
-                                                                    size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
+                    thumb = thumbnailGenerator.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
+                                                                        size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     print("done")
                 else:
                     thumb = None

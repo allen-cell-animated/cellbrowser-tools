@@ -12,11 +12,7 @@ import skimage.transform as t
 import math as m
 
 z_axis_index = 0
-_cym = [[0.0, 1.0, 1.0], [1.0, 1.0, 0.0], [1.0, 0.0, 1.0]]
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
-_rgb = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
-_rbg = [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
-_brg = [[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
 
 
 def imresize(im, new_size):
@@ -248,7 +244,7 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
         cutout = 0.0
         for x in range(rgb_out.shape[0]):
             for y in range(rgb_out.shape[1]):
-                luminance = np.sum(rgb_out[x,y] * [.299, .587, .114])
+                # luminance = np.sum(rgb_out[x,y] * [.299, .587, .114])
                 avg_rgb = rgb_out[x, y].sum() / rgb_out.shape[2]
                 if avg_rgb > threshold:
                     inter[x, y] = rgb_out[x, y]
@@ -270,7 +266,7 @@ def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
 def main():
     # python interleave.py --path /Volumes/aics/software_it/danielt/images/AICS/alphactinin/ --prefix img40_1
     parser = argparse.ArgumentParser(description='Generate thumbnail from a cell image. '
-                                                 'Example: python thumbnail2.py /path/to/images/myImg.ome.tif 0 1 2 3')
+                                                 'Example: python thumbnailGenerator.py /path/to/images/myImg.ome.tif 0 1 2 3')
     parser.add_argument('--path', required=True, help='input file path')
     parser.add_argument('--dna', required=True, type=int, help='dna channel index')
     parser.add_argument('--mem', required=True, type=int, help='membrane channel index')
