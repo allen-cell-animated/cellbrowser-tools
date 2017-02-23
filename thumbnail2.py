@@ -20,6 +20,8 @@ def imresize(im, new_size):
     zoom_size = np.divide(new_size, old_size)
     # precision?
     im_out = scipy.ndimage.interpolation.zoom(im, zoom_size)
+    # don't go negative
+    im_out[im_out < 0] = 0
 
     return im_out
 
@@ -123,14 +125,13 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.
     shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
     # apply the cell segmentation mask.  bye bye to data outside the cell
-    for i in range(im1.shape[0]):
-        im1[i,:,:,:] = mask_image(im1[i,:,:,:], im1[seg_channel_index,:,:,:])
-    # im1 = [mask_image(im, im1[seg_channel_index]) for im in im1]
-    mask = matproj(im1[seg_channel_index], z_axis_index)
+    # for i in range(im1.shape[0]):
+    #     im1[i,:,:,:] = mask_image(im1[i,:,:,:], im1[seg_channel_index,:,:,:])
+    # mask = matproj(im1[seg_channel_index], z_axis_index)
     # pngwriter = pngWriter.PngWriter('test/oMask.png')
     # pngwriter.save(mask)
 
-    num_noise_floor_bins = 16
+    num_noise_floor_bins = 32
     comp = np.zeros(shape_out_rgb)
     for i in range(3):
         ch = channel_indices[i]
@@ -145,10 +146,13 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.
         # subtract this out
         thumb = im1[ch].astype(np.float32)
         # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
-        if i != 0:
-            thumb -= bin_edges[peakind]
+        # if i != 0:
+        thumb -= bin_edges[peakind]
         # don't go negative
         thumb[thumb < 0] = 0
+        # apply mask
+        thumb = np.multiply(thumb, im1[seg_channel_index,:,:,:] > 0)
+
         # renormalize
         thmax = thumb.max()
         thumb /= thmax
@@ -158,8 +162,11 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.
         rgbproj = make_rgb_proj(thumb, z_axis_index, colors[i])
         rgbproj = imresize(rgbproj, shape_out_rgb)
         comp += rgbproj
+        # np.copyto(comp, rgbproj, where=rgbproj>0)
     # renormalize
-    # comp /= comp.max()
+    comp /= comp.max()
+    comp *= 255
+    comp = comp.astype(np.uint8)
     return comp
 
 def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,

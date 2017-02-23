@@ -47,7 +47,7 @@ def cli():
         print(s)
 
 
-
+# python checkFiles.py data/nuc_cell_seg_delivery_20170217/auxiliary_spreadsheets/imageID_*ometif*.xlsx --compare /data/aics/software_it/danielt/images/AICS/bisque/nuc_cell_seg_delivery_20170217/
 if __name__ == "__main__":
     # print (sys.argv)
     cli()
