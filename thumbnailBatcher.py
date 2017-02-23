@@ -4,9 +4,10 @@ from os import listdir, makedirs
 from os.path import isfile, join, exists
 import re
 import random
-import thumbnailGenerator
+from thumbnailGenerator import ThumbnailGenerator
 from glob import iglob
-from aicsimagetools import pngWriter, omeTifReader
+from aicsimagetools.pngWriter import PngWriter
+from aicsimagetools.omeTifReader import OmeTifReader
 
 # Author: Zach Crabtree zacharyc@alleninstitute.org
 
@@ -23,10 +24,10 @@ def full_fields_color(ome_tif_files, color):
     print("\nprocessing images with " + color[1] + " palette.")
 
     for file_name in ome_tif_files:
-        with omeTifReader.OmeTifReader(file_name) as reader:
+        with OmeTifReader(file_name) as reader:
             # converts to CZYX
             image = reader.load()[0].transpose((1, 0, 2, 3))
-        thumb = thumbnailGenerator.make_fullfield_thumbnail(image, colors=color[0])
+        thumb = ThumbnailGenerator(image, colors=color[0]).make_full_field_thumbnail()
         path_as_list = re.split(r'\\|/', file_name)
         new_path = path_as_list[:-2]
         new_path.append(color[1])
@@ -34,7 +35,7 @@ def full_fields_color(ome_tif_files, color):
         new_path = join(*new_path)
         if not exists(new_path[:new_path.rfind('/')]):
             makedirs(new_path[:new_path.rfind('/')])
-        with pngWriter.PngWriter(new_path, overwrite_file=True) as writer:
+        with PngWriter(new_path, overwrite_file=True) as writer:
             writer.save(thumb)
 
 
@@ -73,7 +74,6 @@ def main():
 
     if args.first != -1 and args.first <= len(file_list):
         file_list = file_list[:args.first]
-    # TODO: RGB palettes get too much cut out, the threshold is much too high
     for color in color_choices:
         full_fields_color(file_list, color=color)
 

@@ -15,6 +15,11 @@ z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
 
 
+def get_luminance(array):
+    assert len(array) == 3
+    return np.sum(array * [.299, .587, .114])
+
+
 def imresize(im, new_size):
     new_size = np.array(new_size).astype('double')
     old_size = np.array(im.shape).astype('double')
@@ -83,10 +88,130 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
     im_all[sx:, sz:] = projx
 
     if rescale_inten:
-        im_all = im_all / np.max(im_all.flatten())
+        im_all /= np.max(im_all.flatten())
 
     return im_all
 
+
+# TODO: finish up this class and refactor code that uses it
+class ThumbnailGenerator:
+
+    def __init__(self, image, colors=_cmy, size=128, memb_index=0, struct_index=1, nuc_index=2, threshold="luminance"):
+        # expects a CZYX image (7 channels)
+        self.im = image
+        self.im_size = np.array(self.im[0].shape)
+        assert self.im.shape[0] == 7
+        self.colors = colors
+        self.size = size
+        self.memb_index, self.struct_index, self.nuc_index = memb_index, struct_index, nuc_index
+        self.channel_indices = [self.memb_index, self.struct_index, self.nuc_index]
+        self.seg_indices = [4, 5, 6]
+        assert threshold == "sum" or threshold == "luminance"
+        self.threshold_mode = threshold
+
+    def make_full_field_thumbnail(self):
+        # assume all images have same shape!
+        im_size = np.array(self.im[0].shape)
+        # assuming self.im has dimensionality CZYX
+        image = self.im[0:3, :, :, :]
+
+        assert len(im_size) == 3
+        assert max(self.memb_index, self.struct_index, self.nuc_index) <= self.im.shape[0] - 1
+
+        # size down to this edge size, maintaining aspect ratio.
+        max_edge = self.size
+        # keep same number of z slices.
+        shape_out = np.hstack((im_size[0],
+                               max_edge if im_size[1] > im_size[2] else max_edge * im_size[1] / im_size[2],
+                               max_edge if im_size[1] < im_size[2] else max_edge * im_size[2] / im_size[1]
+                               ))
+        shape_out_rgb = (shape_out[1], shape_out[2], 3)
+
+        # TODO change to 256, this will allow a lot of dead pixels to be eliminated
+        num_noise_floor_bins = 256
+
+        downscale_factor = (image.shape[3] / self.size)
+        # Generating an XYC array
+        inter = np.zeros((image.shape[2], image.shape[3], image.shape[0]))
+        for i in self.channel_indices:
+            # subtract out the noise floor.
+            immin = image[i].min()
+            immax = image[i].max()
+            hi, bin_edges = np.histogram(image[i], bins=num_noise_floor_bins, range=(max(1, immin), immax))
+            # index of tallest peak in histogram
+            peakind = np.argmax(hi)
+            # subtract this out
+            thumb = image[i].astype(np.float32)
+            # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
+            # TODO is this true?
+            if i != 0:
+                thumb -= bin_edges[peakind]
+            # don't go negative
+            thumb[thumb < 0] = 0
+
+            imdbl = np.asarray(thumb).astype('double')
+            # TODO check and see if max proj work after masking
+            # might want to take max projection of three sections of the z stack
+            im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
+
+            rgb_out = np.expand_dims(im_proj, 2)
+            rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
+
+            # inject color.  careful of type mismatches.
+            rgb_out *= self.colors[i]
+
+            # normalize contrast
+            # TODO move this to do be executed later (after thresholding)
+            rgb_out /= np.max(rgb_out)
+
+            border_percent = 0.1
+            im_width = rgb_out.shape[0]
+            im_height = rgb_out.shape[1]
+            left_bound = m.floor(border_percent * im_width)
+            right_bound = m.ceil((1 - border_percent) * im_width)
+            bottom_bound = m.floor(border_percent * im_height)
+            top_bound = m.ceil((1 - border_percent) * im_height)
+
+            cut_border = rgb_out[left_bound:right_bound, bottom_bound:top_bound]
+            nonzeros = cut_border[np.nonzero(cut_border)]
+            print("\nMax: " + str(np.max(nonzeros)))
+            print("Min: " + str(np.min(nonzeros)))
+
+            # TODO package this up in another method
+            if self.threshold_mode == "sum":
+                print("Median: " + str(np.median(nonzeros)))
+                print("Mean: " + str(np.mean(nonzeros)))
+                threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
+            else:
+                luminance_vals = []
+                for x in range(rgb_out.shape[0]):
+                    for y in range(rgb_out.shape[1]):
+                        luminance_vals.append(get_luminance(rgb_out[x, y]))
+                threshold = np.mean(luminance_vals)
+
+            # TODO 99.8 percentile as max
+            print("Threshold: " + str(threshold))
+
+            total = float((rgb_out.shape[0] * rgb_out.shape[1]))
+            cutout = 0.0
+            for x in range(rgb_out.shape[0]):
+                for y in range(rgb_out.shape[1]):
+                    pixel_weight = rgb_out[x, y].sum() / rgb_out.shape[2] if self.threshold_mode == "sum" else get_luminance(rgb_out[x, y])
+                    if pixel_weight > threshold:
+                        inter[x, y] = rgb_out[x, y]
+                    else:
+                        cutout += 1.0
+
+            print("Total cut out: " + str((cutout / total) * 100.0) + "%")
+
+        try:
+            # if images need to get bigger instead of smaller, this will fail
+            comp = t.pyramid_reduce(inter, downscale=downscale_factor)
+        except ValueError:
+            comp = imresize(inter, shape_out_rgb)
+
+        # returns a CYX array for the png writer
+        return comp.transpose((2, 0, 1))
 
 # # max, sum, min, mean, inv_sum
 # def generate_thumbnail(w,h, src_img, colors, slices, projection_axis, projection_type='max'):
@@ -110,8 +235,9 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
                              seg_channel_index=-1, size=128):
 
-    return make_fullfield_thumbnail(im1, memb_index=channel_indices[0], struct_index=channel_indices[1],
-                             nuc_index=channel_indices[2], size=size)
+    return ThumbnailGenerator(im1,
+                              memb_index=channel_indices[0], struct_index=channel_indices[1], nuc_index=channel_indices[2],
+                              size=size, colors=colors, threshold="luminance").make_full_field_thumbnail()
 
     #
     # # assume all images have same shape!
@@ -167,115 +293,6 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
     # # renormalize
     # # comp /= comp.max()
     # return comp
-
-
-def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
-                             colors=_cmy, size=128):
-    # assume all images have same shape!
-    imsize = np.array(im1[0].shape)
-    # assuming im1 has dimensionality CZYX
-    im1 = im1[0:3, :, :, :]
-
-    assert len(imsize) == 3
-    assert max(memb_index, struct_index, nuc_index) <= im1.shape[0] - 1
-
-    # size down to this edge size, maintaining aspect ratio.
-    max_edge = size
-    # keep same number of z slices.
-    shape_out = np.hstack((imsize[0],
-                           max_edge if imsize[1] > imsize[2] else max_edge * imsize[1] / imsize[2],
-                           max_edge if imsize[1] < imsize[2] else max_edge * imsize[2] / imsize[1]
-                           ))
-    shape_out_rgb = (shape_out[1], shape_out[2], 3)
-
-    # TODO 256
-    num_noise_floor_bins = 7
-
-    channel_indices = [memb_index, struct_index, nuc_index]
-
-    downscale_factor = (im1.shape[3] / size)
-    # Generating an XYC array
-    inter = np.zeros((im1.shape[2], im1.shape[3], im1.shape[0]))
-    for i in channel_indices:
-        # subtract out the noise floor.
-        immin = im1[i].min()
-        immax = im1[i].max()
-        hi, bin_edges = np.histogram(im1[i], bins=num_noise_floor_bins, range=(max(1, immin), immax))
-        # index of tallest peak in histogram
-        peakind = np.argmax(hi)
-        # subtract this out
-        thumb = im1[i].astype(np.float32)
-        # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
-        if i != 0:
-            thumb -= bin_edges[peakind]
-        # don't go negative
-        thumb[thumb < 0] = 0
-
-        imdbl = np.asarray(thumb).astype('double')
-        # TODO check and see if max proj work after masking
-        im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
-
-        rgb_out = np.expand_dims(im_proj, 2)
-        rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
-
-        # inject color.  careful of type mismatches.
-        rgb_out *= colors[i]
-
-        # normalize contrast
-        # TODO move this to do be executed later (after thresholding)
-        rgb_out /= np.max(rgb_out)
-
-        border_percent = 0.1
-        im_width = rgb_out.shape[0]
-        im_height = rgb_out.shape[1]
-        left_bound = m.floor(border_percent * im_width)
-        right_bound = m.ceil((1 - border_percent) * im_width)
-        bottom_bound = m.floor(border_percent * im_height)
-        top_bound = m.ceil((1 - border_percent) * im_height)
-
-        cut_border = rgb_out[left_bound:right_bound, bottom_bound:top_bound]
-        nonzeros = cut_border[np.nonzero(cut_border)]
-        print("\nMax: " + str(np.max(nonzeros)))
-        print("Min: " + str(np.min(nonzeros)))
-        # print("Median: " + str(np.median(nonzeros)))
-        # print("Mean: " + str(np.mean(nonzeros)))
-
-        def get_luminance(array):
-            assert len(array) == 3
-            return np.sum(array * [.299, .587, .114])
-
-        #threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
-        luminance_vals = []
-        for x in range(rgb_out.shape[0]):
-            for y in range(rgb_out.shape[1]):
-                luminance_vals.append(get_luminance(rgb_out[x,y]))
-        luminance_threshold = np.mean(luminance_vals)
-        # TODO 99.8 percentile as max
-        print("Threshold: " + str(luminance_threshold))
-        # print("Threshold: " + str(threshold))
-
-        total = float((rgb_out.shape[0] * rgb_out.shape[1]))
-        cutout = 0.0
-        for x in range(rgb_out.shape[0]):
-            for y in range(rgb_out.shape[1]):
-                luminance = get_luminance(rgb_out[x,y])
-                # avg_rgb = rgb_out[x, y].sum() / rgb_out.shape[2]
-                # if avg_rgb > threshold:
-                if luminance > luminance_threshold:
-                    inter[x, y] = rgb_out[x, y]
-                else:
-                    cutout += 1.0
-
-        print("Total cut out: " + str((cutout / total) * 100.0) + "%")
-
-    try:
-        # if images need to get bigger instead of smaller, this will fail
-        comp = t.pyramid_reduce(inter, downscale=downscale_factor)
-    except ValueError:
-        comp = imresize(inter, shape_out_rgb)
-
-    # returns a CYX array for the png writer
-    return comp.transpose((2, 0, 1))
 
 
 def main():
