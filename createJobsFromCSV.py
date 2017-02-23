@@ -54,7 +54,9 @@ def main():
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
     # assuming naming from CSV.  dataroot + dataset + csvname + image names
-    parser.add_argument('--dataset', help='output directory name for whole batch', default='')
+    # can this be inferred or provided from csv?
+    parser.add_argument('--dataset', '-D', help='output directory name for whole batch', default='')
+
     # database location.  TODO: provide no default and force it to be explicit?
     parser.add_argument('--dburi', help='database url', default='http://10.128.62.104')
 
