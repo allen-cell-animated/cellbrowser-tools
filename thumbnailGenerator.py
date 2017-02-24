@@ -93,30 +93,63 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
     return im_all
 
 
-# TODO: finish up this class and refactor code that uses it
 class ThumbnailGenerator:
 
-    def __init__(self, image, colors=_cmy, size=128, memb_index=0, struct_index=1, nuc_index=2, threshold="luminance"):
-        # expects a CZYX image (7 channels)
-        self.im = image
-        self.im_size = np.array(self.im[0].shape)
-        assert self.im.shape[0] == 7
+    def __init__(self, colors=_cmy, size=128, memb_index=0, struct_index=1, nuc_index=2,
+                 threshold="luminance", layering="superimpose"):
         self.colors = colors
         self.size = size
         self.memb_index, self.struct_index, self.nuc_index = memb_index, struct_index, nuc_index
         self.channel_indices = [self.memb_index, self.struct_index, self.nuc_index]
         self.seg_indices = [4, 5, 6]
-        assert threshold == "sum" or threshold == "luminance"
+        assert threshold == "mean" or threshold == "luminance"
+        assert layering == "superimpose" or layering == "alpha-blend"
         self.threshold_mode = threshold
+        self.layering_mode = layering
 
-    def make_full_field_thumbnail(self):
+    def _get_threshold(self, image):
+
+        assert len(image.shape) == 3
+        assert image.shape[2] == 3
+
+        # using this allows us to ignore the bright corners of a cell image
+        border_percent = 0.1
+        im_width = image.shape[0]
+        im_height = image.shape[1]
+        left_bound = m.floor(border_percent * im_width)
+        right_bound = m.ceil((1 - border_percent) * im_width)
+        bottom_bound = m.floor(border_percent * im_height)
+        top_bound = m.ceil((1 - border_percent) * im_height)
+
+        cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
+        nonzeros = cut_border[np.nonzero(cut_border)]
+        print("\nMax: " + str(np.max(nonzeros)))
+        print("Min: " + str(np.min(nonzeros)))
+        upper_threshold = np.max(cut_border) * .998
+
+        if self.threshold_mode == "mean":
+            print("Median: " + str(np.median(nonzeros)))
+            print("Mean: " + str(np.mean(nonzeros)))
+            lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
+        else:
+            luminance_vals = []
+            for x in range(cut_border.shape[0]):
+                for y in range(cut_border.shape[1]):
+                    luminance_vals.append(get_luminance(cut_border[x, y]))
+            lower_threshold = np.mean(luminance_vals)
+
+
+        return lower_threshold, upper_threshold
+
+    def make_full_field_thumbnail(self, image):
         # assume all images have same shape!
-        im_size = np.array(self.im[0].shape)
-        # assuming self.im has dimensionality CZYX
-        image = self.im[0:3, :, :, :]
+        # expects CZYX image where C is 7
+        im_size = np.array(image[0].shape)
+        assert image.shape[0] == 7
+        image = image[0:3]
 
         assert len(im_size) == 3
-        assert max(self.memb_index, self.struct_index, self.nuc_index) <= self.im.shape[0] - 1
+        assert max(self.memb_index, self.struct_index, self.nuc_index) <= image.shape[0] - 1
 
         # size down to this edge size, maintaining aspect ratio.
         max_edge = self.size
@@ -127,7 +160,6 @@ class ThumbnailGenerator:
                                ))
         shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
-        # TODO change to 256, this will allow a lot of dead pixels to be eliminated
         num_noise_floor_bins = 256
 
         downscale_factor = (image.shape[3] / self.size)
@@ -150,66 +182,54 @@ class ThumbnailGenerator:
             thumb[thumb < 0] = 0
 
             imdbl = np.asarray(thumb).astype('double')
-            # TODO check and see if max proj work after masking
+            # TODO check and see if max proj works after masking (just segmented ones)
             # might want to take max projection of three sections of the z stack
             im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
 
             rgb_out = np.expand_dims(im_proj, 2)
+            rgba_out = np.repeat(rgb_out, 4, 2).astype('float')
             rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
+
 
             # inject color.  careful of type mismatches.
             rgb_out *= self.colors[i]
+            # default alpha color, doesn't mean anything
+            rgba_vals = self.colors[i] + [1.0]
+            rgba_out *= rgba_vals
 
             # normalize contrast
-            # TODO move this to do be executed later (after thresholding)
             rgb_out /= np.max(rgb_out)
 
-            border_percent = 0.1
-            im_width = rgb_out.shape[0]
-            im_height = rgb_out.shape[1]
-            left_bound = m.floor(border_percent * im_width)
-            right_bound = m.ceil((1 - border_percent) * im_width)
-            bottom_bound = m.floor(border_percent * im_height)
-            top_bound = m.ceil((1 - border_percent) * im_height)
-
-            cut_border = rgb_out[left_bound:right_bound, bottom_bound:top_bound]
-            nonzeros = cut_border[np.nonzero(cut_border)]
-            print("\nMax: " + str(np.max(nonzeros)))
-            print("Min: " + str(np.min(nonzeros)))
-
-            # TODO package this up in another method
-            if self.threshold_mode == "sum":
-                print("Median: " + str(np.median(nonzeros)))
-                print("Mean: " + str(np.mean(nonzeros)))
-                threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
-            else:
-                luminance_vals = []
-                for x in range(rgb_out.shape[0]):
-                    for y in range(rgb_out.shape[1]):
-                        luminance_vals.append(get_luminance(rgb_out[x, y]))
-                threshold = np.mean(luminance_vals)
-
-            # TODO 99.8 percentile as max
-            print("Threshold: " + str(threshold))
+            lower_threshold, upper_threshold = self._get_threshold(rgb_out)
+            # ignore ridiculous bright spots
+            print("Thresholds: " + str((lower_threshold, upper_threshold)))
 
             total = float((rgb_out.shape[0] * rgb_out.shape[1]))
-            cutout = 0.0
+            cutout, low_cut, high_cut = 0.0, 0.0, 0.0
             for x in range(rgb_out.shape[0]):
                 for y in range(rgb_out.shape[1]):
                     pixel_weight = rgb_out[x, y].sum() / rgb_out.shape[2] if self.threshold_mode == "sum" else get_luminance(rgb_out[x, y])
-                    if pixel_weight > threshold:
+                    if lower_threshold < pixel_weight < upper_threshold:
                         inter[x, y] = rgb_out[x, y]
-                    else:
+                    elif pixel_weight < lower_threshold:
+                        low_cut += 1.0
+                        cutout += 1.0
+                    elif pixel_weight > upper_threshold:
+                        high_cut += 1.0
                         cutout += 1.0
 
             print("Total cut out: " + str((cutout / total) * 100.0) + "%")
+            print("Cut from lower threshold: " + str((low_cut / cutout) * 100.0) + "%")
+            print("Cut from upper threshold: " + str((high_cut / cutout) * 100.0) + "%")
 
         try:
             # if images need to get bigger instead of smaller, this will fail
             comp = t.pyramid_reduce(inter, downscale=downscale_factor)
         except ValueError:
             comp = imresize(inter, shape_out_rgb)
-
+        print("---------------------------------------------------")
+        comp /= np.max(comp)
+        comp[comp < 0] = 0
         # returns a CYX array for the png writer
         return comp.transpose((2, 0, 1))
 
@@ -235,9 +255,8 @@ class ThumbnailGenerator:
 def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
                              seg_channel_index=-1, size=128):
 
-    return ThumbnailGenerator(im1,
-                              memb_index=channel_indices[0], struct_index=channel_indices[1], nuc_index=channel_indices[2],
-                              size=size, colors=colors, threshold="luminance").make_full_field_thumbnail()
+    return ThumbnailGenerator(memb_index=channel_indices[0], struct_index=channel_indices[1], nuc_index=channel_indices[2],
+                              size=size, colors=colors, threshold="luminance").make_full_field_thumbnail(im1)
 
     #
     # # assume all images have same shape!

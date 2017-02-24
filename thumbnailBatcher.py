@@ -13,10 +13,11 @@ from aicsimagetools.omeTifReader import OmeTifReader
 
 _cmy = ([[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]], "cmy")
 _cym = ([[0.0, 1.0, 1.0], [1.0, 1.0, 0.0], [1.0, 0.0, 1.0]], "cym")
+_ymc = ([[1.0, 1.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]], "ymc")
 _rgb = ([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], "rgb")
 _rbg = ([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]], "rbg")
 _brg = ([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], "brg")
-color_choices = [_cym, _cmy, _rgb, _rbg, _brg]
+color_choices = [_cym, _cmy, _ymc]
 
 
 def full_fields_color(ome_tif_files, color):
@@ -27,7 +28,7 @@ def full_fields_color(ome_tif_files, color):
         with OmeTifReader(file_name) as reader:
             # converts to CZYX
             image = reader.load()[0].transpose((1, 0, 2, 3))
-        thumb = ThumbnailGenerator(image, colors=color[0]).make_full_field_thumbnail()
+        thumb = ThumbnailGenerator(colors=color[0]).make_full_field_thumbnail(image)
         path_as_list = re.split(r'\\|/', file_name)
         new_path = path_as_list[:-2]
         new_path.append(color[1])
