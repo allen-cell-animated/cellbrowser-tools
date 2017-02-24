@@ -11,6 +11,8 @@ from aicsimagetools.omeTifReader import OmeTifReader
 
 # Author: Zach Crabtree zacharyc@alleninstitute.org
 
+# see http://www.somersault1824.com/tips-for-designing-scientific-figures-for-color-blind-readers/
+# or http://mkweb.bcgsc.ca/biovis2012/color-blindness-palette.png
 _cmy = ([[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]], "cmy")
 _cym = ([[0.0, 1.0, 1.0], [1.0, 1.0, 0.0], [1.0, 0.0, 1.0]], "cym")
 _ymc = ([[1.0, 1.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]], "ymc")
@@ -28,7 +30,7 @@ def full_fields_color(ome_tif_files, color):
         with OmeTifReader(file_name) as reader:
             # converts to CZYX
             image = reader.load()[0].transpose((1, 0, 2, 3))
-        thumb = ThumbnailGenerator(colors=color[0]).make_full_field_thumbnail(image)
+        thumb = ThumbnailGenerator(colors=color[0], threshold="luminance", layering="alpha-blend").make_full_field_thumbnail(image)
         path_as_list = re.split(r'\\|/', file_name)
         new_path = path_as_list[:-2]
         new_path.append(color[1])

@@ -2,6 +2,7 @@
 
 # author: Dan Toloudis danielt@alleninstitute.org
 
+from __future__ import print_function
 from aicsimagetools import *
 import argparse
 import numpy as np
@@ -141,6 +142,66 @@ class ThumbnailGenerator:
 
         return lower_threshold, upper_threshold
 
+    def _layer_projections(self, projection_array):
+        # assert that the array is not empty
+        assert projection_array
+        assert len(projection_array) == len(self.colors)
+        layered_image = np.zeros((projection_array[0].shape[0], projection_array[0].shape[1], 3))
+        print("layering channels...", end=" ")
+        for i in range(len(projection_array)):
+            print(i, end=" ")
+            projection = projection_array[i]
+            assert projection.shape == projection_array[0].shape
+            if self.layering_mode == "alpha-blend":
+                # 4 channels - rgba
+                rgba_out = np.repeat(np.expand_dims(projection, 2), 4, 2).astype('float')
+                # default alpha color, doesn't mean anything
+                rgba_vals = self.colors[i] + [1.0]
+                rgba_out *= rgba_vals
+                max_val = np.max(rgba_out)
+                rgba_out /= max_val
+
+                for x in range(layered_image.shape[0]):
+                    for y in range(layered_image.shape[1]):
+                        rgb_new = rgba_out[x, y, 0:3]
+                        rgb_old = layered_image[x, y]
+                        alpha = get_luminance(rgb_new)
+                        layered_image[x,y] = alpha * rgb_new + (1 - alpha) * rgb_old
+
+            elif self.layering_mode == "superimpose":
+                # 3 channels - rgb
+                rgb_out = np.expand_dims(projection, 2)
+                rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
+                # inject color.  careful of type mismatches.
+                rgb_out *= self.colors[i]
+                # normalize contrast
+                rgb_out /= np.max(rgb_out)
+                lower_threshold, upper_threshold = self._get_threshold(rgb_out)
+                # ignore bright spots
+                print("Thresholds: " + str((lower_threshold, upper_threshold)))
+
+                total = float((rgb_out.shape[0] * rgb_out.shape[1]))
+                cutout, low_cut, high_cut = 0.0, 0.0, 0.0
+                for x in range(rgb_out.shape[0]):
+                    for y in range(rgb_out.shape[1]):
+                        pixel_weight = rgb_out[x, y].sum() / rgb_out.shape[2] if self.threshold_mode == "sum" else get_luminance(rgb_out[x, y])
+                        if lower_threshold < pixel_weight < upper_threshold:
+                            layered_image[x, y] = rgb_out[x, y]
+                        elif pixel_weight < lower_threshold:
+                            low_cut += 1.0
+                            cutout += 1.0
+                        elif pixel_weight > upper_threshold:
+                            high_cut += 1.0
+                            cutout += 1.0
+
+                print("Total cut out: " + str((cutout / total) * 100.0) + "%")
+                print("Cut by lower threshold: " + str((low_cut / cutout) * 100.0) + "%")
+                print("Cut by upper threshold: " + str((high_cut / cutout) * 100.0) + "%")
+
+        print("done")
+        return layered_image * 255
+
+
     def make_full_field_thumbnail(self, image):
         # assume all images have same shape!
         # expects CZYX image where C is 7
@@ -163,8 +224,8 @@ class ThumbnailGenerator:
         num_noise_floor_bins = 256
 
         downscale_factor = (image.shape[3] / self.size)
-        # Generating an XYC array
-        inter = np.zeros((image.shape[2], image.shape[3], image.shape[0]))
+
+        projection_array = []
         for i in self.channel_indices:
             # subtract out the noise floor.
             immin = image[i].min()
@@ -185,67 +246,22 @@ class ThumbnailGenerator:
             # TODO check and see if max proj works after masking (just segmented ones)
             # might want to take max projection of three sections of the z stack
             im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
+            projection_array.append(im_proj)
 
-            rgb_out = np.expand_dims(im_proj, 2)
-            rgba_out = np.repeat(rgb_out, 4, 2).astype('float')
-            rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
-
-
-            # inject color.  careful of type mismatches.
-            rgb_out *= self.colors[i]
-            # default alpha color, doesn't mean anything
-            rgba_vals = self.colors[i] + [1.0]
-            rgba_out *= rgba_vals
-
-            # normalize contrast
-            rgb_out /= np.max(rgb_out)
-
-            lower_threshold, upper_threshold = self._get_threshold(rgb_out)
-            # ignore ridiculous bright spots
-            print("Thresholds: " + str((lower_threshold, upper_threshold)))
-
-            total = float((rgb_out.shape[0] * rgb_out.shape[1]))
-            cutout, low_cut, high_cut = 0.0, 0.0, 0.0
-            for x in range(rgb_out.shape[0]):
-                for y in range(rgb_out.shape[1]):
-                    pixel_weight = rgb_out[x, y].sum() / rgb_out.shape[2] if self.threshold_mode == "sum" else get_luminance(rgb_out[x, y])
-                    if lower_threshold < pixel_weight < upper_threshold:
-                        inter[x, y] = rgb_out[x, y]
-                    elif pixel_weight < lower_threshold:
-                        low_cut += 1.0
-                        cutout += 1.0
-                    elif pixel_weight > upper_threshold:
-                        high_cut += 1.0
-                        cutout += 1.0
-
-            print("Total cut out: " + str((cutout / total) * 100.0) + "%")
-            print("Cut from lower threshold: " + str((low_cut / cutout) * 100.0) + "%")
-            print("Cut from upper threshold: " + str((high_cut / cutout) * 100.0) + "%")
+        layered_image = self._layer_projections(projection_array)
 
         try:
             # if images need to get bigger instead of smaller, this will fail
-            comp = t.pyramid_reduce(inter, downscale=downscale_factor)
+            comp = t.pyramid_reduce(layered_image, downscale=downscale_factor)
         except ValueError:
-            comp = imresize(inter, shape_out_rgb)
-        print("---------------------------------------------------")
+            # TODO some segmented images are too large because they are not square
+            comp = imresize(layered_image, shape_out_rgb)
         comp /= np.max(comp)
         comp[comp < 0] = 0
         # returns a CYX array for the png writer
         return comp.transpose((2, 0, 1))
 
-# # max, sum, min, mean, inv_sum
-# def generate_thumbnail(w,h, src_img, colors, slices, projection_axis, projection_type='max'):
-#     shape = src_img.shape
-#
-#     make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=True):
-#
-#     # do resizing last!
-#
-#     return img
 
-
-# see http://www.somersault1824.com/tips-for-designing-scientific-figures-for-color-blind-readers/
-# or http://mkweb.bcgsc.ca/biovis2012/color-blindness-palette.png
 # colors = [
 #     [0.0/255.0, 109.0/255.0, 219.0/255.0],
 #     [36.0/255.0, 255.0/255.0, 36.0/255.0],
@@ -363,6 +379,6 @@ def main():
 
 
 if __name__ == "__main__":
-    print " ".join(sys.argv)
+    print(" ".join(sys.argv))
     main()
     sys.exit(0)
