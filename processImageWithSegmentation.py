@@ -279,18 +279,8 @@ class ImageProcessor:
         #   channel_indices[3] to channel3
         # FIXME There's got to be a more concise way to do this.  Use len(channel_indices) please!
         pix = self.omexml.image().Pixels
-        chxml = [
-            pix.Channel(self.channel_indices[0]),
-            pix.Channel(self.channel_indices[1]),
-            pix.Channel(self.channel_indices[2]),
-            pix.Channel(self.channel_indices[3])
-        ]
-        planes = [
-            pix.get_planes_of_channel(self.channel_indices[0]),
-            pix.get_planes_of_channel(self.channel_indices[1]),
-            pix.get_planes_of_channel(self.channel_indices[2]),
-            pix.get_planes_of_channel(self.channel_indices[3])
-        ]
+        chxml = [pix.Channel(channel) for channel in self.channel_indices]
+        planes = [pix.get_planes_of_channel(channel) for channel in self.channel_indices]
         for i in channels_to_remove:
             pix.remove_channel(i)
         # reset all plane indices
