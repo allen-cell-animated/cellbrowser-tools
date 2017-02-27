@@ -109,18 +109,16 @@ class ThumbnailGenerator:
         self.layering_mode = layering
 
     def _get_threshold(self, image):
-
-        assert len(image.shape) == 3
-        assert image.shape[2] == 3
+        # TODO make thresholds and use in alpha blending
 
         # using this allows us to ignore the bright corners of a cell image
         border_percent = 0.1
         im_width = image.shape[0]
         im_height = image.shape[1]
-        left_bound = m.floor(border_percent * im_width)
-        right_bound = m.ceil((1 - border_percent) * im_width)
-        bottom_bound = m.floor(border_percent * im_height)
-        top_bound = m.ceil((1 - border_percent) * im_height)
+        left_bound = int(m.floor(border_percent * im_width))
+        right_bound = int(m.ceil((1 - border_percent) * im_width))
+        bottom_bound = int(m.floor(border_percent * im_height))
+        top_bound = int(m.ceil((1 - border_percent) * im_height))
 
         cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
         nonzeros = cut_border[np.nonzero(cut_border)]
@@ -128,22 +126,26 @@ class ThumbnailGenerator:
         print("Min: " + str(np.min(nonzeros)))
         upper_threshold = np.max(cut_border) * .998
 
-        if self.threshold_mode == "mean":
+        threshold_mode = self.threshold_mode
+        if threshold_mode == "luminance":
+            try:
+                luminance_vals = []
+                for x in range(cut_border.shape[0]):
+                    for y in range(cut_border.shape[1]):
+                        luminance_vals.append(get_luminance(cut_border[x, y]))
+                lower_threshold = np.mean(luminance_vals)
+            except TypeError:
+                threshold_mode = "mean"
+
+        if threshold_mode == "mean":
             print("Median: " + str(np.median(nonzeros)))
             print("Mean: " + str(np.mean(nonzeros)))
             lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
-        else:
-            luminance_vals = []
-            for x in range(cut_border.shape[0]):
-                for y in range(cut_border.shape[1]):
-                    luminance_vals.append(get_luminance(cut_border[x, y]))
-            lower_threshold = np.mean(luminance_vals)
-
 
         return lower_threshold, upper_threshold
 
     def _layer_projections(self, projection_array):
-        # assert that the array is not empty
+        # array cannot be empty or have more channels than the color array
         assert projection_array
         assert len(projection_array) == len(self.colors)
         layered_image = np.zeros((projection_array[0].shape[0], projection_array[0].shape[1], 3))
@@ -154,19 +156,35 @@ class ThumbnailGenerator:
             assert projection.shape == projection_array[0].shape
             if self.layering_mode == "alpha-blend":
                 # 4 channels - rgba
+                projection /= np.max(projection)
                 rgba_out = np.repeat(np.expand_dims(projection, 2), 4, 2).astype('float')
-                # default alpha color, doesn't mean anything
+                # rgb values for the color palette + initial alpha value
                 rgba_vals = self.colors[i] + [1.0]
                 rgba_out *= rgba_vals
-                max_val = np.max(rgba_out)
-                rgba_out /= max_val
 
+                lower_threshold, upper_threshold = self._get_threshold(projection)
+                cutout = 0
+                total = float(layered_image.shape[0] * layered_image.shape[1])
+                # blending step
                 for x in range(layered_image.shape[0]):
                     for y in range(layered_image.shape[1]):
                         rgb_new = rgba_out[x, y, 0:3]
-                        rgb_old = layered_image[x, y]
-                        alpha = get_luminance(rgb_new)
-                        layered_image[x,y] = alpha * rgb_new + (1 - alpha) * rgb_old
+                        pixel_weight = np.mean(rgb_new) if self.threshold_mode == "mean" else get_luminance(rgb_new)
+                        if lower_threshold < pixel_weight < upper_threshold or i == 2:
+                            rgb_old = layered_image[x, y]
+                            alpha = projection[x, y]
+                            if alpha > 1:
+                                alpha = 1
+                            elif alpha < 0:
+                                alpha = 0
+                            # premultiplied alpha
+                            final_val = rgb_new + (1 - alpha) * rgb_old
+                            layered_image[x, y] = final_val
+                        else:
+                            cutout += 1.0
+                            continue
+
+                print("Total cut out: " + str((cutout / total) * 100.0) + "%")
 
             elif self.layering_mode == "superimpose":
                 # 3 channels - rgb
@@ -184,29 +202,23 @@ class ThumbnailGenerator:
                 cutout, low_cut, high_cut = 0.0, 0.0, 0.0
                 for x in range(rgb_out.shape[0]):
                     for y in range(rgb_out.shape[1]):
-                        pixel_weight = rgb_out[x, y].sum() / rgb_out.shape[2] if self.threshold_mode == "sum" else get_luminance(rgb_out[x, y])
-                        if lower_threshold < pixel_weight < upper_threshold:
+                        pixel_weight = np.mean(rgb_out[x, y]) if self.threshold_mode == "mean" else get_luminance(rgb_out[x, y])
+                        if lower_threshold < pixel_weight < upper_threshold or i == 2:
                             layered_image[x, y] = rgb_out[x, y]
-                        elif pixel_weight < lower_threshold:
-                            low_cut += 1.0
-                            cutout += 1.0
-                        elif pixel_weight > upper_threshold:
-                            high_cut += 1.0
+                        else:
                             cutout += 1.0
 
                 print("Total cut out: " + str((cutout / total) * 100.0) + "%")
-                print("Cut by lower threshold: " + str((low_cut / cutout) * 100.0) + "%")
-                print("Cut by upper threshold: " + str((high_cut / cutout) * 100.0) + "%")
 
         print("done")
-        return layered_image * 255
-
+        return layered_image
 
     def make_full_field_thumbnail(self, image):
         # assume all images have same shape!
         # expects CZYX image where C is 7
         im_size = np.array(image[0].shape)
         assert image.shape[0] == 7
+        image_for_masking = image
         image = image[0:3]
 
         assert len(im_size) == 3
@@ -221,12 +233,22 @@ class ThumbnailGenerator:
                                ))
         shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
+        # if the image is not square, it's a segmented cell image
+        if shape_out[1] != shape_out[2]:
+            # apply the cell segmentation mask.  bye bye to data outside the cell
+            for i in range(image.shape[0]):
+                image[i, :, :, :] = mask_image(image[i, :, :, :], image_for_masking[self.seg_indices[1], :, :, :])
+
+
         num_noise_floor_bins = 256
-
         downscale_factor = (image.shape[3] / self.size)
-
         projection_array = []
         for i in self.channel_indices:
+            if shape_out[1] != shape_out[2] and (i == 0 or i == 1):
+                projection_type = 'max'
+            else:
+                projection_type = 'slice'
+
             # subtract out the noise floor.
             immin = image[i].min()
             immax = image[i].max()
@@ -243,9 +265,9 @@ class ThumbnailGenerator:
             thumb[thumb < 0] = 0
 
             imdbl = np.asarray(thumb).astype('double')
-            # TODO check and see if max proj works after masking (just segmented ones)
-            # might want to take max projection of three sections of the z stack
-            im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
+            # TODO implement max proj of three sections of the cell
+            # TODO thresholding is too high for the max projection of membrane
+            im_proj = matproj(imdbl, 0, projection_type, slice_index=int(thumb.shape[0] // 2))
             projection_array.append(im_proj)
 
         layered_image = self._layer_projections(projection_array)

@@ -24,18 +24,20 @@ color_choices = [_cym, _cmy, _ymc]
 
 def full_fields_color(ome_tif_files, color):
 
-    print("\nprocessing images with " + color[1] + " palette.")
+    print("\nprocessing images with " + color[1] + " palette.\n")
 
     for file_name in ome_tif_files:
         with OmeTifReader(file_name) as reader:
             # converts to CZYX
             image = reader.load()[0].transpose((1, 0, 2, 3))
+        print("processing " + file_name + "...")
+        # TODO maybe pass in functions instead of parameters for branching blocks
         thumb = ThumbnailGenerator(colors=color[0], threshold="luminance", layering="alpha-blend").make_full_field_thumbnail(image)
         path_as_list = re.split(r'\\|/', file_name)
         new_path = path_as_list[:-2]
         new_path.append(color[1])
         new_path.append(path_as_list[len(path_as_list) - 1][:-8] + ".png")
-        new_path = join(*new_path)
+        new_path = "/home/zacharyc/Development/cellbrowser-tools/dryrun/images/" + color[1] + "/" + path_as_list[len(path_as_list) - 1][:-8] + ".png"
         if not exists(new_path[:new_path.rfind('/')]):
             makedirs(new_path[:new_path.rfind('/')])
         with PngWriter(new_path, overwrite_file=True) as writer:
@@ -74,6 +76,7 @@ def main():
         file_list = sorted(random_file_list)
     else:
         file_list = sorted(only_ome_tif)
+    print(file_list)
 
     if args.first != -1 and args.first <= len(file_list):
         file_list = file_list[:args.first]
