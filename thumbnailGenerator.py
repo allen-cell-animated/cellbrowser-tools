@@ -97,12 +97,17 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 class ThumbnailGenerator:
 
     def __init__(self, colors=_cmy, size=128, memb_index=0, struct_index=1, nuc_index=2,
+                 memb_seg_index=5, struct_seg_index=6, nuc_seg_index=4,
                  threshold="luminance", layering="superimpose"):
+
+        assert len(colors) == 3 and len(colors[0]) == 3
         self.colors = colors
+
         self.size = size
         self.memb_index, self.struct_index, self.nuc_index = memb_index, struct_index, nuc_index
         self.channel_indices = [self.memb_index, self.struct_index, self.nuc_index]
-        self.seg_indices = [4, 5, 6]
+        self.seg_indices = [nuc_seg_index, memb_seg_index, struct_seg_index]
+
         assert threshold == "mean" or threshold == "luminance"
         assert layering == "superimpose" or layering == "alpha-blend"
         self.threshold_mode = threshold
