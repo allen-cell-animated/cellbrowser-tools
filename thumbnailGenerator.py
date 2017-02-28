@@ -256,10 +256,7 @@ class ThumbnailGenerator:
             peakind = np.argmax(hi)
             # subtract this out
             thumb = image[i].astype(np.float32)
-            # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
-            # TODO is this true?
-            if i != 0:
-                thumb -= bin_edges[peakind]
+            thumb -= bin_edges[peakind]
             # don't go negative
             thumb[thumb < 0] = 0
 
