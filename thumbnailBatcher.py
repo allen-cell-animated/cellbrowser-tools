@@ -1,7 +1,7 @@
 import argparse
 import sys
 from os import listdir, makedirs
-from os.path import isfile, join, exists
+from os.path import isfile, join, exists, basename, splitext
 import re
 import random
 from thumbnailGenerator import ThumbnailGenerator
@@ -21,6 +21,11 @@ _rbg = ([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]], "rbg")
 _brg = ([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], "brg")
 color_choices = [_cym, _cmy, _ymc]
 
+def is_segmented_image(file_name):
+    if file_name.count('_') == 3:
+        return True
+    else:
+        return False
 
 def full_fields_color(ome_tif_files, color):
 
@@ -31,13 +36,14 @@ def full_fields_color(ome_tif_files, color):
         with OmeTifReader(file_name) as reader:
             # converts to CZYX
             image = reader.load()[0].transpose((1, 0, 2, 3))
+        base_file_name = basename(file_name)
         print("processing " + file_name + "...")
-        thumb = generator.make_thumbnail(image)
-        path_as_list = re.split(r'\\|/', file_name)
-        new_path = path_as_list[:-2]
-        new_path.append(color[1])
-        new_path.append(path_as_list[len(path_as_list) - 1][:-8] + ".png")
-        new_path = "/home/zacharyc/Development/cellbrowser-tools/dryrun/images/" + color[1] + "/" + path_as_list[len(path_as_list) - 1][:-8] + ".png"
+        thumb = generator.make_thumbnail(image, apply_cell_mask=is_segmented_image(base_file_name))
+        # path_as_list = re.split(r'\\|/', file_name)
+        # new_path = path_as_list[:-2]
+        # new_path.append(color[1])
+        # new_path.append(path_as_list[len(path_as_list) - 1][:-8] + ".png")
+        new_path = join("/home/zacharyc/Development/cellbrowser-tools/dryrun/images/", color[1], base_file_name[:-8] + ".png")
         if not exists(new_path[:new_path.rfind('/')]):
             makedirs(new_path[:new_path.rfind('/')])
         with PngWriter(new_path, overwrite_file=True) as writer:
