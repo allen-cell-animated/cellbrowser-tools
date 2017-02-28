@@ -15,7 +15,7 @@ def make_zips(dataset_name):
         names = dfs['ImageID'].tolist()
         cellline_name = os.path.basename(inputfile).replace('imageID_ometif_', '').replace('.xlsx', '')
 
-        zf = zipfile.ZipFile(os.path.join(image_dir, cellline_name+'.zip'), "w", zipfile.ZIP_DEFLATED)
+        zf = zipfile.ZipFile(os.path.join(image_dir, cellline_name+'.zip'), "w", zipfile.ZIP_DEFLATED, True)
         for image in names:
             imgtozip = os.path.join(image_dir, cellline_name, image)
             zf.write(imgtozip, image)
