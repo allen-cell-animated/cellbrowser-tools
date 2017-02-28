@@ -241,6 +241,7 @@ class ThumbnailGenerator:
             # apply the cell segmentation mask.  bye bye to data outside the cell
             for i in range(image.shape[0]):
                 image[i, :, :, :] = mask_image(image[i, :, :, :], image[self.seg_indices[1], :, :, :])
+            image /= np.max(image)
 
         image = image[0:3]
         num_noise_floor_bins = 256
