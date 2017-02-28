@@ -244,7 +244,7 @@ class ThumbnailGenerator:
 
         image = image[0:3]
         num_noise_floor_bins = 256
-        downscale_factor = (image.shape[3] / self.size)
+        downscale_factor = (image.shape[3] / self.size) if image.shape[3] > image.shape[2] else (image.shape[2] / self.size)
         projection_array = []
         projection_type = 'slice'
         for i in self.channel_indices:
