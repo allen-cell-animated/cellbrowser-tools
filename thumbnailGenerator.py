@@ -248,6 +248,8 @@ class ThumbnailGenerator:
         projection_array = []
         projection_type = 'slice'
         for i in self.channel_indices:
+            if apply_cell_mask and (i == self.memb_index or i == self.struct_index):
+                projection_type = 'max'
             # subtract out the noise floor.
             immin = image[i].min()
             immax = image[i].max()
