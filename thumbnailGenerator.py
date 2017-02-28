@@ -121,7 +121,7 @@ class ThumbnailGenerator:
                                max_edge if im_size[1] > im_size[2] else max_edge * im_size[1] / im_size[2],
                                max_edge if im_size[1] < im_size[2] else max_edge * im_size[2] / im_size[1]
                                ))
-        return (shape_out[1], shape_out[2], 3)
+        return shape_out[1], shape_out[2], 3
 
     def _get_threshold(self, image):
         # TODO make thresholds and use in alpha blending
@@ -228,7 +228,7 @@ class ThumbnailGenerator:
         print("done")
         return layered_image
 
-    def make_full_field_thumbnail(self, image):
+    def make_thumbnail(self, image, apply_cell_mask=False):
         # assume all images have same shape!
         # expects CZYX image where C is 7
         assert image.shape[0] >= 6
@@ -241,7 +241,7 @@ class ThumbnailGenerator:
         image = image[0:3]
 
         # if the image is not square, it's a segmented cell image
-        if shape_out_rgb[0] != shape_out_rgb[1]:
+        if apply_cell_mask:
             # apply the cell segmentation mask.  bye bye to data outside the cell
             for i in range(image.shape[0]):
                 image[i, :, :, :] = mask_image(image[i, :, :, :], image_for_masking[self.seg_indices[1], :, :, :])
@@ -297,7 +297,7 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
                              seg_channel_index=-1, size=128):
 
     return ThumbnailGenerator(memb_index=channel_indices[0], struct_index=channel_indices[1], nuc_index=channel_indices[2],
-                              size=size, colors=colors, threshold="luminance").make_full_field_thumbnail(im1)
+                              size=size, colors=colors, threshold="luminance").make_thumbnail(im1)
 
     #
     # # assume all images have same shape!

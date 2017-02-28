@@ -32,7 +32,7 @@ def full_fields_color(ome_tif_files, color):
             # converts to CZYX
             image = reader.load()[0].transpose((1, 0, 2, 3))
         print("processing " + file_name + "...")
-        thumb = generator.make_full_field_thumbnail(image)
+        thumb = generator.make_thumbnail(image)
         path_as_list = re.split(r'\\|/', file_name)
         new_path = path_as_list[:-2]
         new_path.append(color[1])
