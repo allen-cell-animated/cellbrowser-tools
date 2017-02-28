@@ -277,7 +277,6 @@ class ImageProcessor:
         #   channel_indices[1] to channel1
         #   channel_indices[2] to channel2
         #   channel_indices[3] to channel3
-        # FIXME There's got to be a more concise way to do this.  Use len(channel_indices) please!
         pix = self.omexml.image().Pixels
         chxml = [pix.Channel(channel) for channel in self.channel_indices]
         planes = [pix.get_planes_of_channel(channel) for channel in self.channel_indices]
