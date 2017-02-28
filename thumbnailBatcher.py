@@ -50,20 +50,20 @@ def main():
     parser.add_argument('input', help="directory to search in")
 
     number = parser.add_mutually_exclusive_group()
-    number.add_argument('--random', '-r', type=int, help="generate thumbnails for random ometifs", default=None)
-    number.add_argument('--first', '-f', type=int, help="generate x number of thumbnails for ometifs", default=-1)
+    number.add_argument('--random', '-r', type=int, help="generate thumbnails for random ometifs", default=0)
+    number.add_argument('--first', '-f', type=int, help="generate x number of thumbnails for ometifs", default=0)
 
     args = parser.parse_args()
     rand_max = args.random
 
     only_ome_tif = [f for f in iglob(join(args.input, "**", "*.ome.tif"))]
+
     if not only_ome_tif:
         only_files = [join(args.input, file_name) for file_name in listdir(args.input) if
                       isfile(join(args.input, file_name))]
         only_ome_tif = [f for f in only_files if f.endswith(".ome.tif")]
-    print(only_ome_tif)
 
-    if rand_max is not None:
+    if rand_max is not 0:
         if len(only_ome_tif) <= rand_max:
             random_file_list = only_ome_tif
         else:
@@ -74,12 +74,15 @@ def main():
                     random_file_list [int(random.uniform(0, rand_max))] = ome_tif
                 k += 1
         file_list = sorted(random_file_list)
+    elif args.first is not 0:
+        file_list = sorted(only_ome_tif)
+        if args.first <= len(file_list):
+            file_list = file_list[:args.first]
     else:
         file_list = sorted(only_ome_tif)
-    print(file_list)
 
-    if args.first != -1 and args.first <= len(file_list):
-        file_list = file_list[:args.first]
+    print (file_list)
+
     for color in color_choices:
         full_fields_color(file_list, color=color)
 
