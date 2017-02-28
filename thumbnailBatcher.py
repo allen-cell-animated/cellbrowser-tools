@@ -1,7 +1,6 @@
 import argparse
 import sys
-from os import listdir, makedirs
-from os.path import isfile, join, exists, basename, splitext
+import os
 import re
 import random
 from thumbnailGenerator import ThumbnailGenerator
@@ -36,16 +35,16 @@ def full_fields_color(ome_tif_files, color):
         with OmeTifReader(file_name) as reader:
             # converts to CZYX
             image = reader.load()[0].transpose((1, 0, 2, 3))
-        base_file_name = basename(file_name)
+        base_file_name = os.path.basename(file_name)
         print("processing " + file_name + "...")
         thumb = generator.make_thumbnail(image, apply_cell_mask=is_segmented_image(base_file_name))
         # path_as_list = re.split(r'\\|/', file_name)
         # new_path = path_as_list[:-2]
         # new_path.append(color[1])
         # new_path.append(path_as_list[len(path_as_list) - 1][:-8] + ".png")
-        new_path = join("/home/zacharyc/Development/cellbrowser-tools/dryrun/images/", color[1], base_file_name[:-8] + ".png")
-        if not exists(new_path[:new_path.rfind('/')]):
-            makedirs(new_path[:new_path.rfind('/')])
+        new_path = os.path.join("/home/zacharyc/Development/cellbrowser-tools/dryrun/images/", color[1], base_file_name[:-8] + ".png")
+        if not os.path.exists(new_path[:new_path.rfind('/')]):
+            os.path.makedirs(new_path[:new_path.rfind('/')])
         with PngWriter(new_path, overwrite_file=True) as writer:
             writer.save(thumb)
 
@@ -60,16 +59,14 @@ def main():
     number.add_argument('--first', '-f', type=int, help="generate x number of thumbnails for ometifs", default=0)
 
     args = parser.parse_args()
-    rand_max = args.random
 
-    only_ome_tif = [f for f in iglob(join(args.input, "**", "*.ome.tif"))]
+    only_ome_tif = []
 
-    if not only_ome_tif:
-        only_files = [join(args.input, file_name) for file_name in listdir(args.input) if
-                      isfile(join(args.input, file_name))]
-        only_ome_tif = [f for f in only_files if f.endswith(".ome.tif")]
+    for root, dirs, files in os.walk(args.input):
+        only_ome_tif.append(files)
 
-    if rand_max is not 0:
+    if args.random is not 0:
+        rand_max = args.random
         if len(only_ome_tif) <= rand_max:
             random_file_list = only_ome_tif
         else:
