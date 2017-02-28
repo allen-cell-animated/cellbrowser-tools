@@ -26,13 +26,13 @@ def full_fields_color(ome_tif_files, color):
 
     print("\nprocessing images with " + color[1] + " palette.\n")
 
+    generator = ThumbnailGenerator(colors=color[0], threshold="luminance", layering="alpha-blend")
     for file_name in ome_tif_files:
         with OmeTifReader(file_name) as reader:
             # converts to CZYX
             image = reader.load()[0].transpose((1, 0, 2, 3))
         print("processing " + file_name + "...")
-        # TODO maybe pass in functions instead of parameters for branching blocks
-        thumb = ThumbnailGenerator(colors=color[0], threshold="luminance", layering="alpha-blend").make_full_field_thumbnail(image)
+        thumb = generator.make_full_field_thumbnail(image)
         path_as_list = re.split(r'\\|/', file_name)
         new_path = path_as_list[:-2]
         new_path.append(color[1])
