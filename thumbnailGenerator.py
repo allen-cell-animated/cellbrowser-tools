@@ -229,24 +229,20 @@ class ThumbnailGenerator:
         return layered_image
 
     def make_thumbnail(self, image, apply_cell_mask=False):
-        # assume all images have same shape!
-        # expects CZYX image where C is 7
+
         assert image.shape[0] >= 6
         assert max(self.memb_index, self.struct_index, self.nuc_index) <= image.shape[0] - 1
+
         im_size = np.array(image[0].shape)
         assert len(im_size) == 3
         shape_out_rgb = self._get_output_shape(im_size)
 
-        image_for_masking = image
-        image = image[0:3]
-
-        # if the image is not square, it's a segmented cell image
         if apply_cell_mask:
             # apply the cell segmentation mask.  bye bye to data outside the cell
             for i in range(image.shape[0]):
-                image[i, :, :, :] = mask_image(image[i, :, :, :], image_for_masking[self.seg_indices[1], :, :, :])
+                image[i, :, :, :] = mask_image(image[i, :, :, :], image[self.seg_indices[1], :, :, :])
 
-
+        image = image[0:3]
         num_noise_floor_bins = 256
         downscale_factor = (image.shape[3] / self.size)
         projection_array = []
