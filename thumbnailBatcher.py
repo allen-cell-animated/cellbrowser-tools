@@ -30,7 +30,7 @@ def full_fields_color(ome_tif_files, color):
 
     print("\nprocessing images with " + color[1] + " palette.\n")
 
-    generator = ThumbnailGenerator(colors=color[0], threshold="luminance", layering="alpha-blend")
+    generator = ThumbnailGenerator(colors=color[0], layering="alpha-blend")
     for file_name in ome_tif_files:
         with OmeTifReader(file_name) as reader:
             # converts to CZYX

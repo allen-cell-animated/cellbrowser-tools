@@ -21,6 +21,29 @@ def get_luminance(array):
     return np.sum(array * [.299, .587, .114])
 
 
+def _get_threshold(image):
+    # using this allows us to ignore the bright corners of a cell image
+    border_percent = 0.1
+    im_width = image.shape[0]
+    im_height = image.shape[1]
+    left_bound = int(m.floor(border_percent * im_width))
+    right_bound = int(m.ceil((1 - border_percent) * im_width))
+    bottom_bound = int(m.floor(border_percent * im_height))
+    top_bound = int(m.ceil((1 - border_percent) * im_height))
+
+    cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
+    nonzeros = cut_border[np.nonzero(cut_border)]
+    print("\nMax: " + str(np.max(nonzeros)))
+    print("Min: " + str(np.min(nonzeros)))
+    upper_threshold = np.max(cut_border) * .998
+
+    print("Median: " + str(np.median(nonzeros)))
+    print("Mean: " + str(np.mean(nonzeros)))
+    lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
+
+    return lower_threshold, upper_threshold
+
+
 def imresize(im, new_size):
     new_size = np.array(new_size).astype('double')
     old_size = np.array(im.shape).astype('double')
@@ -98,7 +121,7 @@ class ThumbnailGenerator:
 
     def __init__(self, colors=_cmy, size=128, memb_index=0, struct_index=1, nuc_index=2,
                  memb_seg_index=5, struct_seg_index=6, nuc_seg_index=4,
-                 threshold="luminance", layering="superimpose"):
+                 layering="superimpose"):
 
         assert len(colors) == 3 and len(colors[0]) == 3
         self.colors = colors
@@ -108,9 +131,7 @@ class ThumbnailGenerator:
         self.channel_indices = [self.memb_index, self.struct_index, self.nuc_index]
         self.seg_indices = [nuc_seg_index, memb_seg_index, struct_seg_index]
 
-        assert threshold == "mean" or threshold == "luminance"
         assert layering == "superimpose" or layering == "alpha-blend"
-        self.threshold_mode = threshold
         self.layering_mode = layering
 
     def _get_output_shape(self, im_size):
@@ -122,42 +143,6 @@ class ThumbnailGenerator:
                                max_edge if im_size[1] < im_size[2] else max_edge * im_size[2] / im_size[1]
                                ))
         return shape_out[1], shape_out[2], 3
-
-    def _get_threshold(self, image):
-        # TODO make thresholds and use in alpha blending
-
-        # using this allows us to ignore the bright corners of a cell image
-        border_percent = 0.1
-        im_width = image.shape[0]
-        im_height = image.shape[1]
-        left_bound = int(m.floor(border_percent * im_width))
-        right_bound = int(m.ceil((1 - border_percent) * im_width))
-        bottom_bound = int(m.floor(border_percent * im_height))
-        top_bound = int(m.ceil((1 - border_percent) * im_height))
-
-        cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
-        nonzeros = cut_border[np.nonzero(cut_border)]
-        print("\nMax: " + str(np.max(nonzeros)))
-        print("Min: " + str(np.min(nonzeros)))
-        upper_threshold = np.max(cut_border) * .998
-
-        threshold_mode = self.threshold_mode
-        if threshold_mode == "luminance":
-            try:
-                luminance_vals = []
-                for x in range(cut_border.shape[0]):
-                    for y in range(cut_border.shape[1]):
-                        luminance_vals.append(get_luminance(cut_border[x, y]))
-                lower_threshold = np.mean(luminance_vals)
-            except TypeError:
-                threshold_mode = "mean"
-
-        if threshold_mode == "mean":
-            print("Median: " + str(np.median(nonzeros)))
-            print("Mean: " + str(np.mean(nonzeros)))
-            lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
-
-        return lower_threshold, upper_threshold
 
     def _layer_projections(self, projection_array):
         # array cannot be empty or have more channels than the color array
@@ -177,14 +162,14 @@ class ThumbnailGenerator:
                 rgba_vals = self.colors[i] + [1.0]
                 rgba_out *= rgba_vals
 
-                lower_threshold, upper_threshold = self._get_threshold(projection)
+                lower_threshold, upper_threshold = _get_threshold(projection)
                 cutout = 0
                 total = float(layered_image.shape[0] * layered_image.shape[1])
                 # blending step
                 for x in range(layered_image.shape[0]):
                     for y in range(layered_image.shape[1]):
                         rgb_new = rgba_out[x, y, 0:3]
-                        pixel_weight = np.mean(rgb_new) if self.threshold_mode == "mean" else get_luminance(rgb_new)
+                        pixel_weight = np.mean(rgb_new)
                         if lower_threshold < pixel_weight < upper_threshold or i == 2:
                             rgb_old = layered_image[x, y]
                             alpha = projection[x, y]
@@ -209,7 +194,7 @@ class ThumbnailGenerator:
                 rgb_out *= self.colors[i]
                 # normalize contrast
                 rgb_out /= np.max(rgb_out)
-                lower_threshold, upper_threshold = self._get_threshold(rgb_out)
+                lower_threshold, upper_threshold = _get_threshold(rgb_out)
                 # ignore bright spots
                 print("Thresholds: " + str((lower_threshold, upper_threshold)))
 
@@ -217,7 +202,7 @@ class ThumbnailGenerator:
                 cutout, low_cut, high_cut = 0.0, 0.0, 0.0
                 for x in range(rgb_out.shape[0]):
                     for y in range(rgb_out.shape[1]):
-                        pixel_weight = np.mean(rgb_out[x, y]) if self.threshold_mode == "mean" else get_luminance(rgb_out[x, y])
+                        pixel_weight = np.mean(rgb_out[x, y])
                         if lower_threshold < pixel_weight < upper_threshold or i == 2:
                             layered_image[x, y] = rgb_out[x, y]
                         else:
@@ -293,7 +278,7 @@ def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
                              seg_channel_index=-1, size=128):
 
     return ThumbnailGenerator(memb_index=channel_indices[0], struct_index=channel_indices[1], nuc_index=channel_indices[2],
-                              size=size, colors=colors, threshold="luminance").make_thumbnail(im1)
+                              size=size, colors=colors).make_thumbnail(im1)
 
     #
     # # assume all images have same shape!
