@@ -216,11 +216,11 @@ class ThumbnailGenerator:
     def make_full_field_thumbnail(self, image):
         # assume all images have same shape!
         # expects CZYX image where C is 7
-        im_size = np.array(image[0].shape)
-        assert image.shape[0] == 7
+        assert image.shape[0] >= 6
         image_for_masking = image
         image = image[0:3]
 
+        im_size = np.array(image[0].shape)
         assert len(im_size) == 3
         assert max(self.memb_index, self.struct_index, self.nuc_index) <= image.shape[0] - 1
 
