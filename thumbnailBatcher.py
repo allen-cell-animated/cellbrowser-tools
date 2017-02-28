@@ -1,10 +1,8 @@
 import argparse
 import sys
 import os
-import re
 import random
 from thumbnailGenerator import ThumbnailGenerator
-from glob import iglob
 from aicsimagetools.pngWriter import PngWriter
 from aicsimagetools.omeTifReader import OmeTifReader
 
@@ -20,11 +18,13 @@ _rbg = ([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]], "rbg")
 _brg = ([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], "brg")
 color_choices = [_cym, _cmy, _ymc]
 
+
 def is_segmented_image(file_name):
     if file_name.count('_') == 3:
         return True
     else:
         return False
+
 
 def full_fields_color(ome_tif_files, color):
 
@@ -38,6 +38,7 @@ def full_fields_color(ome_tif_files, color):
         base_file_name = os.path.basename(file_name)
         print("processing " + file_name + "...")
         thumb = generator.make_thumbnail(image, apply_cell_mask=is_segmented_image(base_file_name))
+        # TODO convert this to use the current directory with os.path
         # path_as_list = re.split(r'\\|/', file_name)
         # new_path = path_as_list[:-2]
         # new_path.append(color[1])
@@ -71,12 +72,12 @@ def main():
         if len(only_ome_tif) <= rand_max:
             random_file_list = only_ome_tif
         else:
-            random_file_list = only_ome_tif[:rand_max]
-            k = 1
-            for ome_tif in only_ome_tif:
-                if random.uniform(0, rand_max) > rand_max / 2:
-                    random_file_list [int(random.uniform(0, rand_max))] = ome_tif
-                k += 1
+            random_file_list = []
+            while len(random_file_list) != rand_max:
+                rand_index = random.randint(0, len(only_ome_tif))
+                while only_ome_tif[rand_index] in random_file_list:
+                    rand_index = random.randint(0, len(only_ome_tif))
+                random_file_list.append(only_ome_tif[rand_index])
         file_list = sorted(random_file_list)
     elif args.first is not 0:
         file_list = sorted(only_ome_tif)
@@ -85,13 +86,10 @@ def main():
     else:
         file_list = sorted(only_ome_tif)
 
-    print (file_list)
-
     for color in color_choices:
         full_fields_color(file_list, color=color)
 
 
 if __name__ == "__main__":
-    print (sys.argv)
     main()
     sys.exit(0)
