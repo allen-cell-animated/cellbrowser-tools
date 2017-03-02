@@ -65,7 +65,8 @@ def main():
 
     for root, dirs, files in os.walk(args.input):
         for file_name in files:
-            only_ome_tif.append(os.path.join(root, file_name))
+            if file_name.endswith('.ome.tif'):
+                only_ome_tif.append(os.path.join(root, file_name))
 
     if args.random is not 0:
         rand_max = args.random
