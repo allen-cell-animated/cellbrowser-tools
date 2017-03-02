@@ -150,66 +150,46 @@ class ThumbnailGenerator:
         assert projection_array
         assert len(projection_array) == len(self.colors)
         layered_image = np.zeros((projection_array[0].shape[0], projection_array[0].shape[1], 3))
+
         print("layering channels...", end=" ")
         for i in range(len(projection_array)):
             print(i, end=" ")
             projection = projection_array[i]
             assert projection.shape == projection_array[0].shape
-            if self.layering_mode == "alpha-blend":
-                # 4 channels - rgba
-                projection /= np.max(projection)
-                rgba_out = np.repeat(np.expand_dims(projection, 2), 4, 2).astype('float')
-                # rgb values for the color palette + initial alpha value
-                rgba_vals = self.colors[i] + [1.0]
-                rgba_out *= rgba_vals
+            # 3 channels - rgb
+            rgb_out = np.expand_dims(projection, 2)
+            rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
+            # inject color.  careful of type mismatches.
+            rgb_out *= self.colors[i]
+            # normalize contrast
+            rgb_out /= np.max(rgb_out)
+            lower_threshold, upper_threshold = _get_threshold(rgb_out)
+            # ignore bright spots
+            print("Thresholds: " + str((lower_threshold, upper_threshold)))
 
-                lower_threshold, upper_threshold = _get_threshold(projection)
-                cutout = 0
-                total = float(layered_image.shape[0] * layered_image.shape[1])
-                # blending step
-                for x in range(layered_image.shape[0]):
-                    for y in range(layered_image.shape[1]):
-                        rgb_new = rgba_out[x, y, 0:3]
-                        pixel_weight = np.mean(rgb_new)
-                        if lower_threshold < pixel_weight < upper_threshold or i == 2:
+            total = float((rgb_out.shape[0] * rgb_out.shape[1]))
+            cutout = 0.0
+
+            for x in range(rgb_out.shape[0]):
+                for y in range(rgb_out.shape[1]):
+                    if self.layering_mode == "superimpose":
+                        pixel_weight = np.mean(rgb_out[x, y])
+                        if lower_threshold < pixel_weight < upper_threshold:
+                            layered_image[x, y] = rgb_out[x, y]
+                        else:
+                            cutout += 1.0
+                    elif self.layering_mode == "alpha-blend":
+                        pixel_weight = np.mean(rgb_out[x, y])
+                        if lower_threshold < pixel_weight < upper_threshold:
                             rgb_old = layered_image[x, y]
                             alpha = projection[x, y]
-                            if alpha > 1:
-                                alpha = 1
-                            elif alpha < 0:
-                                alpha = 0
                             # premultiplied alpha
-                            final_val = rgb_new + (1 - alpha) * rgb_old
+                            final_val = rgb_out + (1 - alpha) * rgb_old
                             layered_image[x, y] = final_val
                         else:
                             cutout += 1.0
                             continue
-
-                print("Total cut out: " + str((cutout / total) * 100.0) + "%")
-
-            elif self.layering_mode == "superimpose":
-                # 3 channels - rgb
-                rgb_out = np.expand_dims(projection, 2)
-                rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
-                # inject color.  careful of type mismatches.
-                rgb_out *= self.colors[i]
-                # normalize contrast
-                rgb_out /= np.max(rgb_out)
-                lower_threshold, upper_threshold = _get_threshold(rgb_out)
-                # ignore bright spots
-                print("Thresholds: " + str((lower_threshold, upper_threshold)))
-
-                total = float((rgb_out.shape[0] * rgb_out.shape[1]))
-                cutout, low_cut, high_cut = 0.0, 0.0, 0.0
-                for x in range(rgb_out.shape[0]):
-                    for y in range(rgb_out.shape[1]):
-                        pixel_weight = np.mean(rgb_out[x, y])
-                        if lower_threshold < pixel_weight < upper_threshold or i == 2:
-                            layered_image[x, y] = rgb_out[x, y]
-                        else:
-                            cutout += 1.0
-
-                print("Total cut out: " + str((cutout / total) * 100.0) + "%")
+            print("Total cut out: " + str((cutout / total) * 100.0) + "%")
 
         print("done")
         return layered_image
