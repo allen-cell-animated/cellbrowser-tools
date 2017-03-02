@@ -13,10 +13,13 @@ from aicsimagetools.omeTifReader import OmeTifReader
 _cmy = ([[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]], "cmy")
 _cym = ([[0.0, 1.0, 1.0], [1.0, 1.0, 0.0], [1.0, 0.0, 1.0]], "cym")
 _ymc = ([[1.0, 1.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]], "ymc")
+_ycm = ([[1.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]], "ycm")
+_myc = ([[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 1.0]], "myc")
+_mcy = ([[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 0.0]], "mcy")
 _rgb = ([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], "rgb")
 _rbg = ([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]], "rbg")
 _brg = ([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], "brg")
-color_choices = [_cym, _cmy, _ymc]
+color_choices = [_cym, _cmy, _ymc, _ycm, _mcy, _myc]
 
 
 def is_segmented_image(file_name):
@@ -45,7 +48,7 @@ def full_fields_color(ome_tif_files, color):
         # new_path.append(path_as_list[len(path_as_list) - 1][:-8] + ".png")
         new_path = os.path.join("/home/zacharyc/Development/cellbrowser-tools/dryrun/images/", color[1], base_file_name[:-8] + ".png")
         if not os.path.exists(new_path[:new_path.rfind('/')]):
-            os.path.makedirs(new_path[:new_path.rfind('/')])
+            os.makedirs(new_path[:new_path.rfind('/')])
         with PngWriter(new_path, overwrite_file=True) as writer:
             writer.save(thumb)
 
@@ -75,7 +78,7 @@ def main():
         else:
             random_file_list = []
             while len(random_file_list) != rand_max:
-                rand_index = random.randint(0, len(only_ome_tif))
+                rand_index = random.randint(0, len(only_ome_tif) - 1)
                 while only_ome_tif[rand_index] in random_file_list:
                     rand_index = random.randint(0, len(only_ome_tif))
                 random_file_list.append(only_ome_tif[rand_index])
