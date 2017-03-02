@@ -119,7 +119,8 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 
 class ThumbnailGenerator:
 
-    def __init__(self, colors=_cmy, size=128, memb_index=0, struct_index=1, nuc_index=2,
+    def __init__(self, colors=_cmy, size=128,
+                 memb_index=0, struct_index=1, nuc_index=2,
                  memb_seg_index=5, struct_seg_index=6, nuc_seg_index=4,
                  layering="superimpose"):
 
@@ -222,11 +223,12 @@ class ThumbnailGenerator:
         assert len(im_size) == 3
         shape_out_rgb = self._get_output_shape(im_size)
 
+        image = image.astype('float')
+
         if apply_cell_mask:
             # apply the cell segmentation mask.  bye bye to data outside the cell
-            for i in range(image.shape[0]):
-                image[i, :, :, :] = mask_image(image[i, :, :, :], image[self.seg_indices[1], :, :, :])
-            image /= np.max(image)
+            for i in self.channel_indices:
+                image[i] = mask_image(image[i], image[self.seg_indices[1]])
 
         image = image[0:3]
         num_noise_floor_bins = 256
