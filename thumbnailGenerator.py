@@ -253,73 +253,11 @@ class ThumbnailGenerator:
         # returns a CYX array for the png writer
         return comp.transpose((2, 0, 1))
 
-
-# colors = [
-#     [0.0/255.0, 109.0/255.0, 219.0/255.0],
-#     [36.0/255.0, 255.0/255.0, 36.0/255.0],
-#     [255.0/255.0, 109.0/255.0, 182.0/255.0]
-# ]
-# pass in a xyzc image!
 def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
                              seg_channel_index=-1, size=128):
 
     return ThumbnailGenerator(memb_index=channel_indices[0], struct_index=channel_indices[1], nuc_index=channel_indices[2],
                               size=size, colors=colors).make_thumbnail(im1)
-
-    #
-    # # assume all images have same shape!
-    # imsize = np.array(im1[0].shape)
-    # assert len(imsize) == 3
-    #
-    # # size down to this edge size, maintaining aspect ratio.
-    # # note that this resizing results in all cell thumbnails being about the same size
-    # max_edge = size
-    # # keep same number of z slices.
-    # shape_out = np.hstack((imsize[0],
-    #                        max_edge if imsize[1] > imsize[2] else max_edge * imsize[1] / imsize[2],
-    #                        max_edge if imsize[1] < imsize[2] else max_edge * imsize[2] / imsize[1]
-    #                        ))
-    # shape_out_rgb = (shape_out[1], shape_out[2], 3)
-    #
-    # # apply the cell segmentation mask.  bye bye to data outside the cell
-    # for i in range(im1.shape[0]):
-    #     im1[i, :, :, :] = mask_image(im1[i, :, :, :], im1[seg_channel_index, :, :, :])
-    # # im1 = [mask_image(im, im1[seg_channel_index]) for im in im1]
-    # mask = matproj(im1[seg_channel_index], z_axis_index)
-    # # pngwriter = pngWriter.PngWriter('test/oMask.png')
-    # # pngwriter.save(mask)
-    #
-    # num_noise_floor_bins = 16
-    # comp = np.zeros(shape_out_rgb)
-    # for i in range(3):
-    #     ch = channel_indices[i]
-    #     # try to subtract out the noise floor.
-    #     # range is chosen to ignore zeros due to masking.  alternative is to pass mask image as weights=im1[-1]
-    #     immin = im1[ch].min()
-    #     immax = im1[ch].max()
-    #     hi, bin_edges = np.histogram(im1[ch], bins=num_noise_floor_bins, range=(max(1, immin), immax))
-    #     # hi, bin_edges = np.histogram(im1[0], bins=16, weights=im1[-1])
-    #     # index of tallest peak in histogram
-    #     peakind = np.argmax(hi)
-    #     # subtract this out
-    #     thumb = im1[ch].astype(np.float32)
-    #     # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
-    #     if i != 0:
-    #         thumb -= bin_edges[peakind]
-    #     # don't go negative
-    #     thumb[thumb < 0] = 0
-    #     # renormalize
-    #     thmax = thumb.max()
-    #     thumb /= thmax
-    #
-    #     # resize before projection?
-    #     # thumb = imresize(thumb, shape_out)
-    #     rgbproj = make_rgb_proj(thumb, z_axis_index, colors[i])
-    #     rgbproj = imresize(rgbproj, shape_out_rgb)
-    #     comp += rgbproj
-    # # renormalize
-    # # comp /= comp.max()
-    # return comp
 
 
 def main():
