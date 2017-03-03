@@ -23,7 +23,8 @@ color_choices = [_cym, _cmy, _ymc, _ycm, _mcy, _myc]
 
 
 def is_segmented_image(file_name):
-    if file_name.count('_') == 3:
+    underscore_count = file_name.count('_')
+    if underscore_count == 3 or underscore_count == 5:
         return True
     else:
         return False
