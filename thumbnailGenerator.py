@@ -184,7 +184,7 @@ class ThumbnailGenerator:
                             rgb_old = layered_image[x, y]
                             alpha = projection[x, y]
                             # premultiplied alpha
-                            final_val = rgb_out + (1 - alpha) * rgb_old
+                            final_val = rgb_out[x, y] + (1 - alpha) * rgb_old
                             layered_image[x, y] = final_val
                         else:
                             cutout += 1.0
@@ -212,7 +212,7 @@ class ThumbnailGenerator:
 
         image = image[0:3]
         num_noise_floor_bins = 256
-        downscale_factor = (image.shape[3] / self.size) if image.shape[3] > image.shape[2] else (image.shape[2] / self.size)
+        downscale_factor = (float(image.shape[3]) / self.size) if image.shape[3] > image.shape[2] else (float(image.shape[2]) / self.size)
         projection_array = []
         projection_type = 'slice'
         for i in self.channel_indices:
