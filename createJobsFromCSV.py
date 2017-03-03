@@ -5,8 +5,10 @@
 import argparse
 import cellJob
 import csv
+import glob
 import json
 import os
+import platform
 import sys
 from processImageWithSegmentation import do_main
 import jobScheduler
@@ -81,6 +83,14 @@ def main():
 
     args = parser.parse_args()
 
+    if platform.system() == 'Windows':
+        filenames = []
+        for filename in args.input:
+            if '*' in filename or '?' in filename or '[' in filename:
+                filenames += glob.glob(filename)
+            else:
+                filenames.append(filename)
+        args.input = filenames
     input_files = args.input
 
     i = 0
