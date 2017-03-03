@@ -33,12 +33,12 @@ def _get_threshold(image):
 
     cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
     nonzeros = cut_border[np.nonzero(cut_border)]
-    print("\nMax: " + str(np.max(nonzeros)))
-    print("Min: " + str(np.min(nonzeros)))
+    # print("\nMax: " + str(np.max(nonzeros)))
+    # print("Min: " + str(np.min(nonzeros)))
     upper_threshold = np.max(cut_border) * .998
 
-    print("Median: " + str(np.median(nonzeros)))
-    print("Mean: " + str(np.mean(nonzeros)))
+    # print("Median: " + str(np.median(nonzeros)))
+    # print("Mean: " + str(np.mean(nonzeros)))
     lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
 
     return lower_threshold, upper_threshold
@@ -151,9 +151,9 @@ class ThumbnailGenerator:
         assert len(projection_array) == len(self.colors)
         layered_image = np.zeros((projection_array[0].shape[0], projection_array[0].shape[1], 3))
 
-        print("layering channels...", end=" ")
+        # print("layering channels...", end=" ")
         for i in range(len(projection_array)):
-            print(i, end=" ")
+            # print(i, end=" ")
             projection = projection_array[i]
             projection /= np.max(projection)
             assert projection.shape == projection_array[0].shape
@@ -166,7 +166,7 @@ class ThumbnailGenerator:
             rgb_out /= np.max(rgb_out)
             lower_threshold, upper_threshold = _get_threshold(rgb_out)
             # ignore bright spots
-            print("Thresholds: " + str((lower_threshold, upper_threshold)))
+            # print("Thresholds: " + str((lower_threshold, upper_threshold)))
 
             total = float((rgb_out.shape[0] * rgb_out.shape[1]))
             cutout = 0.0
@@ -193,9 +193,9 @@ class ThumbnailGenerator:
                         else:
                             cutout += 1.0
                             continue
-            print("Total cut out: " + str((cutout / total) * 100.0) + "%")
+            # print("Total cut out: " + str((cutout / total) * 100.0) + "%")
 
-        print("done")
+        # print("done")
         return layered_image
 
     def make_thumbnail(self, image, apply_cell_mask=False):

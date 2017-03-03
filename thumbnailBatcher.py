@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import sys
 import os
@@ -20,38 +21,37 @@ _rgb = ([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], "rgb")
 _rbg = ([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]], "rbg")
 _brg = ([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], "brg")
 color_choices = [_cym, _cmy, _ymc, _ycm, _mcy, _myc]
+layering_choices = ["alpha-blend", "superimpose"]
 
 
 def is_segmented_image(file_name):
+    # TODO: find a better way to determine this... because the underscore count doesn't work in all cases.
     underscore_count = file_name.count('_')
     if underscore_count == 3 or underscore_count == 5:
         return True
     else:
         return False
 
-
-def full_fields_color(ome_tif_files, color):
-
-    print("\nprocessing images with " + color[1] + " palette.\n")
-
-    generator = ThumbnailGenerator(colors=color[0], layering="alpha-blend")
-    for file_name in ome_tif_files:
-        with OmeTifReader(file_name) as reader:
-            # converts to CZYX
-            image = reader.load()[0].transpose((1, 0, 2, 3))
-        base_file_name = os.path.basename(file_name)
-        print("processing " + file_name + "...")
-        thumb = generator.make_thumbnail(image, apply_cell_mask=is_segmented_image(base_file_name))
-        # TODO convert this to use the current directory with os.path
-        # path_as_list = re.split(r'\\|/', file_name)
-        # new_path = path_as_list[:-2]
-        # new_path.append(color[1])
-        # new_path.append(path_as_list[len(path_as_list) - 1][:-8] + ".png")
-        new_path = os.path.join("/home/zacharyc/Development/cellbrowser-tools/dryrun/images/", color[1], base_file_name[:-8] + ".png")
-        if not os.path.exists(new_path[:new_path.rfind('/')]):
-            os.makedirs(new_path[:new_path.rfind('/')])
-        with PngWriter(new_path, overwrite_file=True) as writer:
-            writer.save(thumb)
+def full_field_batcher(ome_tif_files):
+    for palette in color_choices:
+        for layering in layering_choices:
+            print("\nProcessing images with " + palette[1] + " palette and " + layering + ".")
+            generator = ThumbnailGenerator(colors=palette[0], layering=layering)
+            for file_name in ome_tif_files:
+                with OmeTifReader(file_name) as reader:
+                    # converts to CZYX
+                    image = reader.load()[0].transpose((1, 0, 2, 3))
+                base_file_name = os.path.basename(file_name)
+                print("processing " + base_file_name + "...", end="")
+                thumb = generator.make_thumbnail(image, apply_cell_mask=is_segmented_image(base_file_name))
+                new_path = os.path.join("/home/zacharyc/Development/cellbrowser-tools/dryrun/images/",
+                                        palette[1], layering,
+                                        base_file_name[:-8] + ".png")
+                if not os.path.exists(new_path[:new_path.rfind('/')]):
+                    os.makedirs(new_path[:new_path.rfind('/')])
+                with PngWriter(new_path, overwrite_file=True) as writer:
+                    writer.save(thumb)
+                print("done")
 
 
 def main():
@@ -91,8 +91,7 @@ def main():
     else:
         file_list = sorted(only_ome_tif)
 
-    for color in color_choices:
-        full_fields_color(file_list, color=color)
+    full_field_batcher(file_list)
 
 
 if __name__ == "__main__":
