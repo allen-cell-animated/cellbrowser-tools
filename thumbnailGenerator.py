@@ -155,6 +155,7 @@ class ThumbnailGenerator:
         for i in range(len(projection_array)):
             print(i, end=" ")
             projection = projection_array[i]
+            projection /= np.max(projection)
             assert projection.shape == projection_array[0].shape
             # 3 channels - rgb
             rgb_out = np.expand_dims(projection, 2)
@@ -170,14 +171,17 @@ class ThumbnailGenerator:
             total = float((rgb_out.shape[0] * rgb_out.shape[1]))
             cutout = 0.0
 
+            # for each pixel, do an algorithm to overlay pixels
             for x in range(rgb_out.shape[0]):
                 for y in range(rgb_out.shape[1]):
+                    # this directly overwrites the pixel on the final image that meets the threshold in a single channel
                     if self.layering_mode == "superimpose":
                         pixel_weight = np.mean(rgb_out[x, y])
                         if lower_threshold < pixel_weight < upper_threshold:
                             layered_image[x, y] = rgb_out[x, y]
                         else:
                             cutout += 1.0
+                    # this blends the pixel on the final image with a pixel that meets the threshold in a single channel
                     elif self.layering_mode == "alpha-blend":
                         pixel_weight = np.mean(rgb_out[x, y])
                         if lower_threshold < pixel_weight < upper_threshold:
