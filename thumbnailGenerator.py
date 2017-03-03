@@ -207,7 +207,7 @@ class ThumbnailGenerator:
         assert len(im_size) == 3
         shape_out_rgb = self._get_output_shape(im_size)
 
-        image = image.astype('float')
+        image = image.astype(np.float32)
 
         if apply_cell_mask:
             # apply the cell segmentation mask.  bye bye to data outside the cell
@@ -229,7 +229,7 @@ class ThumbnailGenerator:
             # index of tallest peak in histogram
             peakind = np.argmax(hi)
             # subtract this out
-            thumb = image[i].astype(np.float32)
+            thumb = image[i]
             thumb -= bin_edges[peakind]
             # don't go negative
             thumb[thumb < 0] = 0
