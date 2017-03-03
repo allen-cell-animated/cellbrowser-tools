@@ -134,7 +134,7 @@ class ImageProcessor:
     def __init__(self, info):
         self.row = info
 
-        self.channels = ['OBS_Memb', 'OBS_STRUCT', 'OBS_DNA', 'OBS_Trans', 'SEG_DNA', 'SEG_Memb', 'SEG_STRUCT']
+        self.channels = ['OBS_Memb', 'OBS_STRUCT', 'OBS_DNA', 'OBS_Trans', 'SEG_DNA', 'SEG_Memb', 'SEG_STRUCT', 'CON_DNA', 'CON_Memb', 'CON_STRUCT']
         self.channel_colors = [
             _rgba255(255, 255, 0, 255),
             _rgba255(255, 0, 255, 255),
@@ -142,7 +142,10 @@ class ImageProcessor:
             _rgba255(255, 255, 255, 255),
             _rgba255(255, 0, 0, 255),
             _rgba255(0, 0, 255, 255),
-            _rgba255(127, 127, 0, 255)
+            _rgba255(127, 127, 0, 255),
+            _rgba255(127, 0, 127, 255),
+            _rgba255(0, 127, 127, 255),
+            _rgba255(127, 127, 127, 255)
         ]
 
         # Setting up directory paths for images
@@ -201,6 +204,7 @@ class ImageProcessor:
         file_list.append(cell_seg_file)
         self.channel_names.append("SEG_Memb")
 
+        # structure segmentation
         struct_seg_path = self.row.structureSegOutputFolder
         if struct_seg_path != '' and not struct_seg_path.startswith('N/A'):
             struct_seg_path = normalize_path(struct_seg_path)
@@ -210,6 +214,35 @@ class ImageProcessor:
             # print(struct_seg_file)
             file_list.append(struct_seg_file)
             self.channel_names.append("SEG_STRUCT")
+
+
+        con_path = self.row.outputSegmentationContourPath
+        con_path = normalize_path(con_path)
+
+        # nucleus contour segmentation
+        nuc_con_file = os.path.join(con_path, self.row.outputNucSegContourFilename)
+        # print(nuc_seg_file)
+        file_list.append(nuc_con_file)
+        self.channel_names.append("CON_DNA")
+
+        # cell contour segmentation
+        cell_con_file = os.path.join(con_path, self.row.outputCellSegContourFilename)
+        # print(cell_seg_file)
+        file_list.append(cell_con_file)
+        self.channel_names.append("CON_Memb")
+
+        # structure contour segmentation
+        struct_con_path = struct_seg_path
+        if struct_con_path != '' and not struct_con_path.startswith('N/A'):
+            struct_con_path = normalize_path(struct_con_path)
+
+            # structure segmentation
+            struct_con_file = os.path.join(struct_con_path, self.row.structureSegContourFilename)
+            # print(struct_con_file)
+            file_list.append(struct_con_file)
+            self.channel_names.append("CON_STRUCT")
+
+
 
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
         image_file = normalize_path(image_file)
