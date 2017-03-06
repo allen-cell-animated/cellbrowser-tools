@@ -151,9 +151,7 @@ class ThumbnailGenerator:
         assert len(projection_array) == len(self.colors)
         layered_image = np.zeros((projection_array[0].shape[0], projection_array[0].shape[1], 3))
 
-        # print("layering channels...", end=" ")
         for i in range(len(projection_array)):
-            # print(i, end=" ")
             projection = projection_array[i]
             projection /= np.max(projection)
             assert projection.shape == projection_array[0].shape
@@ -166,36 +164,34 @@ class ThumbnailGenerator:
             rgb_out /= np.max(rgb_out)
             lower_threshold, upper_threshold = _get_threshold(rgb_out)
             # ignore bright spots
-            # print("Thresholds: " + str((lower_threshold, upper_threshold)))
 
-            total = float((rgb_out.shape[0] * rgb_out.shape[1]))
-            cutout = 0.0
+            def superimpose(source_pixel, dest_pixel):
+                pixel_weight = np.mean(source_pixel)
+                if lower_threshold < pixel_weight < upper_threshold:
+                    return source_pixel
+                else:
+                    return dest_pixel
 
-            # for each pixel, do an algorithm to overlay pixels
+            def alpha_blend(source_pixel, dest_pixel):
+                pixel_weight = np.mean(source_pixel)
+                if lower_threshold < pixel_weight < upper_threshold:
+                    alpha = projection[x, y]
+                    # premultiplied alpha
+                    return source_pixel + (1 - alpha) * dest_pixel
+                else:
+                    return dest_pixel
+
+            if self.layering_mode == "superimpose":
+                layering_method = superimpose
+            else:
+                layering_method = alpha_blend
+
             for x in range(rgb_out.shape[0]):
                 for y in range(rgb_out.shape[1]):
-                    # this directly overwrites the pixel on the final image that meets the threshold in a single channel
-                    if self.layering_mode == "superimpose":
-                        pixel_weight = np.mean(rgb_out[x, y])
-                        if lower_threshold < pixel_weight < upper_threshold:
-                            layered_image[x, y] = rgb_out[x, y]
-                        else:
-                            cutout += 1.0
-                    # this blends the pixel on the final image with a pixel that meets the threshold in a single channel
-                    elif self.layering_mode == "alpha-blend":
-                        pixel_weight = np.mean(rgb_out[x, y])
-                        if lower_threshold < pixel_weight < upper_threshold:
-                            rgb_old = layered_image[x, y]
-                            alpha = projection[x, y]
-                            # premultiplied alpha
-                            final_val = rgb_out[x, y] + (1 - alpha) * rgb_old
-                            layered_image[x, y] = final_val
-                        else:
-                            cutout += 1.0
-                            continue
-            # print("Total cut out: " + str((cutout / total) * 100.0) + "%")
+                    src_px = rgb_out[x, y]
+                    dest_px = layered_image[x, y]
+                    layered_image[x, y] = layering_method(source_pixel=src_px, dest_pixel=dest_px)
 
-        # print("done")
         return layered_image
 
     def make_thumbnail(self, image, apply_cell_mask=False):
