@@ -71,6 +71,7 @@ def oneUp(sessionInfo, dict, outfile):
     api.setSessionInfo(sessionInfo)
 
     cbrSegmentationVersion = dict['Version']
+    cbrStructureSegmentationMethod = dict['StructureSegmentationMethod']
     cbrImageLocation = dict['cbrImageLocation']
     cbrThumbnailURL = dict['cbrThumbnailURL']
     cbrCellName = dict['cbrCellName']
@@ -111,6 +112,8 @@ def oneUp(sessionInfo, dict, outfile):
     # this batch of images are all from microscope and not simulated.
     etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
     etree.SubElement(resource, 'tag', name='segmentationVersion', value=cbrSegmentationVersion, permission=perm)
+    if cbrStructureSegmentationMethod:
+        etree.SubElement(resource, 'tag', name='structureSegmentationMethod', value=cbrStructureSegmentationMethod, permission=perm)
 
     # add a tag for each channel name, by index
     if dict['channelNames'] is not None:

@@ -23,6 +23,8 @@ class CellJob(object):
         self.structureSegOutputFolder = ''
         self.structureSegOutputFilename = ''
 
+        self.StructureSegmentationMethod = ''
+
         self.outputSegmentationContourPath = ''
         self.structureSegContourFilename = ''
         self.outputNucSegContourFilename = ''
@@ -95,6 +97,8 @@ class CellJob(object):
             self.outputCellSegWholeFilename = csvRow.get('outputCellSegWholeFilename')
             self.structureSegOutputFolder = csvRow.get('structureSegOutputFolder')
             self.structureSegOutputFilename = csvRow.get('structureSegOutputFilename')
+
+            self.StructureSegmentationMethod = csvRow.get('StructureSegmentationMethod', self.StructureSegmentationMethod)
 
             self.structureSegContourFilename = csvRow.get('structureSegContourFilename')
             self.outputSegmentationContourPath = csvRow.get('outputSegmentationContourPath')
