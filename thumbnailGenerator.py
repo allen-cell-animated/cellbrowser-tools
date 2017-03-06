@@ -60,7 +60,7 @@ def mask_image(im, mask):
     return im_masked
 
 
-def matproj(im, dim, method='max', slice_index=0):
+def matproj(im, dim, method='max', slice_index=0, sections=3):
     if method == 'max':
         im = np.max(im, dim)
     elif method == 'mean':
@@ -69,13 +69,25 @@ def matproj(im, dim, method='max', slice_index=0):
         im = np.sum(im, dim)
     elif method == 'slice':
         im = im[slice_index]
-    elif method == 'thirds':
-        separator = int(m.floor(im.shape[0] / 3))
-        bottom_third = np.max(im[0:separator], dim)
-        middle_third = np.max(im[separator:separator*2], dim)
-        top_third = np.max(im[separator*2:], dim)
-        stack = bottom_third + middle_third + top_third
+    # TODO: Make this next section be able to be changed into halves, quarters, etc.
+    elif method == 'sections':
+        separator = int(m.floor(im.shape[0] / sections))
+        stack = np.max(im[0:separator], dim)
+        for i in range(1, sections - 1):
+            bottom_bound = separator * i
+            top_bound = separator * (i + 1)
+            section = np.max(im[bottom_bound:top_bound], dim)
+            stack += section
+        stack += np.max(im[separator*sections-1:])
+
         return stack
+
+        # separator = int(m.floor(im.shape[0] / 3))
+        # bottom_third = np.max(im[0:separator], dim)
+        # middle_third = np.max(im[separator:separator*2], dim)
+        # top_third = np.max(im[separator*2:], dim)
+        # stack = bottom_third + middle_third + top_third
+        # return stack
     # returns 2D image, YX
     return im
 
@@ -128,7 +140,7 @@ class ThumbnailGenerator:
     def __init__(self, colors=_cmy, size=128,
                  memb_index=0, struct_index=1, nuc_index=2,
                  memb_seg_index=5, struct_seg_index=6, nuc_seg_index=4,
-                 layering="superimpose"):
+                 layering="superimpose", projection="slice", proj_sections=-1):
 
         assert len(colors) == 3 and len(colors[0]) == 3
         self.colors = colors
@@ -140,6 +152,10 @@ class ThumbnailGenerator:
 
         assert layering == "superimpose" or layering == "alpha-blend"
         self.layering_mode = layering
+
+        assert projection == "slice" or projection == "max" or projection == "sections"
+        self.projection_mode = projection
+        self.proj_sections = proj_sections
 
     def _get_output_shape(self, im_size):
         # size down to this edge size, maintaining aspect ratio.
@@ -181,6 +197,7 @@ class ThumbnailGenerator:
             def alpha_blend(source_pixel, dest_pixel):
                 pixel_weight = np.mean(source_pixel)
                 if lower_threshold < pixel_weight < upper_threshold:
+                    # this alpha value is based on the intensity of the pixel in the channel's original projection
                     alpha = projection[x, y]
                     # premultiplied alpha
                     return source_pixel + (1 - alpha) * dest_pixel
@@ -220,10 +237,10 @@ class ThumbnailGenerator:
         num_noise_floor_bins = 256
         downscale_factor = (float(image.shape[3]) / self.size) if image.shape[3] > image.shape[2] else (float(image.shape[2]) / self.size)
         projection_array = []
-        projection_type = 'slice'
+        projection_type = self.projection_mode
         for i in self.channel_indices:
-            if apply_cell_mask and (i == self.memb_index or i == self.struct_index):
-                projection_type = 'max'
+            # if apply_cell_mask and (i == self.memb_index or i == self.struct_index):
+            #     projection_type = 'thirds'
             # subtract out the noise floor.
             immin = image[i].min()
             immax = image[i].max()
@@ -239,7 +256,7 @@ class ThumbnailGenerator:
             imdbl = np.asarray(thumb).astype('double')
             # TODO implement max proj of three sections of the cell
             # TODO thresholding is too high for the max projection of membrane
-            im_proj = matproj(imdbl, 0, projection_type, slice_index=int(thumb.shape[0] // 2))
+            im_proj = matproj(imdbl, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
             projection_array.append(im_proj)
 
         layered_image = self._layer_projections(projection_array)
