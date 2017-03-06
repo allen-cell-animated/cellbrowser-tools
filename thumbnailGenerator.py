@@ -68,8 +68,14 @@ def matproj(im, dim, method='max', slice_index=0):
     elif method == 'sum':
         im = np.sum(im, dim)
     elif method == 'slice':
-        im = im[slice_index, :, :]
-
+        im = im[slice_index]
+    elif method == 'thirds':
+        separator = int(m.floor(im.shape[0] / 3))
+        bottom_third = np.max(im[0:separator], dim)
+        middle_third = np.max(im[separator:separator*2], dim)
+        top_third = np.max(im[separator*2:], dim)
+        stack = bottom_third + middle_third + top_third
+        return stack
     # returns 2D image, YX
     return im
 
