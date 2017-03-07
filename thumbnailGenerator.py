@@ -16,11 +16,6 @@ z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
 
 
-def get_luminance(array):
-    assert len(array) == 3
-    return np.sum(array * [.299, .587, .114])
-
-
 def get_threshold(image):
     # using this allows us to ignore the bright corners of a cell image
     border_percent = 0.1
