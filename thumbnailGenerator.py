@@ -21,7 +21,7 @@ def get_luminance(array):
     return np.sum(array * [.299, .587, .114])
 
 
-def _get_threshold(image):
+def get_threshold(image):
     # using this allows us to ignore the bright corners of a cell image
     border_percent = 0.1
     im_width = image.shape[0]
@@ -81,13 +81,6 @@ def matproj(im, dim, method='max', slice_index=0, sections=3):
         stack += np.max(im[separator*sections-1:])
 
         return stack
-
-        # separator = int(m.floor(im.shape[0] / 3))
-        # bottom_third = np.max(im[0:separator], dim)
-        # middle_third = np.max(im[separator:separator*2], dim)
-        # top_third = np.max(im[separator*2:], dim)
-        # stack = bottom_third + middle_third + top_third
-        # return stack
     # returns 2D image, YX
     return im
 
@@ -184,7 +177,7 @@ class ThumbnailGenerator:
             rgb_out *= self.colors[i]
             # normalize contrast
             rgb_out /= np.max(rgb_out)
-            lower_threshold, upper_threshold = _get_threshold(rgb_out)
+            lower_threshold, upper_threshold = get_threshold(rgb_out)
             # ignore bright spots
 
             def superimpose(source_pixel, dest_pixel):
