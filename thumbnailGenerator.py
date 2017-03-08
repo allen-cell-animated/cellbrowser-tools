@@ -34,7 +34,7 @@ def get_threshold(image):
     return lower_threshold, upper_threshold
 
 
-def imresize(im, new_size):
+def resize_image(im, new_size):
 
     try:
         downscale_factor = (float(im.shape[0]) / new_size[0])
@@ -247,7 +247,7 @@ class ThumbnailGenerator:
             projection_array.append(im_proj)
 
         layered_image = self._layer_projections(projection_array)
-        comp = imresize(layered_image, shape_out_rgb)
+        comp = resize_image(layered_image, shape_out_rgb)
         comp /= np.max(comp)
         comp[comp < 0] = 0
         # returns a CYX array for the png writer
