@@ -100,7 +100,21 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 
     return im_all
 
+def histogram(image, bins=256):
+    immin = image.min()
+    immax = image.max()
+    hi, bin_edges = np.histogram(image, bins=bins, range=(max(1, immin), immax))
+    # index of tallest peak in histogram
+    peakind = np.argmax(hi)
+    # subtract this out
+    thumb = image
+    thumb -= bin_edges[peakind]
+    # don't go negative
+    thumb[thumb < 0] = 0
+    return thumb
 
+
+# TODO is there a better name for this if we're going to put more general methods inside of it?
 class ThumbnailGenerator:
 
     def __init__(self, colors=_cmy, size=128,
@@ -209,20 +223,10 @@ class ThumbnailGenerator:
             if not apply_cell_mask:
                 projection_type = 'slice'
             # subtract out the noise floor.
-            immin = image[i].min()
-            immax = image[i].max()
-            hi, bin_edges = np.histogram(image[i], bins=num_noise_floor_bins, range=(max(1, immin), immax))
-            # index of tallest peak in histogram
-            peakind = np.argmax(hi)
-            # subtract this out
-            thumb = image[i]
-            thumb -= bin_edges[peakind]
-            # don't go negative
-            thumb[thumb < 0] = 0
-
-            imdbl = np.asarray(thumb).astype('double')
+            thumb = histogram(image[i], bins=num_noise_floor_bins)
+            thumb = np.asarray(thumb).astype('double')
             # TODO thresholding is too high for the max projection of membrane
-            im_proj = create_projection(imdbl, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
+            im_proj = create_projection(thumb, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
             projection_array.append(im_proj)
 
         layered_image = self._layer_projections(projection_array)
