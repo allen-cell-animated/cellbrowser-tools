@@ -100,7 +100,7 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 
     return im_all
 
-def histogram(image, bins=256):
+def subtract_noise_floor(image, bins=256):
     immin = image.min()
     immax = image.max()
     hi, bin_edges = np.histogram(image, bins=bins, range=(max(1, immin), immax))
@@ -223,7 +223,7 @@ class ThumbnailGenerator:
             if not apply_cell_mask:
                 projection_type = 'slice'
             # subtract out the noise floor.
-            thumb = histogram(image[i], bins=num_noise_floor_bins)
+            thumb = subtract_noise_floor(image[i], bins=num_noise_floor_bins)
             thumb = np.asarray(thumb).astype('double')
             # TODO thresholding is too high for the max projection of membrane
             im_proj = create_projection(thumb, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
@@ -236,11 +236,10 @@ class ThumbnailGenerator:
         # returns a CYX array for the png writer
         return comp.transpose((2, 0, 1))
 
-def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy,
-                             seg_channel_index=-1, size=128):
+def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy, seg_channel_index=-1, size=128):
 
     return ThumbnailGenerator(memb_index=channel_indices[0], struct_index=channel_indices[1], nuc_index=channel_indices[2],
-                              size=size, colors=colors).make_thumbnail(im1)
+                              size=size, colors=colors).make_thumbnail(im1, apply_cell_mask=True)
 
 
 def main():
