@@ -16,7 +16,7 @@ z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
 
 
-def get_threshold(image, border_percent=0.1):
+def get_thresholds(image, border_percent=0.1):
     # using this allows us to ignore the bright corners of a cell image
     im_width = image.shape[0]
     im_height = image.shape[1]
@@ -28,6 +28,8 @@ def get_threshold(image, border_percent=0.1):
     cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
     nonzeros = cut_border[np.nonzero(cut_border)]
     upper_threshold = np.max(cut_border) * .998
+    # arbitrary constant
+    # TODO should users be able to adjust this as they want?
     lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
 
     return lower_threshold, upper_threshold
@@ -116,13 +118,60 @@ def subtract_noise_floor(image, bins=256):
     return thumb
 
 
-# TODO is there a better name for this if we're going to put more general methods inside of it?
 class ThumbnailGenerator:
+    """
+
+    This class is used to generate thumbnails for 4D CZYX images.
+
+    Example:
+        generator = ThumbnailGenerator()
+        for image in image_array:
+            thumbnail = generator.make_thumbnail(image)
+
+    """
 
     def __init__(self, colors=_cmy, size=128,
                  memb_index=0, struct_index=1, nuc_index=2,
                  memb_seg_index=5, struct_seg_index=6, nuc_seg_index=4,
                  layering="superimpose", projection="slice", proj_sections=-1):
+        """
+
+        :param colors: The color palette that will be used to color each channel. The default palette
+                       colors the membrane channel cyan, structure with magenta, and nucleus with yellow.
+                       Keep color-blind acccessibility in mind.
+
+        :param size: This constrains the image to have the X or Y dims max out at this value, but keep
+                     the original aspect ratio of the image.
+
+        :param memb_index: The index in the image that contains the membrane channel
+
+        :param struct_index: The index in the image that contains the structure channel
+
+        :param nuc_index: The index in the image that contains the nucleus channel
+
+        :param memb_seg_index: The index in the image that contains the membrane segmentation channel
+
+        :param struct_seg_index: The index in the image that contains the structure segmentation channel
+
+        :param nuc_seg_index: The index in the image that contains the nucleus segmentation channel
+
+        :param layering: The method that will be used to layer each channel's projection over each other.
+                         Options: ["superimpose", "alpha-blend"]
+                         - superimpose will overwrite pixels on the final image as it layers each channel
+                         - alpha-blend will blend the final image's pixels with each new channel layer
+
+        :param projection: The method that will be used to generate each channel's projection. This is done
+                           for each pixel, through the z-axis
+                           Options: ["max", "mean", "sum", "slice", "sections"]
+                           - max will look through each z-slice, and determine the max value for each pixel
+                           - mean will get the mean of all pixels through the z-axis
+                           - sum will sum all pixels through the z-axis
+                           - slice will take the pixel values from the middle slice of the z-stack
+                           - sections will split the zstack into proj_sections number of sections, and take a
+                             max projection for each.
+
+        :param proj_sections: The number of sections that will be used to determine projections, if projection="sections"
+        """
 
         assert len(colors) == 3 and len(colors[0]) == 3
         self.colors = colors
@@ -167,7 +216,7 @@ class ThumbnailGenerator:
             rgb_out *= self.colors[i]
             # normalize contrast
             rgb_out /= np.max(rgb_out)
-            lower_threshold, upper_threshold = get_threshold(rgb_out)
+            lower_threshold, upper_threshold = get_thresholds(rgb_out)
             # ignore bright spots
 
             def superimpose(source_pixel, dest_pixel):
@@ -201,6 +250,7 @@ class ThumbnailGenerator:
         return layered_image
 
     def make_thumbnail(self, image, apply_cell_mask=False):
+        # TODO should the cell mask be a parameter in this method?
 
         assert image.shape[0] >= 6
         assert max(self.memb_index, self.struct_index, self.nuc_index) <= image.shape[0] - 1
