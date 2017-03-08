@@ -16,9 +16,8 @@ z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
 
 
-def get_threshold(image):
+def get_threshold(image, border_percent=0.1):
     # using this allows us to ignore the bright corners of a cell image
-    border_percent = 0.1
     im_width = image.shape[0]
     im_height = image.shape[1]
     left_bound = int(m.floor(border_percent * im_width))
@@ -79,6 +78,7 @@ def create_projection(im, dim, method='max', slice_index=0, sections=3):
     # returns 2D image, YX
     return im
 
+
 def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
     # assume all images are shape [x,y,3]
     # do stuff and return big image
@@ -100,7 +100,9 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 
     return im_all
 
+
 def subtract_noise_floor(image, bins=256):
+    # image is a 3D ZYX image
     immin = image.min()
     immax = image.max()
     hi, bin_edges = np.histogram(image, bins=bins, range=(max(1, immin), immax))
@@ -235,11 +237,6 @@ class ThumbnailGenerator:
         comp[comp < 0] = 0
         # returns a CYX array for the png writer
         return comp.transpose((2, 0, 1))
-
-def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=_cmy, seg_channel_index=-1, size=128):
-
-    return ThumbnailGenerator(memb_index=channel_indices[0], struct_index=channel_indices[1], nuc_index=channel_indices[2],
-                              size=size, colors=colors).make_thumbnail(im1, apply_cell_mask=True)
 
 
 def main():
