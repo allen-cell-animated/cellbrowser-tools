@@ -55,7 +55,7 @@ def mask_image(im, mask):
     return im_masked
 
 
-def matproj(im, dim, method='max', slice_index=0, sections=3):
+def create_projection(im, dim, method='max', slice_index=0, sections=3):
     if method == 'max':
         im = np.max(im, dim)
     elif method == 'mean':
@@ -83,7 +83,7 @@ def matproj(im, dim, method='max', slice_index=0, sections=3):
 def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=True, slice_index=0):
     imdbl = np.asarray(imxyz).astype('double')
     # do projection
-    im_proj = matproj(imdbl, axis, method, slice_index=slice_index)
+    im_proj = create_projection(imdbl, axis, method, slice_index=slice_index)
 
     # turn into RGB
     im_proj = np.expand_dims(im_proj, 2)
@@ -244,7 +244,7 @@ class ThumbnailGenerator:
 
             imdbl = np.asarray(thumb).astype('double')
             # TODO thresholding is too high for the max projection of membrane
-            im_proj = matproj(imdbl, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
+            im_proj = create_projection(imdbl, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
             projection_array.append(im_proj)
 
         layered_image = self._layer_projections(projection_array)
