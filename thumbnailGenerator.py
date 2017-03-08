@@ -28,24 +28,24 @@ def get_threshold(image):
 
     cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
     nonzeros = cut_border[np.nonzero(cut_border)]
-    # print("\nMax: " + str(np.max(nonzeros)))
-    # print("Min: " + str(np.min(nonzeros)))
     upper_threshold = np.max(cut_border) * .998
-
-    # print("Median: " + str(np.median(nonzeros)))
-    # print("Mean: " + str(np.mean(nonzeros)))
     lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
 
     return lower_threshold, upper_threshold
 
 
 def imresize(im, new_size):
-    new_size = np.array(new_size).astype('double')
-    old_size = np.array(im.shape).astype('double')
 
-    zoom_size = np.divide(new_size, old_size)
-    # precision?
-    im_out = scipy.ndimage.interpolation.zoom(im, zoom_size)
+    try:
+        downscale_factor = (float(im.shape[0]) / new_size[0])
+        im_out = t.pyramid_reduce(im, downscale=downscale_factor)
+    except ValueError:
+        new_size = np.array(new_size).astype('double')
+        old_size = np.array(im.shape).astype('double')
+
+        zoom_size = np.divide(new_size, old_size)
+        # precision?
+        im_out = scipy.ndimage.interpolation.zoom(im, zoom_size)
 
     return im_out
 
@@ -135,8 +135,9 @@ class ThumbnailGenerator:
 
         self.size = size
         self.memb_index, self.struct_index, self.nuc_index = memb_index, struct_index, nuc_index
+        self.memb_seg_index, self.struct_seg_index, self.nuc_seg_index = memb_seg_index, struct_seg_index, nuc_seg_index
         self.channel_indices = [self.memb_index, self.struct_index, self.nuc_index]
-        self.seg_indices = [nuc_seg_index, memb_seg_index, struct_seg_index]
+        self.seg_indices = [self.nuc_seg_index, self.memb_seg_index, self.struct_seg_index]
 
         assert layering == "superimpose" or layering == "alpha-blend"
         self.layering_mode = layering
@@ -223,7 +224,6 @@ class ThumbnailGenerator:
 
         image = image[0:3]
         num_noise_floor_bins = 256
-        downscale_factor = (float(image.shape[3]) / self.size) if image.shape[3] > image.shape[2] else (float(image.shape[2]) / self.size)
         projection_array = []
         projection_type = self.projection_mode
         for i in self.channel_indices:
@@ -242,19 +242,12 @@ class ThumbnailGenerator:
             thumb[thumb < 0] = 0
 
             imdbl = np.asarray(thumb).astype('double')
-            # TODO implement max proj of three sections of the cell
             # TODO thresholding is too high for the max projection of membrane
             im_proj = matproj(imdbl, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
             projection_array.append(im_proj)
 
         layered_image = self._layer_projections(projection_array)
-
-        try:
-            # if images need to get bigger instead of smaller, this will fail
-            comp = t.pyramid_reduce(layered_image, downscale=downscale_factor)
-        except ValueError:
-            # TODO some segmented images are too large because they are not square
-            comp = imresize(layered_image, shape_out_rgb)
+        comp = imresize(layered_image, shape_out_rgb)
         comp /= np.max(comp)
         comp[comp < 0] = 0
         # returns a CYX array for the png writer
