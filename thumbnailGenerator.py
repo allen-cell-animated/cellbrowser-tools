@@ -79,28 +79,6 @@ def create_projection(im, dim, method='max', slice_index=0, sections=3):
     # returns 2D image, YX
     return im
 
-
-def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=True, slice_index=0):
-    imdbl = np.asarray(imxyz).astype('double')
-    # do projection
-    im_proj = create_projection(imdbl, axis, method, slice_index=slice_index)
-
-    # turn into RGB
-    im_proj = np.expand_dims(im_proj, 2)
-    im_proj = np.repeat(im_proj, 3, 2)
-
-    # inject color.  careful of type mismatches.
-    im_proj[:, :, 0] *= color[0]
-    im_proj[:, :, 1] *= color[1]
-    im_proj[:, :, 2] *= color[2]
-
-    # if rescale_inten:
-    #     maxval = np.max(im_proj.flatten())
-    #     im_proj = im_proj / maxval
-
-    return im_proj
-
-
 def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
     # assume all images are shape [x,y,3]
     # do stuff and return big image
