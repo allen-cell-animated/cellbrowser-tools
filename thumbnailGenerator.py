@@ -64,11 +64,11 @@ def matproj(im, dim, method='max', slice_index=0, sections=3):
         im = np.sum(im, dim)
     elif method == 'slice':
         im = im[slice_index]
-    # TODO: Make this next section be able to be changed into halves, quarters, etc.
     elif method == 'sections':
         separator = int(m.floor(im.shape[0] / sections))
-        stack = np.max(im[0:separator], dim)
-        for i in range(1, sections - 1):
+        # stack is a 2D YX im
+        stack = np.zeros(im[0].shape)
+        for i in range(sections - 1):
             bottom_bound = separator * i
             top_bound = separator * (i + 1)
             section = np.max(im[bottom_bound:top_bound], dim)
@@ -227,8 +227,9 @@ class ThumbnailGenerator:
         projection_array = []
         projection_type = self.projection_mode
         for i in self.channel_indices:
-            # if apply_cell_mask and (i == self.memb_index or i == self.struct_index):
-            #     projection_type = 'thirds'
+            # don't use max projections on the fullfield images... they get much too messy
+            if not apply_cell_mask:
+                projection_type = 'slice'
             # subtract out the noise floor.
             immin = image[i].min()
             immax = image[i].max()
