@@ -10,58 +10,37 @@ import os
 
 # TODO encode this table in db or someplace else?
 proteinToStructure = {
-    'ALPHAACTININ': 'Actin',
+    'ALPHAACTININ': ['Alpha-actinin', 'Actin bundles'],
 
-    'PAXILLIN': 'Adhesions',
-    'PAXILIN': 'Adhesions',
+    'PAXILLIN': ['Paxillin', 'Cell matrix adhesions'],
+    'PAXILIN': ['Paxillin', 'Cell matrix adhesions'],
 
-    'TOM20': 'Mitochondria',
-    'TOMM20': 'Mitochondria',
+    'TOM20': ['Tom20', 'Mitochondria'],
+    'TOMM20': ['Tom20', 'Mitochondria'],
 
-    'ALPHATUBULIN': 'Microtubules',
-    'TUBA1B': 'Microtubules',
+    'ALPHATUBULIN': ['Alpha-tubulin', 'Microtubules'],
+    'TUBA1B': ['Alpha-tubulin', 'Microtubules'],
 
-    'LAMINB1': 'Nucleus',
-    'LMNB1': 'Nucleus',
+    'LAMINB1': ['Lamin B1', 'Nuclear envelope'],
+    'LMNB1': ['Lamin B1', 'Nuclear envelope'],
 
-    'DESMOPLAKIN': 'Cell-cell junctions',
-    'DSP': 'Cell-cell junctions',
+    'DESMOPLAKIN': ['Desmoplakin', 'Desmosomes'],
+    'DSP': ['Desmoplakin', 'Desmosomes'],
 
-    'SEC61BETA': 'Endoplasmic reticulum',
-    'SEC61B': 'Endoplasmic reticulum',
+    'SEC61BETA': ['Sec61-beta', 'Endoplasmic reticulum'],
+    'SEC61B': ['Sec61-beta', 'Endoplasmic reticulum'],
 
-    'FIBRILLARIN': 'Nucleolus',
-    'FBL': 'Nucleolus',
+    'FIBRILLARIN': ['Fibrillarin', 'Nucleolus'],
+    'FBL': ['Fibrillarin', 'Nucleolus'],
 
-    'BETAACTIN': 'Actin',
-    'ACTB': 'Actin',
+    'BETAACTIN': ['Beta-actin', 'Actin'],
+    'ACTB': ['Beta-actin', 'Actin'],
 
-    'VIMENTIN': 'Intermediate filaments',
-    'VIM': 'Intermediate filaments',
+    'ZO1': ['Tight junction ZO1', 'Tight junctions'],
+    'TJP1': ['Tight junction ZO1', 'Tight junctions'],
 
-    'LAMP1': 'Lysosome',
-
-    'ZO1': 'Tight junctions',
-    'TJP1': 'Tight junctions',
-
-    'MYOSINIIB': 'Myosin',
-    'MYH10': 'Myosin',
-
-    'BETAGALACTOSIDEALPHA26SIALYLTRANSFERASE1': 'Golgi',
-    'ST6GAL1': 'Golgi',
-
-    'LC3': 'Autophagosomes',
-    'MAP1LC3B': 'Autophagosomes',
-
-    'CENTRIN': 'Centrosome',
-    'CETN2': 'Centrosome',
-
-    'GFP': 'Cytoplasm',
-    'AAVS1CAGGFP': 'Cytoplasm',
-
-    'PMP34': 'Peroxisomes',
-
-    'CAAX': 'Plasma membrane'
+    'MYOSINIIB': ['Non-muscle myosin IIB', 'Actomyosin'],
+    'MYH10': ['Non-muscle myosin IIB', 'Actomyosin'],
 }
 
 # create xml bundle for the bisque database entry pointing to this image.
@@ -81,9 +60,13 @@ def oneUp(sessionInfo, dict, outfile):
 
     # strip spaces and hyphens for dictionary lookup.
     structureProteinKey = structureProteinName.replace('-', '').replace(' ', '').replace(',', '').upper()
-    structureName = proteinToStructure.get(structureProteinKey)
-    if structureName is None:
-        structureName = "Unknown"
+    structureDisplayName = 'Unknown'
+    proteinDisplayName = 'Unknown'
+    structureNamePair = proteinToStructure.get(structureProteinKey)
+    if structureNamePair is not None:
+        structureDisplayName = structureNamePair[1]
+        proteinDisplayName = structureNamePair[0]
+    else:
         print('Unknown structure protein name: ' + structureProteinName)
 
     # Pass permission explicitly for each tag. This is to work around an apparent bug in the bisque back-end.
@@ -107,8 +90,8 @@ def oneUp(sessionInfo, dict, outfile):
     # etree.SubElement(resource, 'tag', name='filename', value=cbrCellName+tifext, permission=perm)
 
     etree.SubElement(resource, 'tag', name='thumbnail', value=relpath_thumbnail, permission=perm)
-    etree.SubElement(resource, 'tag', name='structureProteinName', value=structureProteinName, permission=perm)
-    etree.SubElement(resource, 'tag', name='structureName', value=structureName, permission=perm)
+    etree.SubElement(resource, 'tag', name='structureProteinName', value=proteinDisplayName, permission=perm)
+    etree.SubElement(resource, 'tag', name='structureName', value=structureDisplayName, permission=perm)
     # this batch of images are all from microscope and not simulated.
     etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
     etree.SubElement(resource, 'tag', name='segmentationVersion', value=cbrSegmentationVersion, permission=perm)
