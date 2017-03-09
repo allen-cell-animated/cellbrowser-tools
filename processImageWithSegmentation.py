@@ -224,14 +224,14 @@ class ImageProcessor:
         # print(cell_seg_file)
         file_list.append(cell_con_file)
         self.channel_names.append("CON_Memb")
-        # self.channels_to_mask.append(len(self.channel_names)-1)
+        self.channels_to_mask.append(len(self.channel_names)-1)
 
         # nucleus contour segmentation
         nuc_con_file = os.path.join(con_path, self.row.outputNucSegContourFilename)
         # print(nuc_seg_file)
         file_list.append(nuc_con_file)
         self.channel_names.append("CON_DNA")
-        # self.channels_to_mask.append(len(self.channel_names)-1)
+        self.channels_to_mask.append(len(self.channel_names)-1)
 
 
         # # structure contour segmentation
@@ -403,6 +403,7 @@ class ImageProcessor:
                 # the values stored are not indexed by cell number.
                 for mi in self.channels_to_mask:
                     cropped[mi] = image_to_mask(cropped[mi], i)
+
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
