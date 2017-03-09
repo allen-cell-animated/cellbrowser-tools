@@ -40,6 +40,7 @@ class CellJob(object):
         self.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
 
         self.cbrDatasetName = ''
+        self.cbrCellName = ''
 
         # processing
 
@@ -114,3 +115,5 @@ class CellJob(object):
             self.cbrGenerateSegmentedImages = csvRow.get('cbrGenerateSegmentedImages', self.cbrGenerateSegmentedImages)
             self.cbrGenerateFullFieldImages = csvRow.get('cbrGenerateFullFieldImages', self.cbrGenerateFullFieldImages)
             self.cbrAddToDb = csvRow.get('cbrAddToDb', self.cbrAddToDb)
+            self.cbrDatasetName = csvRow.get('cbrDatasetName', self.cbrDatasetName)
+            self.cbrCellName = csvRow.get('cbrCellName', self.cbrCellName)

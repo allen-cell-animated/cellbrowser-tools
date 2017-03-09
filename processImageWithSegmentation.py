@@ -150,7 +150,7 @@ class ImageProcessor:
 
         # Setting up directory paths for images
         self.image_file = normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
-        self.file_name = str(os.path.splitext(self.row.inputFilename)[0])
+        self.file_name = self.row.cbrCellName  # str(os.path.splitext(self.row.inputFilename)[0])
         self._generate_paths()
 
         # Setting up segmentation channels for full image
@@ -185,24 +185,21 @@ class ImageProcessor:
             "OBS_DNA",
             "OBS_Trans"
         ]
+        self.channels_to_mask = []
 
         print("loading segmentations for " + file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
         seg_path = normalize_path(seg_path)
+        con_path = self.row.outputSegmentationContourPath
+        con_path = normalize_path(con_path)
         # print(seg_path)
         file_list = []
 
-        # nucleus segmentation
-        nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
-        # print(nuc_seg_file)
-        file_list.append(nuc_seg_file)
-        self.channel_names.append("SEG_DNA")
-
-        # cell segmentation
-        cell_seg_file = os.path.join(seg_path, self.row.outputCellSegWholeFilename)
-        # print(cell_seg_file)
-        file_list.append(cell_seg_file)
-        self.channel_names.append("SEG_Memb")
+        # # nucleus segmentation
+        # nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
+        # # print(nuc_seg_file)
+        # file_list.append(nuc_seg_file)
+        # self.channel_names.append("SEG_DNA")
 
         # structure segmentation
         struct_seg_path = self.row.structureSegOutputFolder
@@ -215,32 +212,38 @@ class ImageProcessor:
             file_list.append(struct_seg_file)
             self.channel_names.append("SEG_STRUCT")
 
-
-        con_path = self.row.outputSegmentationContourPath
-        con_path = normalize_path(con_path)
-
-        # nucleus contour segmentation
-        nuc_con_file = os.path.join(con_path, self.row.outputNucSegContourFilename)
-        # print(nuc_seg_file)
-        file_list.append(nuc_con_file)
-        self.channel_names.append("CON_DNA")
+        # cell segmentation
+        cell_seg_file = os.path.join(seg_path, self.row.outputCellSegWholeFilename)
+        # print(cell_seg_file)
+        file_list.append(cell_seg_file)
+        self.channel_names.append("SEG_Memb")
+        self.channels_to_mask.append(len(self.channel_names)-1)
 
         # cell contour segmentation
         cell_con_file = os.path.join(con_path, self.row.outputCellSegContourFilename)
         # print(cell_seg_file)
         file_list.append(cell_con_file)
         self.channel_names.append("CON_Memb")
+        # self.channels_to_mask.append(len(self.channel_names)-1)
 
-        # structure contour segmentation
-        struct_con_path = struct_seg_path
-        if struct_con_path != '' and not struct_con_path.startswith('N/A'):
-            struct_con_path = normalize_path(struct_con_path)
+        # nucleus contour segmentation
+        nuc_con_file = os.path.join(con_path, self.row.outputNucSegContourFilename)
+        # print(nuc_seg_file)
+        file_list.append(nuc_con_file)
+        self.channel_names.append("CON_DNA")
+        # self.channels_to_mask.append(len(self.channel_names)-1)
 
-            # structure segmentation
-            struct_con_file = os.path.join(struct_con_path, self.row.structureSegContourFilename)
-            # print(struct_con_file)
-            file_list.append(struct_con_file)
-            self.channel_names.append("CON_STRUCT")
+
+        # # structure contour segmentation
+        # struct_con_path = struct_seg_path
+        # if struct_con_path != '' and not struct_con_path.startswith('N/A'):
+        #     struct_con_path = normalize_path(struct_con_path)
+        #
+        #     # structure segmentation
+        #     struct_con_file = os.path.join(struct_con_path, self.row.structureSegContourFilename)
+        #     # print(struct_con_file)
+        #     file_list.append(struct_con_file)
+        #     self.channel_names.append("CON_STRUCT")
 
 
 
@@ -350,8 +353,7 @@ class ImageProcessor:
         return image
 
     def generate_and_save(self):
-        base = os.path.basename(self.image_file)
-        base = os.path.splitext(base)[0]
+        base = self.row.cbrCellName
 
         # before this, indices have been re-organized in add_segs_to_img (in __init__)
         memb_index, nuc_index, struct_index = 0,2,1
@@ -362,7 +364,7 @@ class ImageProcessor:
             self.row.cbrBounds = None
             self.row.cbrCellIndex = 0
             self.row.cbrSourceImageName = None
-            self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
+            # self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
 
             if self.row.cbrGenerateThumbnail:
                 ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
@@ -395,10 +397,12 @@ class ImageProcessor:
 
                 bounds = get_segmentation_bounds(cell_segmentation_image, i)
                 cropped = crop_to_bounds(self.image, bounds)
-                # turn the seg channels into true masks
-                cropped[self.seg_indices[0]] = image_to_mask(cropped[self.seg_indices[0]], i)
-                cropped[self.seg_indices[1]] = image_to_mask(cropped[self.seg_indices[1]], i)
-                # structure segmentation does not use same masking index rules(?)
+                # Turn the seg channels into true masks
+                # by zeroing out all elements != i.
+                # Note that structure segmentation and contour does not use same masking index rules -
+                # the values stored are not indexed by cell number.
+                for mi in self.channels_to_mask:
+                    cropped[mi] = image_to_mask(cropped[mi], i)
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
