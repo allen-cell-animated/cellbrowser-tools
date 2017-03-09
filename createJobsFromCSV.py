@@ -103,11 +103,11 @@ def main():
         cellnamemapfile = open(datadir + 'cellnames.csv', 'w')
 
         summaryreader = csv.DictReader(summarycsvfile)
-        first_field = summaryreader.fieldnames[0]
+        summary_first_field = summaryreader.fieldnames[0]
         for summaryrow in summaryreader:
-            if summaryrow[first_field].startswith("#"):
+            if summaryrow[summary_first_field].startswith("#"):
                 continue
-            if summaryrow[first_field] == "":
+            if summaryrow[summary_first_field] == "":
                 continue
 
 
