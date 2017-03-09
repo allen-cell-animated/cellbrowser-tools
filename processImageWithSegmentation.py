@@ -402,7 +402,7 @@ class ImageProcessor:
                 # Note that structure segmentation and contour does not use same masking index rules -
                 # the values stored are not indexed by cell number.
                 for mi in self.channels_to_mask:
-                    cropped[mi] = image_to_mask(cropped[mi], i)
+                    cropped[mi] = image_to_mask(cropped[mi], i, 255)
 
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
