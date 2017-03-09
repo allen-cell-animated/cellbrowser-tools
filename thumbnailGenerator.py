@@ -14,18 +14,20 @@ import math as m
 
 z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
+# TODO change all functions and return statements to TZCYX ordering
 
 
 def get_thresholds(image, border_percent=0.1):
+    # expects CYX
     # using this allows us to ignore the bright corners of a cell image
-    im_width = image.shape[0]
+    im_width = image.shape[2]
     im_height = image.shape[1]
     left_bound = int(m.floor(border_percent * im_width))
     right_bound = int(m.ceil((1 - border_percent) * im_width))
     bottom_bound = int(m.floor(border_percent * im_height))
     top_bound = int(m.ceil((1 - border_percent) * im_height))
 
-    cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
+    cut_border = image[:, left_bound:right_bound, bottom_bound:top_bound]
     nonzeros = cut_border[np.nonzero(cut_border)]
     upper_threshold = np.max(cut_border) * .998
     # TODO should users be able to adjust this arbitrary constant?
@@ -35,10 +37,11 @@ def get_thresholds(image, border_percent=0.1):
 
 
 def resize_image(im, new_size):
-
     try:
-        downscale_factor = (float(im.shape[0]) / new_size[0])
+        im = im.transpose((2, 1, 0))
+        downscale_factor = (float(im.shape[1]) / new_size[1])
         im_out = t.pyramid_reduce(im, downscale=downscale_factor)
+        im_out = np.transpose(im_out, (2, 0, 1))
     except ValueError:
         new_size = np.array(new_size).astype('double')
         old_size = np.array(im.shape).astype('double')
@@ -192,7 +195,7 @@ class ThumbnailGenerator:
         This method will take in a 3D ZYX shape and return a 3D XYC of the final thumbnail
 
         :param im_size: 3D ZYX shape of original image
-        :return: XYC dims for a resized thumbnail where the maximum X or Y dimension is the one specified in the constructor.
+        :return: CYX dims for a resized thumbnail where the maximum X or Y dimension is the one specified in the constructor.
         """
         # size down to this edge size, maintaining aspect ratio.
         max_edge = self.size
@@ -201,7 +204,7 @@ class ThumbnailGenerator:
                                max_edge if im_size[1] > im_size[2] else max_edge * im_size[1] / im_size[2],
                                max_edge if im_size[1] < im_size[2] else max_edge * im_size[2] / im_size[1]
                                ))
-        return shape_out[1], shape_out[2], 3
+        return 3, shape_out[2], shape_out[1]
 
     def _layer_projections(self, projection_array):
         """
@@ -226,8 +229,10 @@ class ThumbnailGenerator:
             rgb_out *= self.colors[i]
             # normalize contrast
             rgb_out /= np.max(rgb_out)
+            rgb_out = rgb_out.transpose((2, 1, 0))
             lower_threshold, upper_threshold = get_thresholds(rgb_out)
             # ignore bright spots
+            rgb_out = rgb_out.transpose((2, 1, 0))
 
             def superimpose(source_pixel, dest_pixel):
                 pixel_weight = np.mean(source_pixel)
@@ -257,23 +262,24 @@ class ThumbnailGenerator:
                     dest_px = layered_image[x, y]
                     layered_image[x, y] = layering_method(source_pixel=src_px, dest_pixel=dest_px)
 
-        return layered_image
+        return layered_image.transpose((2, 1, 0))
 
     def make_thumbnail(self, image, apply_cell_mask=False):
         """
         This method is the primary interface with the ThumbnailGenerator. It can be used many times with different images,
         in order to save the configuration that was specified at the beginning of the generator.
 
-        :param image: single CZYX image that is the source of the thumbnail
+        :param image: single ZCYX image that is the source of the thumbnail
         :param apply_cell_mask: boolean value that designates whether the image is a fullfield or segmented cell
                                 False -> fullfield, True -> segmented cell
         :return: a single CYX image, scaled down to the size designated in the constructor
         """
 
-        assert image.shape[0] >= 6
-        assert max(self.memb_index, self.struct_index, self.nuc_index) <= image.shape[0] - 1
+        # check to make sure there are 6 or more channels
+        assert image.shape[1] >= 6
+        assert max(self.memb_index, self.struct_index, self.nuc_index) <= image.shape[1] - 1
 
-        im_size = np.array(image[0].shape)
+        im_size = np.array(image[:, 0].shape)
         assert len(im_size) == 3
         shape_out_rgb = self._get_output_shape(im_size)
 
@@ -282,18 +288,19 @@ class ThumbnailGenerator:
         if apply_cell_mask:
             # apply the cell segmentation mask.  bye bye to data outside the cell
             for i in self.channel_indices:
-                image[i] = mask_image(image[i], image[self.seg_indices[1]])
+                image[:, i] = mask_image(image[:, i], image[:, self.seg_indices[1]])
 
-        image = image[0:3]
+        # ignore trans-light channel and seg channels
+        image = image[:, 0:3]
         num_noise_floor_bins = 256
         projection_array = []
         projection_type = self.projection_mode
         for i in self.channel_indices:
-            # don't use max projections on the fullfield images... they get much too messy
+            # don't use max projections on the fullfield images... they get too messy
             if not apply_cell_mask:
                 projection_type = 'slice'
             # subtract out the noise floor.
-            thumb = subtract_noise_floor(image[i], bins=num_noise_floor_bins)
+            thumb = subtract_noise_floor(image[:, i], bins=num_noise_floor_bins)
             thumb = np.asarray(thumb).astype('double')
             # TODO thresholding is too high for the max projection of membrane
             im_proj = create_projection(thumb, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
@@ -304,7 +311,7 @@ class ThumbnailGenerator:
         comp /= np.max(comp)
         comp[comp < 0] = 0
         # returns a CYX array for the png writer
-        return comp.transpose((2, 0, 1))
+        return comp
 
 
 def main():

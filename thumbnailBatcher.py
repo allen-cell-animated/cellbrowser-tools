@@ -41,8 +41,8 @@ def full_field_batcher(ome_tif_files):
                 generator = ThumbnailGenerator(colors=palette[0], layering=layering, projection=projection[0], proj_sections=projection[1])
                 for file_name in ome_tif_files:
                     with OmeTifReader(file_name) as reader:
-                        # converts to CZYX
-                        image = reader.load()[0].transpose((1, 0, 2, 3))
+                        # converts to ZCYX
+                        image = reader.load()[0]
                     base_file_name = os.path.basename(file_name)
                     print("processing " + base_file_name + "...", end="")
                     thumb = generator.make_thumbnail(image, apply_cell_mask=is_segmented_image(base_file_name))
