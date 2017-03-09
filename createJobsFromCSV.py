@@ -96,12 +96,22 @@ def main():
     aicsnum_index = {}
     # plan: read from delivery_summary based on "dataset" arg
     # delivery_summary contains rows listing all the csv files to load
-    datadir = './data/'+args.dataset
+    datadir = './data/' + args.dataset
     with open(datadir + '/delivery_summary.csv', 'rU') as summarycsvfile:
 
+        # every cell I process will get a line in this file.
+        cellnamemapfile = open(datadir + 'cellnames.csv', 'w')
+
         summaryreader = csv.DictReader(summarycsvfile)
-        # first_field = reader.fieldnames[0]
+        first_field = summaryreader.fieldnames[0]
         for summaryrow in summaryreader:
+            if summaryrow[first_field].startswith("#"):
+                continue
+            if summaryrow[first_field] == "":
+                continue
+
+
+
             eid = summaryrow['Experiment ID']
             aicsnum = summaryrow['AICS-#']
 
@@ -184,6 +194,8 @@ def main():
                         aicsnum_index[aicsnum] = 0
                     cellindex = aicsnum_index.get(aicsnum)
                     info.cbrCellName = aicsnum + '_' + str(cellindex)
+                    cellnamemapfile.write(info.cbrCellName + ',' + row['inputFilename'])
+                    cellnamemapfile.write(os.linesep)
 
                     if args.run:
                         generate_sh_for_row(output_dir, i, subdir, info, "run")
@@ -198,7 +210,8 @@ def main():
                         break
             # if i == args.first:
             #     break
-
+        if cellnamemapfile:
+            cellnamemapfile.close()
 
 if __name__ == "__main__":
     print (sys.argv)
