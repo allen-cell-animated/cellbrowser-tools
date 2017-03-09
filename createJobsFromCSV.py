@@ -97,11 +97,11 @@ def main():
     # plan: read from delivery_summary based on "dataset" arg
     # delivery_summary contains rows listing all the csv files to load
     datadir = './data/' + args.dataset
-    jobcounter = 0;
+    jobcounter = 0
     with open(datadir + '/delivery_summary.csv', 'rU') as summarycsvfile:
 
         # every cell I process will get a line in this file.
-        cellnamemapfile = open(datadir + 'cellnames.csv', 'w')
+        cellnamemapfile = open(datadir + '/cellnames.csv', 'w')
 
         summaryreader = csv.DictReader(summarycsvfile)
         summary_first_field = summaryreader.fieldnames[0]
