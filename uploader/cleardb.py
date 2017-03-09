@@ -19,7 +19,8 @@ def main():
     }
 
     db_api.DbApi.setSessionInfo(session_dict)
-    db_ops.deleteDuplicateImagesByName(args.input)
+    # db_ops.deleteDuplicateImagesByName(args.input)
+    db_ops.deleteImagesByName(args.input)
 
 if __name__ == "__main__":
     print (sys.argv)

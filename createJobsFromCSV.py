@@ -5,8 +5,10 @@
 import argparse
 import cellJob
 import csv
+import glob
 import json
 import os
+import platform
 import sys
 from processImageWithSegmentation import do_main
 import jobScheduler
@@ -49,7 +51,7 @@ def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
                                                  'and set up a job script for each row.'
                                                  'Example: python createJobsFromCSV.py /path/to/csv')
-    parser.add_argument('input', nargs='+', help='input csv files')
+    # parser.add_argument('input', nargs='+', help='input csv files')
     parser.add_argument('--outpath', '-o', help='output path for job files', default='test')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
@@ -81,91 +83,121 @@ def main():
 
     args = parser.parse_args()
 
-    input_files = args.input
+    # if platform.system() == 'Windows':
+    #     filenames = []
+    #     for filename in args.input:
+    #         if '*' in filename or '?' in filename or '[' in filename:
+    #             filenames += glob.glob(filename)
+    #         else:
+    #             filenames.append(filename)
+    #     args.input = filenames
+    # input_files = args.input
 
-    i = 0
-    for entry in input_files:
-        file_name = entry
-        subdir = os.path.splitext(os.path.basename(entry))[0]
-        output_dir = os.path.join(args.outpath, subdir)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+    aicsnum_index = {}
+    # plan: read from delivery_summary based on "dataset" arg
+    # delivery_summary contains rows listing all the csv files to load
+    datadir = './data/'+args.dataset
+    with open(datadir + '/delivery_summary.csv', 'rU') as summarycsvfile:
 
-        with open(file_name, 'rU') as csvfile:
+        summaryreader = csv.DictReader(summarycsvfile)
+        # first_field = reader.fieldnames[0]
+        for summaryrow in summaryreader:
+            eid = summaryrow['Experiment ID']
+            aicsnum = summaryrow['AICS-#']
 
-            reader = csv.DictReader(csvfile)
-            first_field = reader.fieldnames[0]
-            for row in reader:
-                if row[first_field].startswith("#"):
-                    continue
-                if row[first_field] == "":
-                    continue
+            # which csv file to load next.
+            file_name = eid + '_3ChSeg' + '.csv'
 
-                info = cellJob.CellJob(row)
-                info.cbrAddToDb = True
+            # output subdirectory name
+            subdir = aicsnum
 
-                info.cbrDataRoot = '/data/aics/software_it/danielt/images/AICS/bisque/'
-                info.cbrThumbnailRoot = '/data/aics/software_it/danielt/demos/bisque/thumbnails/'
-                info.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
+            output_dir = os.path.join(args.outpath, subdir)
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
-                info.cbrDatasetName = ''
-                if args.dataset:
-                    info.cbrDatasetName = args.dataset
-                info.cbrImageLocation = info.cbrDataRoot + info.cbrDatasetName + '/' + subdir
-                info.cbrThumbnailLocation = info.cbrThumbnailRoot + info.cbrDatasetName + '/' + subdir
-                info.cbrThumbnailURL = info.cbrThumbnailWebRoot + info.cbrDatasetName + '/' + subdir
+            i = 0
+            with open(datadir + '/' + file_name, 'rU') as csvfile:
 
-                if args.all:
+                reader = csv.DictReader(csvfile)
+                first_field = reader.fieldnames[0]
+                for row in reader:
+                    if row[first_field].startswith("#"):
+                        continue
+                    if row[first_field] == "":
+                        continue
+
+                    info = cellJob.CellJob(row)
                     info.cbrAddToDb = True
-                    info.cbrGenerateThumbnail = True
-                    info.cbrGenerateCellImage = True
-                    info.cbrGenerateSegmentedImages = True
-                    info.cbrGenerateFullFieldImages = True
-                else:
-                    if args.dryrun:
-                        info.cbrImageLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
-                        info.cbrThumbnailLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
-                        info.cbrAddToDb = False
-                    elif args.dbonly:
+
+                    info.cbrDataRoot = '/data/aics/software_it/danielt/images/AICS/bisque/'
+                    info.cbrThumbnailRoot = '/data/aics/software_it/danielt/demos/bisque/thumbnails/'
+                    info.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
+
+                    info.cbrDatasetName = ''
+                    if args.dataset:
+                        info.cbrDatasetName = args.dataset
+                    info.cbrImageLocation = info.cbrDataRoot + info.cbrDatasetName + '/' + subdir
+                    info.cbrThumbnailLocation = info.cbrThumbnailRoot + info.cbrDatasetName + '/' + subdir
+                    info.cbrThumbnailURL = info.cbrThumbnailWebRoot + info.cbrDatasetName + '/' + subdir
+
+                    if args.all:
                         info.cbrAddToDb = True
-                        info.cbrGenerateThumbnail = False
-                        info.cbrGenerateCellImage = False
-                    elif args.notdb:
-                        info.cbrAddToDb = False
-
-                    if args.thumbnailsonly:
-                        info.cbrGenerateThumbnail = True
-                        info.cbrGenerateCellImage = False
-                    elif args.imagesonly:
-                        info.cbrGenerateThumbnail = False
-                        info.cbrGenerateCellImage = True
-                    elif not args.dbonly:
                         info.cbrGenerateThumbnail = True
                         info.cbrGenerateCellImage = True
-
-                    if args.fullfieldonly:
-                        info.cbrGenerateSegmentedImages = False
-                        info.cbrGenerateFullFieldImages = True
-                    elif args.segmentedonly:
                         info.cbrGenerateSegmentedImages = True
-                        info.cbrGenerateFullFieldImages = False
+                        info.cbrGenerateFullFieldImages = True
                     else:
-                        info.cbrGenerateSegmentedImages = True
-                        info.cbrGenerateFullFieldImages = True
+                        if args.dryrun:
+                            info.cbrImageLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
+                            info.cbrThumbnailLocation = os.path.abspath(os.path.join(args.outpath, 'images', subdir))
+                            info.cbrAddToDb = False
+                        elif args.dbonly:
+                            info.cbrAddToDb = True
+                            info.cbrGenerateThumbnail = False
+                            info.cbrGenerateCellImage = False
+                        elif args.notdb:
+                            info.cbrAddToDb = False
 
-                if args.run:
-                    generate_sh_for_row(output_dir, i, subdir, info, "run")
-                elif args.cluster:
-                    # TODO: set arg to copy each indiv file to another output
-                    generate_sh_for_row(output_dir, i, subdir, info, "cluster")
-                else:
-                    generate_sh_for_row(output_dir, i, subdir, info, "")
+                        if args.thumbnailsonly:
+                            info.cbrGenerateThumbnail = True
+                            info.cbrGenerateCellImage = False
+                        elif args.imagesonly:
+                            info.cbrGenerateThumbnail = False
+                            info.cbrGenerateCellImage = True
+                        elif not args.dbonly:
+                            info.cbrGenerateThumbnail = True
+                            info.cbrGenerateCellImage = True
 
-                i += 1
-                if i == args.first:
-                    break
-        if i == args.first:
-            break
+                        if args.fullfieldonly:
+                            info.cbrGenerateSegmentedImages = False
+                            info.cbrGenerateFullFieldImages = True
+                        elif args.segmentedonly:
+                            info.cbrGenerateSegmentedImages = True
+                            info.cbrGenerateFullFieldImages = False
+                        else:
+                            info.cbrGenerateSegmentedImages = True
+                            info.cbrGenerateFullFieldImages = True
+
+                    if aicsnum in aicsnum_index:
+                        aicsnum_index[aicsnum] += 1
+                    else:
+                        aicsnum_index[aicsnum] = 0
+                    cellindex = aicsnum_index.get(aicsnum)
+                    info.cbrCellName = aicsnum + '_' + str(cellindex)
+
+                    if args.run:
+                        generate_sh_for_row(output_dir, i, subdir, info, "run")
+                    elif args.cluster:
+                        # TODO: set arg to copy each indiv file to another output
+                        generate_sh_for_row(output_dir, i, subdir, info, "cluster")
+                    else:
+                        generate_sh_for_row(output_dir, i, subdir, info, "")
+
+                    i += 1
+                    if i == args.first:
+                        break
+            # if i == args.first:
+            #     break
 
 
 if __name__ == "__main__":
