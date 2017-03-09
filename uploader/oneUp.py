@@ -97,6 +97,8 @@ def oneUp(sessionInfo, dict, outfile):
     etree.SubElement(resource, 'tag', name='segmentationVersion', value=cbrSegmentationVersion, permission=perm)
     if cbrStructureSegmentationMethod:
         etree.SubElement(resource, 'tag', name='structureSegmentationMethod', value=cbrStructureSegmentationMethod, permission=perm)
+    if dict['inputFilename']:
+        etree.SubElement(resource, 'tag', name='inputFilename', value=dict['inputFilename'], permission=perm)
 
     # add a tag for each channel name, by index
     if dict['channelNames'] is not None:
