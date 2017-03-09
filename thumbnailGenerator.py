@@ -28,8 +28,7 @@ def get_thresholds(image, border_percent=0.1):
     cut_border = image[left_bound:right_bound, bottom_bound:top_bound]
     nonzeros = cut_border[np.nonzero(cut_border)]
     upper_threshold = np.max(cut_border) * .998
-    # arbitrary constant
-    # TODO should users be able to adjust this as they want?
+    # TODO should users be able to adjust this arbitrary constant?
     lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
 
     return lower_threshold, upper_threshold
@@ -135,7 +134,6 @@ class ThumbnailGenerator:
                  memb_seg_index=5, struct_seg_index=6, nuc_seg_index=4,
                  layering="superimpose", projection="slice", proj_sections=-1):
         """
-
         :param colors: The color palette that will be used to color each channel. The default palette
                        colors the membrane channel cyan, structure with magenta, and nucleus with yellow.
                        Keep color-blind acccessibility in mind.
@@ -190,6 +188,12 @@ class ThumbnailGenerator:
         self.proj_sections = proj_sections
 
     def _get_output_shape(self, im_size):
+        """
+        This method will take in a 3D ZYX shape and return a 3D XYC of the final thumbnail
+
+        :param im_size: 3D ZYX shape of original image
+        :return: XYC dims for a resized thumbnail where the maximum X or Y dimension is the one specified in the constructor.
+        """
         # size down to this edge size, maintaining aspect ratio.
         max_edge = self.size
         # keep same number of z slices.
@@ -200,6 +204,12 @@ class ThumbnailGenerator:
         return shape_out[1], shape_out[2], 3
 
     def _layer_projections(self, projection_array):
+        """
+        This method will take in a list of 2D XY projections and layer them according to the method specified in the constructor
+
+        :param projection_array: list of 2D XY projections (for each channel of a cell image)
+        :return: single 3D XYC image where C is RGB values for each pixel
+        """
         # array cannot be empty or have more channels than the color array
         assert projection_array
         assert len(projection_array) == len(self.colors)
@@ -250,7 +260,15 @@ class ThumbnailGenerator:
         return layered_image
 
     def make_thumbnail(self, image, apply_cell_mask=False):
-        # TODO should the cell mask be a parameter in this method?
+        """
+        This method is the primary interface with the ThumbnailGenerator. It can be used many times with different images,
+        in order to save the configuration that was specified at the beginning of the generator.
+
+        :param image: single CZYX image that is the source of the thumbnail
+        :param apply_cell_mask: boolean value that designates whether the image is a fullfield or segmented cell
+                                False -> fullfield, True -> segmented cell
+        :return: a single CYX image, scaled down to the size designated in the constructor
+        """
 
         assert image.shape[0] >= 6
         assert max(self.memb_index, self.struct_index, self.nuc_index) <= image.shape[0] - 1
