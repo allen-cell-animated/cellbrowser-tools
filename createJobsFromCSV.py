@@ -97,6 +97,7 @@ def main():
     # plan: read from delivery_summary based on "dataset" arg
     # delivery_summary contains rows listing all the csv files to load
     datadir = './data/' + args.dataset
+    jobcounter = 0;
     with open(datadir + '/delivery_summary.csv', 'rU') as summarycsvfile:
 
         # every cell I process will get a line in this file.
@@ -198,13 +199,14 @@ def main():
                     cellnamemapfile.write(os.linesep)
 
                     if args.run:
-                        generate_sh_for_row(output_dir, i, subdir, info, "run")
+                        generate_sh_for_row(output_dir, jobcounter, subdir, info, "run")
                     elif args.cluster:
                         # TODO: set arg to copy each indiv file to another output
-                        generate_sh_for_row(output_dir, i, subdir, info, "cluster")
+                        generate_sh_for_row(output_dir, jobcounter, subdir, info, "cluster")
                     else:
-                        generate_sh_for_row(output_dir, i, subdir, info, "")
+                        generate_sh_for_row(output_dir, jobcounter, subdir, info, "")
 
+                    jobcounter += 1
                     i += 1
                     if i == args.first:
                         break
