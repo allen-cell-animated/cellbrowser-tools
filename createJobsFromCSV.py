@@ -19,9 +19,10 @@ import jobScheduler
 # cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
-def generate_sh_for_row(outdir, i, subdir, info, do_run):
+def generate_sh_for_row(outdir, jobname, jobnumber, subdir, info, do_run):
     # dump row data into json
-    cell_job_postfix = subdir + "_" + str(i)
+    # Cell_job_postfix = subdir + "_" + str(jobnumber)
+    cell_job_postfix = jobname
     current_dir = os.path.join(os.getcwd(), outdir)
     jsonname = os.path.join(current_dir, 'aicsCellJob_'+cell_job_postfix+'.json')
     pathjson = os.path.join(outdir, jsonname)
@@ -93,7 +94,7 @@ def main():
     #     args.input = filenames
     # input_files = args.input
 
-    aicsnum_index = {}
+    generate_aicsnum_index = {}
     # plan: read from delivery_summary based on "dataset" arg
     # delivery_summary contains rows listing all the csv files to load
     datadir = './data/' + args.dataset
@@ -101,7 +102,10 @@ def main():
     with open(datadir + '/delivery_summary.csv', 'rU') as summarycsvfile:
 
         # every cell I process will get a line in this file.
-        cellnamemapfile = open(datadir + '/cellnames.csv', 'w')
+        cellnamemapfilename = datadir + '/cellnames.csv'
+        cellnamemapfile = open(cellnamemapfilename, 'rU')
+        cellnamemapreader = csv.reader(cellnamemapfile)
+        cellnamemap = {rows[1]:rows[0] for rows in cellnamemapreader}
 
         summaryreader = csv.DictReader(summarycsvfile)
         summary_first_field = summaryreader.fieldnames[0]
@@ -189,22 +193,25 @@ def main():
                             info.cbrGenerateSegmentedImages = True
                             info.cbrGenerateFullFieldImages = True
 
-                    if aicsnum in aicsnum_index:
-                        aicsnum_index[aicsnum] += 1
+                    if aicsnum in generate_aicsnum_index:
+                        generate_aicsnum_index[aicsnum] += 1
                     else:
-                        aicsnum_index[aicsnum] = 0
-                    cellindex = aicsnum_index.get(aicsnum)
+                        generate_aicsnum_index[aicsnum] = 0
+                    cellindex = generate_aicsnum_index.get(aicsnum)
                     info.cbrCellName = aicsnum + '_' + str(cellindex)
-                    cellnamemapfile.write(info.cbrCellName + ',' + row['inputFilename'])
-                    cellnamemapfile.write(os.linesep)
+                    if cellnamemap[row['inputFilename']]:
+                        info.cbrCellName = cellnamemap[row['inputFilename']]
+                    # cellnamemapfile.write(info.cbrCellName + ',' + row['inputFilename'])
+                    # cellnamemapfile.write(os.linesep)
 
+                    jobname = info.cbrCellName
                     if args.run:
-                        generate_sh_for_row(output_dir, jobcounter, subdir, info, "run")
+                        generate_sh_for_row(output_dir, jobname, jobcounter, subdir, info, "run")
                     elif args.cluster:
                         # TODO: set arg to copy each indiv file to another output
-                        generate_sh_for_row(output_dir, jobcounter, subdir, info, "cluster")
+                        generate_sh_for_row(output_dir, jobname, jobcounter, subdir, info, "cluster")
                     else:
-                        generate_sh_for_row(output_dir, jobcounter, subdir, info, "")
+                        generate_sh_for_row(output_dir, jobname, jobcounter, subdir, info, "")
 
                     jobcounter += 1
                     i += 1
