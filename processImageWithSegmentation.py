@@ -337,9 +337,9 @@ class ImageProcessor:
             file_ext = os.path.splitext(f)[1]
             if file_ext == '.tiff' or file_ext == '.tif':
                 seg = TifReader(f).load()
-                assert seg.shape[0] == image.shape[1]
-                assert seg.shape[1] == image.shape[2]
-                assert seg.shape[2] == image.shape[3]
+                assert seg.shape[0] == image.shape[1], f + ' has shape mismatch ' + str(seg.shape[0]) + ' vs ' + str(image.shape[1])
+                assert seg.shape[1] == image.shape[2], f + ' has shape mismatch ' + str(seg.shape[1]) + ' vs ' + str(image.shape[2])
+                assert seg.shape[2] == image.shape[3], f + ' has shape mismatch ' + str(seg.shape[2]) + ' vs ' + str(image.shape[3])
                 # append channels containing segmentations
                 self.omexml.image().Pixels.append_channel(nch+i, self.channels[nch+i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
