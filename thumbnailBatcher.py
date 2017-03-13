@@ -20,7 +20,9 @@ _mcy = ([[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 0.0]], "mcy")
 _rgb = ([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], "rgb")
 _rbg = ([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]], "rbg")
 _brg = ([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], "brg")
-color_choices = [_cym, _cmy, _ymc, _ycm, _mcy, _myc]
+_cwm = ([[0.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 0.0, 1.0]], "cwm")
+_mwc = ([[1.0, 0.0, 1.0], [1.0, 1.0, 1.0], [0.0, 1.0, 1.0]], "mwc")
+color_choices = [_cmy, _cwm, _cym, _mwc, _ycm, _ymc]
 layering_choices = ["alpha-blend", "superimpose"]
 projection_choices = [("sections", 3), ("sections", 4), ("sections", 5), ("slice", -1), ("max", -1)]
 
