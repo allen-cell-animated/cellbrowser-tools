@@ -216,17 +216,17 @@ class ThumbnailGenerator:
         # array cannot be empty or have more channels than the color array
         assert projection_array
         assert len(projection_array) == len(self.colors)
-        layered_image = np.zeros((projection_array[0].shape[0], projection_array[0].shape[1], 3))
+        layered_image = np.zeros((projection_array[0].shape[0], projection_array[0].shape[1], 4))
 
         for i in range(len(projection_array)):
             projection = projection_array[i]
             projection /= np.max(projection)
             assert projection.shape == projection_array[0].shape
-            # 3 channels - rgb
+            # 4 channels - rgba
             rgb_out = np.expand_dims(projection, 2)
-            rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
+            rgb_out = np.repeat(rgb_out, 4, 2).astype('float')
             # inject color.  careful of type mismatches.
-            rgb_out *= self.colors[i]
+            rgb_out *= self.colors[i] + [1.0]
             # normalize contrast
             rgb_out /= np.max(rgb_out)
             rgb_out = rgb_out.transpose((2, 1, 0))
@@ -258,9 +258,12 @@ class ThumbnailGenerator:
 
             for x in range(rgb_out.shape[0]):
                 for y in range(rgb_out.shape[1]):
-                    src_px = rgb_out[x, y]
-                    dest_px = layered_image[x, y]
-                    layered_image[x, y] = layering_method(source_pixel=src_px, dest_pixel=dest_px)
+                    # these slicing methods in C channel are getting the rgb data and ignoring the alpha values
+                    src_px = rgb_out[x, y, 0:3]
+                    dest_px = layered_image[x, y, 0:3]
+                    layered_image[x, y, 0:3] = layering_method(source_pixel=src_px, dest_pixel=dest_px)
+                    # temporary to assure alpha is one for all pixels
+                    layered_image[x, y, 3] = 1.0
 
         return layered_image.transpose((2, 1, 0))
 
