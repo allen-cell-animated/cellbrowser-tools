@@ -12,7 +12,6 @@ import scipy
 import sys
 import skimage.transform as t
 import math as m
-from aicsimageio import cziReader
 
 z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
@@ -45,7 +44,7 @@ def get_thresholds(image, border_percent=0.1):
 
 def resize_image(image, new_size):
     """
-    This function resizes a CYX image. Tested to work with downscaling, but needs to be tested with "upsampling" images
+    This function resizes a CYX image.
 
     :param image: CYX image
     :param new_size: tuple of new shape in (C, Y, X)
@@ -53,8 +52,12 @@ def resize_image(image, new_size):
     """
     try:
         image = image.transpose((2, 1, 0))
-        downscale_factor = (float(image.shape[1]) / new_size[1])
-        im_out = t.pyramid_reduce(image, downscale=downscale_factor)
+        scaling = (float(image.shape[1]) / new_size[1])
+        if scaling < 1:
+            scaling = (float(new_size[1]) / image.shape[1])
+            im_out = t.pyramid_expand(image, upscale=scaling)
+        else:
+            im_out = t.pyramid_reduce(image, downscale=scaling)
         im_out = np.transpose(im_out, (2, 0, 1))
     except ValueError:
         new_size = np.array(new_size).astype('double')
