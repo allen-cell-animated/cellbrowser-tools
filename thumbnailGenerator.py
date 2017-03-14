@@ -46,8 +46,8 @@ def resize_image(image, new_size):
     """
     This function resizes a CYX image.
 
-    :param image: CYX image
-    :param new_size: tuple of new shape in (C, Y, X)
+    :param image: CYX ndarray
+    :param new_size: tuple of shape of desired image dimensions in (C, Y, X)
     :return: image with shape of new_shape with image data
     """
     try:
@@ -221,7 +221,7 @@ class ThumbnailGenerator:
                                ))
         return 3, shape_out[2], shape_out[1]
 
-    def _layer_projections(self, projection_array):
+    def _layer_projections(self, projection_array, mask_array):
         """
         This method will take in a list of 2D XY projections and layer them according to the method specified in the constructor
 
@@ -235,6 +235,7 @@ class ThumbnailGenerator:
 
         for i in range(len(projection_array)):
             projection = projection_array[i]
+            # normalize channel projection
             projection /= np.max(projection)
             assert projection.shape == projection_array[0].shape
             # 4 channels - rgba
@@ -273,12 +274,15 @@ class ThumbnailGenerator:
 
             for x in range(rgb_out.shape[0]):
                 for y in range(rgb_out.shape[1]):
-                    # these slicing methods in C channel are getting the rgb data and ignoring the alpha values
+                    # these slicing methods in C channel are getting the rgb data *only* and ignoring the alpha values
                     src_px = rgb_out[x, y, 0:3]
                     dest_px = layered_image[x, y, 0:3]
                     layered_image[x, y, 0:3] = layering_method(source_pixel=src_px, dest_pixel=dest_px)
-                    # temporary to assure alpha is one for all pixels
-                    layered_image[x, y, 3] = 1.0
+                    # if mask_array has elements and the pixel is 0
+                    if mask_array and mask_array[i][x,y] == 0.0:
+                        layered_image[x, y, 3] = 0.0
+                    else:
+                        layered_image[x, y, 3] = 1.0
 
         return layered_image.transpose((2, 1, 0))
 
@@ -294,6 +298,7 @@ class ThumbnailGenerator:
         """
 
         # check to make sure there are 6 or more channels
+        image = image.astype(np.float32)
         assert image.shape[1] >= 6
         assert max(self.memb_index, self.struct_index, self.nuc_index) <= image.shape[1] - 1
 
@@ -301,17 +306,10 @@ class ThumbnailGenerator:
         assert len(im_size) == 3
         shape_out_rgb = self._get_output_shape(im_size)
 
-        image = image.astype(np.float32)
-
-        if apply_cell_mask:
-            # apply the cell segmentation mask.  bye bye to data outside the cell
-            for i in self.channel_indices:
-                image[:, i] = mask_image(image[:, i], image[:, self.seg_indices[1]])
-
         # ignore trans-light channel and seg channels
-        image = image[:, 0:3]
         num_noise_floor_bins = 256
         projection_array = []
+        mask_array = []
         projection_type = self.projection_mode
         for i in self.channel_indices:
             # don't use max projections on the fullfield images... they get too messy
@@ -321,9 +319,12 @@ class ThumbnailGenerator:
             thumb = subtract_noise_floor(image[:, i], bins=num_noise_floor_bins)
             thumb = np.asarray(thumb).astype('double')
             im_proj = create_projection(thumb, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
+            if apply_cell_mask:
+                mask_proj = create_projection(image[:, self.seg_indices[1]], 0, method="max")
+                mask_array.append(mask_proj)
             projection_array.append(im_proj)
 
-        layered_image = self._layer_projections(projection_array)
+        layered_image = self._layer_projections(projection_array, mask_array)
         comp = resize_image(layered_image, shape_out_rgb)
         comp /= np.max(comp)
         comp[comp < 0] = 0
