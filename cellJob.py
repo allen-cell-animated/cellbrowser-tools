@@ -50,6 +50,8 @@ class CellJob(object):
         self.cbrGenerateSegmentedImages = True
         self.cbrGenerateFullFieldImages = True
         self.cbrParseError = False
+        self.cbrSkipStructureSegmentation = False
+
         if csvRow is not None:
             self.cbrParseError = csvRow.get('cbrParseError', False)
             self.DeliveryDate = csvRow.get('DeliveryDate')
@@ -117,3 +119,5 @@ class CellJob(object):
             self.cbrAddToDb = csvRow.get('cbrAddToDb', self.cbrAddToDb)
             self.cbrDatasetName = csvRow.get('cbrDatasetName', self.cbrDatasetName)
             self.cbrCellName = csvRow.get('cbrCellName', self.cbrCellName)
+            self.cbrSkipStructureSegmentation = csvRow.get('cbrSkipStructureSegmentation', self.cbrSkipStructureSegmentation)
+

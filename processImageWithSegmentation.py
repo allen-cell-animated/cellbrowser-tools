@@ -203,7 +203,7 @@ class ImageProcessor:
 
         # structure segmentation
         struct_seg_path = self.row.structureSegOutputFolder
-        if struct_seg_path != '' and not struct_seg_path.startswith('N/A'):
+        if struct_seg_path != '' and not struct_seg_path.startswith('N/A') and not self.row.cbrSkipStructureSegmentation:
             struct_seg_path = normalize_path(struct_seg_path)
 
             # structure segmentation

@@ -1,0 +1,7 @@
+Structure,Protein,Experiment ID,AICS-#,Clone,Days,Lot,Person,Delivered cells,Scope,Num,Segmented,version,Label,Percent,Cell/Image,SkipStructureSeg
+Actin,Beta actin,20160930_S01,AICS-16,Clone 185,4.0,2,S,142,AD,45.0,310.0,V2.2,Liya,45.8064516129,3.15555555556,1
+Actin,Beta actin,20161216_C02,AICS-16,Clone 184,4.0,3,C,146,AD,29.0,284.0,V3.0,Liya&Derek,51.4084507042,5.03448275862,1
+Actin,Beta actin,20170207_C01,AICS-16,Clone 184,4.0,3,C,254,AD,60.0,428.0,V3.0,Liya&Derek,59.3457943925,4.23333333333,1
+Actin,Alpha actinin,20160708_I01,AICS-7,Cr3,4.0,1,I,285,AD,60.0,516.0,V2.2,Greg,55.2325581395,4.75,1
+Actin,Alpha actinin,20161216_I03,AICS-7,Clone 79,4.0,3,I,208,AD,50.0,332.0,V3.0,Liya&Derek,62.6506024096,4.16,1
+myosin,Myosin IIB,20161219_S01,AICS-24,Clone 80,4.0,3,S,157,AD,56.0,264.0,V3.0,Liya&Derek,59.4696969697,2.80357142857,1
