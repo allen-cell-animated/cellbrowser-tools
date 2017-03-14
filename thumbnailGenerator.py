@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# author: Dan Toloudis danielt@alleninstitute.org
+# authors: Dan Toloudis danielt@alleninstitute.org
+#          Zach Crabtree zacharyc@alleninstitute.org
 
 from __future__ import print_function
 from aicsimagetools import *
@@ -11,13 +12,20 @@ import scipy
 import sys
 import skimage.transform as t
 import math as m
+from aicsimageio import cziReader
 
 z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
-# TODO change all functions and return statements to TZCYX ordering
-
+# TODO documentation for each function outside of ThumbnailGenerator class
 
 def get_thresholds(image, border_percent=0.1):
+    """
+    This function finds thresholds for an image in order to reduce noise and bring up the peak contrast
+
+    :param image: CYX-dimensioned image
+    :param border_percent: how much of the corners to ignore when calculating the threshold. Sometimes corners can be unnecessarily bright
+    :return: tuple of float values, the lower and upper thresholds of the image
+    """
     # expects CYX
     # using this allows us to ignore the bright corners of a cell image
     im_width = image.shape[2]
@@ -30,57 +38,63 @@ def get_thresholds(image, border_percent=0.1):
     cut_border = image[:, left_bound:right_bound, bottom_bound:top_bound]
     nonzeros = cut_border[np.nonzero(cut_border)]
     upper_threshold = np.max(cut_border) * .998
-    # TODO should users be able to adjust this arbitrary constant?
     lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
 
     return lower_threshold, upper_threshold
 
 
-def resize_image(im, new_size):
+def resize_image(image, new_size):
+    """
+    This function resizes a CYX image. Tested to work with downscaling, but needs to be tested with "upsampling" images
+
+    :param image: CYX image
+    :param new_size: tuple of new shape in (C, Y, X)
+    :return: image with shape of new_shape with image data
+    """
     try:
-        im = im.transpose((2, 1, 0))
-        downscale_factor = (float(im.shape[1]) / new_size[1])
-        im_out = t.pyramid_reduce(im, downscale=downscale_factor)
+        image = image.transpose((2, 1, 0))
+        downscale_factor = (float(image.shape[1]) / new_size[1])
+        im_out = t.pyramid_reduce(image, downscale=downscale_factor)
         im_out = np.transpose(im_out, (2, 0, 1))
     except ValueError:
         new_size = np.array(new_size).astype('double')
-        old_size = np.array(im.shape).astype('double')
+        old_size = np.array(image.shape).astype('double')
 
         zoom_size = np.divide(new_size, old_size)
         # precision?
-        im_out = scipy.ndimage.interpolation.zoom(im, zoom_size)
+        im_out = scipy.ndimage.interpolation.zoom(image, zoom_size)
 
     return im_out
 
 
-def mask_image(im, mask):
-    im_masked = np.multiply(im, mask > 0)
+def mask_image(image, mask):
+    im_masked = np.multiply(image, mask > 0)
     return im_masked
 
 
-def create_projection(im, dim, method='max', slice_index=0, sections=3):
+def create_projection(image, axis, method='max', slice_index=0, sections=3):
     if method == 'max':
-        im = np.max(im, dim)
+        image = np.max(image, axis)
     elif method == 'mean':
-        im = np.mean(im, dim)
+        image = np.mean(image, axis)
     elif method == 'sum':
-        im = np.sum(im, dim)
+        image = np.sum(image, axis)
     elif method == 'slice':
-        im = im[slice_index]
+        image = image[slice_index]
     elif method == 'sections':
-        separator = int(m.floor(im.shape[0] / sections))
+        separator = int(m.floor(image.shape[0] / sections))
         # stack is a 2D YX im
-        stack = np.zeros(im[0].shape)
+        stack = np.zeros(image[0].shape)
         for i in range(sections - 1):
             bottom_bound = separator * i
             top_bound = separator * (i + 1)
-            section = np.max(im[bottom_bound:top_bound], dim)
+            section = np.max(image[bottom_bound:top_bound], axis)
             stack += section
-        stack += np.max(im[separator*sections-1:])
+        stack += np.max(image[separator * sections - 1:])
 
         return stack
     # returns 2D image, YX
-    return im
+    return image
 
 
 def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
@@ -163,10 +177,8 @@ class ThumbnailGenerator:
 
         :param projection: The method that will be used to generate each channel's projection. This is done
                            for each pixel, through the z-axis
-                           Options: ["max", "mean", "sum", "slice", "sections"]
+                           Options: ["max", "slice", "sections"]
                            - max will look through each z-slice, and determine the max value for each pixel
-                           - mean will get the mean of all pixels through the z-axis
-                           - sum will sum all pixels through the z-axis
                            - slice will take the pixel values from the middle slice of the z-stack
                            - sections will split the zstack into proj_sections number of sections, and take a
                              max projection for each.
@@ -305,7 +317,6 @@ class ThumbnailGenerator:
             # subtract out the noise floor.
             thumb = subtract_noise_floor(image[:, i], bins=num_noise_floor_bins)
             thumb = np.asarray(thumb).astype('double')
-            # TODO thresholding is too high for the max projection of membrane
             im_proj = create_projection(thumb, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
             projection_array.append(im_proj)
 
