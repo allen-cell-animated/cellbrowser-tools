@@ -1,3 +1,5 @@
-bisque/test/
+test/
 .idea/
 *.pyc
+exe/
+data/testdata.csv

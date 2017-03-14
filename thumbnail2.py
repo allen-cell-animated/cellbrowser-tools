@@ -10,6 +10,7 @@ import scipy
 import sys
 
 z_axis_index = 0
+_cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
 
 
 def imresize(im, new_size):
@@ -19,6 +20,8 @@ def imresize(im, new_size):
     zoom_size = np.divide(new_size, old_size)
     # precision?
     im_out = scipy.ndimage.interpolation.zoom(im, zoom_size)
+    # don't go negative
+    im_out[im_out < 0] = 0
 
     return im_out
 
@@ -28,21 +31,23 @@ def mask_image(im, mask):
     return im_masked
 
 
-def matproj(im, dim, method='max'):
+def matproj(im, dim, method='max', slice_index=0):
     if method == 'max':
         im = np.max(im, dim)
     elif method == 'mean':
         im = np.mean(im, dim)
     elif method == 'sum':
         im = np.sum(im, dim)
+    elif method == 'slice':
+        im = im[slice_index, :, :]
 
     return im
 
 
-def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=True):
+def make_rgb_proj(imxyz, axis, color, method='max', rescale_inten=True, slice_index=0):
     imdbl = np.asarray(imxyz).astype('double')
     # do projection
-    im_proj = matproj(imdbl, axis, method)
+    im_proj = matproj(imdbl, axis, method, slice_index=slice_index)
 
     # turn into RGB
     im_proj = np.expand_dims(im_proj, 2)
@@ -93,17 +98,17 @@ def arrange(projz, projx, projy, sx, sy, sz, rescale_inten=True):
 
 
 # see http://www.somersault1824.com/tips-for-designing-scientific-figures-for-color-blind-readers/
-# or http://mkweb.bcgsc.ca/biovis2012/
+# or http://mkweb.bcgsc.ca/biovis2012/color-blindness-palette.png
 # colors = [
 #     [0.0/255.0, 109.0/255.0, 219.0/255.0],
 #     [36.0/255.0, 255.0/255.0, 36.0/255.0],
 #     [255.0/255.0, 109.0/255.0, 182.0/255.0]
 # ]
 # pass in a xyzc image!
-def makeThumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0/255.0, 255.0/255.0, 255.0/255.0],
-                                                          [255.0/255.0, 0.0/255.0, 255.0/255.0],
-                                                          [255.0/255.0, 255.0/255.0, 0.0/255.0]],
-                  seg_channel_index=-1, size=128):
+def make_segmented_thumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0 / 255.0, 255.0 / 255.0, 255.0 / 255.0],
+                                                                     [255.0/255.0, 0.0/255.0, 255.0/255.0],
+                                                                     [255.0/255.0, 255.0/255.0, 0.0/255.0]],
+                             seg_channel_index=-1, size=128):
 
     # assume all images have same shape!!!
     imsize = np.array(im1[0].shape)
@@ -120,14 +125,13 @@ def makeThumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0/255.0, 255.0/255.
     shape_out_rgb = (shape_out[1], shape_out[2], 3)
 
     # apply the cell segmentation mask.  bye bye to data outside the cell
-    for i in range(im1.shape[0]):
-        im1[i,:,:,:] = mask_image(im1[i,:,:,:], im1[seg_channel_index,:,:,:])
-    # im1 = [mask_image(im, im1[seg_channel_index]) for im in im1]
-    mask = matproj(im1[seg_channel_index], z_axis_index)
+    # for i in range(im1.shape[0]):
+    #     im1[i,:,:,:] = mask_image(im1[i,:,:,:], im1[seg_channel_index,:,:,:])
+    # mask = matproj(im1[seg_channel_index], z_axis_index)
     # pngwriter = pngWriter.PngWriter('test/oMask.png')
     # pngwriter.save(mask)
 
-    num_noise_floor_bins = 16
+    num_noise_floor_bins = 32
     comp = np.zeros(shape_out_rgb)
     for i in range(3):
         ch = channel_indices[i]
@@ -142,10 +146,13 @@ def makeThumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0/255.0, 255.0/255.
         # subtract this out
         thumb = im1[ch].astype(np.float32)
         # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
-        if i != 0:
-            thumb -= bin_edges[peakind]
+        # if i != 0:
+        thumb -= bin_edges[peakind]
         # don't go negative
         thumb[thumb < 0] = 0
+        # apply mask
+        thumb = np.multiply(thumb, im1[seg_channel_index,:,:,:] > 0)
+
         # renormalize
         thmax = thumb.max()
         thumb /= thmax
@@ -155,9 +162,94 @@ def makeThumbnail(im1, channel_indices=[0, 1, 2], colors=[[0.0/255.0, 255.0/255.
         rgbproj = make_rgb_proj(thumb, z_axis_index, colors[i])
         rgbproj = imresize(rgbproj, shape_out_rgb)
         comp += rgbproj
+        # np.copyto(comp, rgbproj, where=rgbproj>0)
     # renormalize
-    # comp /= comp.max()
+    comp /= comp.max()
+    comp *= 255
+    comp = comp.astype(np.uint8)
     return comp
+
+def make_fullfield_thumbnail(im1, memb_index=0, struct_index=1, nuc_index=2,
+                             colors=_cmy, size=128):
+    # assume all images have same shape!
+    imsize = np.array(im1[0].shape)
+    im1 = im1[0:3, :, :, :]
+
+    # TODO: Are these the only asserts we want to try?
+    assert len(imsize) == 3
+    assert max(memb_index, struct_index, nuc_index) <= im1.shape[0] - 1
+
+    # size down to this edge size, maintaining aspect ratio.
+    max_edge = size
+    # keep same number of z slices.
+    shape_out = np.hstack((imsize[0],
+                           max_edge if imsize[1] > imsize[2] else max_edge*imsize[1]/imsize[2],
+                           max_edge if imsize[1] < imsize[2] else max_edge*imsize[2]/imsize[1]
+                           ))
+    shape_out_rgb = (shape_out[1], shape_out[2], 3)
+
+    num_noise_floor_bins = 16
+    comp = np.zeros(shape_out_rgb)
+    channel_indices = [memb_index, struct_index, nuc_index]
+    rgb_image = im1[:, 0, :, :].astype('float')
+    for i in channel_indices:
+        # subtract out the noise floor.
+        immin = im1[i].min()
+        immax = im1[i].max()
+        hi, bin_edges = np.histogram(im1[i], bins=num_noise_floor_bins, range=(max(1, immin), immax))
+        # index of tallest peak in histogram
+        peakind = np.argmax(hi)
+        # subtract this out
+        thumb = im1[i].astype(np.float32)
+        # channel 0 seems to have a zero noise floor and so the peak of histogram is real signal.
+        if i != 0:
+            thumb -= bin_edges[peakind]
+        # don't go negative
+        thumb[thumb < 0] = 0
+        # renormalize
+        thmax = thumb.max()
+        thumb /= thmax
+
+        imdbl = np.asarray(thumb).astype('double')
+        im_proj = matproj(imdbl, 0, 'slice', slice_index=int(thumb.shape[0] // 2))
+        if i == nuc_index:
+            average = np.average(im_proj)
+            peaks = im_proj > average
+            # TODO: GET THIS TO WORK
+            impmax = im_proj.max()
+            im_proj[peaks] *= 4.5
+        # elif i == struct_index:
+        #     average = np.average(im_proj)
+        #     im_proj -= average
+        #     im_proj[im_proj < 0] = 0
+
+        rgb_image[i] = im_proj
+
+    # TODO: Should these be parameters for this function?
+    channel_contrasts = [15.0, 10.0, 10.0]
+
+    # TODO: Possibly mask out background noise by finding middle point between min and avg and zeroing lower values
+    # TODO: Can these for loops be condensed?
+    for channel in channel_indices:
+        # normalize the channel to values from 0 to 1
+        rgb_image[channel] /= np.max(rgb_image[channel])
+        # scale the whole channel to a max equivalent to the correct contrast ratio
+        rgb_image[channel] *= channel_contrasts[channel]
+
+    for i in range(rgb_image.shape[0]):
+        # turn into RGB
+        rgb_out = np.expand_dims(rgb_image[i], 2)
+        rgb_out = np.repeat(rgb_out, 3, 2).astype('float')
+
+        # inject color.  careful of type mismatches.
+        rgb_out *= colors[i]
+
+        rgb_out = imresize(rgb_out, shape_out_rgb)
+        comp += rgb_out
+
+    # returns a CXY array for the pngwriter
+    return comp.transpose((2, 0, 1))
+
 
 def main():
     # python interleave.py --path /Volumes/aics/software_it/danielt/images/AICS/alphactinin/ --prefix img40_1
@@ -202,7 +294,7 @@ def main():
     assert len(im1.shape) == 4
     im1 = np.transpose(im1, (1,0,2,3))
 
-    comp = makeThumbnail(im1, channel_indices=[args.dna, args.mem, args.str], size=args.size, seg_channel_index=seg_channel_index)
+    comp = make_segmented_thumbnail(im1, channel_indices=[args.dna, args.mem, args.str], size=args.size, seg_channel_index=seg_channel_index)
 
     pngwriter = pngWriter.PngWriter(image_out)
     pngwriter.save(comp)
