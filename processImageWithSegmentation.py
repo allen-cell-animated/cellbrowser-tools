@@ -478,7 +478,8 @@ class ImageProcessor:
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
             with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
-                writer.save(transposed_image, omexml=omexml, channel_names=self.channel_names, channel_colors=self.channel_colors,
+                writer.save(transposed_image, omexml=omexml,
+                            # channel_names=self.channel_names, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
 
         if self.row.cbrAddToDb:
