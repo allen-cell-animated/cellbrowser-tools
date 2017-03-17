@@ -25,7 +25,7 @@ def _int32(x):
     if x > 0xFFFFFFFF:
         raise OverflowError
     if x > 0x7FFFFFFF:
-        x = int(0x100000000-x)
+        x = int(0x100000000 - x)
         if x < 2147483648:
             return -x
         else:
@@ -61,8 +61,8 @@ def get_segmentation_bounds(segmentation_image, index, margin=5):
 
     # apply margins and clamp to image edges
     # TODO: margin in z is not the same as xy
-    xstart, ystart, zstart = clamp(xstart-margin, ystart-margin, zstart-margin, segmentation_image.shape)
-    xstop, ystop, zstop = clamp(xstop+margin, ystop+margin, zstop+margin, segmentation_image.shape)
+    xstart, ystart, zstart = clamp(xstart - margin, ystart - margin, zstart - margin, segmentation_image.shape)
+    xstop, ystop, zstop = clamp(xstop + margin, ystop + margin, zstop + margin, segmentation_image.shape)
 
     return [[xstart, xstop], [ystart, ystop], [zstart, zstop]]
 
@@ -115,6 +115,7 @@ def normalize_path(path):
     out_path = os.path.join(*path_as_list)
     return out_path
 
+
 def make_dir(dirname):
     if not os.path.exists(dirname):
         try:
@@ -123,6 +124,7 @@ def make_dir(dirname):
             if e.errno != errno.EEXIST:
                 raise
             pass
+
 
 class ImageProcessor:
 
@@ -278,10 +280,10 @@ class ImageProcessor:
         image = image.transpose(1, 0, 2, 3)
         # assumption: channel indices are one-based.
         self.channel_indices = [
-            self.row.memChannel-1,
-            self.row.structureChannel-1,
-            self.row.nucChannel-1,
-            self.row.lightChannel-1
+            self.row.memChannel - 1,
+            self.row.structureChannel - 1,
+            self.row.nucChannel - 1,
+            self.row.lightChannel - 1
         ]
         # image.shape[0] is num of channels.
         assert(image.shape[0] > max(self.channel_indices))
@@ -353,8 +355,11 @@ class ImageProcessor:
     def generate_and_save(self):
         base = self.row.cbrCellName
 
+        # indices of channels in the original image
         # before this, indices have been re-organized in add_segs_to_img (in __init__)
-        memb_index, nuc_index, struct_index = 0,2,1
+        memb_index = 0
+        nuc_index = 2
+        struct_index = 1
 
         if self.row.cbrGenerateFullFieldImages:
             print("generating full field images...", end="")
@@ -444,7 +449,7 @@ class ImageProcessor:
                     if pz >= maxz or pz < minz:
                         pixels.node.remove(p.node)
                     else:
-                        p.set_TheZ(pz-minz)
+                        p.set_TheZ(pz - minz)
 
                 if not self.row.cbrGenerateCellImage:
                     cropped = None
