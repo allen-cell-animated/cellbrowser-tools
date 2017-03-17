@@ -134,20 +134,6 @@ class ImageProcessor:
     def __init__(self, info):
         self.row = info
 
-        self.channels = ['OBS_Memb', 'OBS_STRUCT', 'OBS_DNA', 'OBS_Trans', 'SEG_DNA', 'SEG_Memb', 'SEG_STRUCT', 'CON_DNA', 'CON_Memb', 'CON_STRUCT']
-        self.channel_colors = [
-            _rgba255(255, 255, 0, 255),
-            _rgba255(255, 0, 255, 255),
-            _rgba255(0, 255, 255, 255),
-            _rgba255(255, 255, 255, 255),
-            _rgba255(255, 0, 0, 255),
-            _rgba255(0, 0, 255, 255),
-            _rgba255(127, 127, 0, 255),
-            _rgba255(127, 0, 127, 255),
-            _rgba255(0, 127, 127, 255),
-            _rgba255(127, 127, 127, 255)
-        ]
-
         # Setting up directory paths for images
         self.image_file = normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
         self.file_name = self.row.cbrCellName  # str(os.path.splitext(self.row.inputFilename)[0])
@@ -185,6 +171,13 @@ class ImageProcessor:
             "OBS_DNA",
             "OBS_Trans"
         ]
+        self.channel_colors = [
+            _rgba255(128, 0, 128, 255),
+            _rgba255(128, 128, 0, 255),
+            _rgba255(0, 128, 128, 255),
+            _rgba255(128, 128, 128, 255)
+        ]
+
         self.channels_to_mask = []
 
         print("loading segmentations for " + file_name + "...", end="")
@@ -200,6 +193,7 @@ class ImageProcessor:
         # # print(nuc_seg_file)
         # file_list.append(nuc_seg_file)
         # self.channel_names.append("SEG_DNA")
+        # self.channel_colors.append(_rgba255(0, 255, 0, 255))
 
         # structure segmentation
         struct_seg_path = self.row.structureSegOutputFolder
@@ -211,27 +205,31 @@ class ImageProcessor:
             # print(struct_seg_file)
             file_list.append(struct_seg_file)
             self.channel_names.append("SEG_STRUCT")
+            self.channel_colors.append(_rgba255(255, 0, 0, 255))
 
         # cell segmentation
         cell_seg_file = os.path.join(seg_path, self.row.outputCellSegWholeFilename)
         # print(cell_seg_file)
         file_list.append(cell_seg_file)
         self.channel_names.append("SEG_Memb")
-        self.channels_to_mask.append(len(self.channel_names)-1)
+        self.channel_colors.append(_rgba255(0, 0, 255, 255))
+        self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # cell contour segmentation
         cell_con_file = os.path.join(con_path, self.row.outputCellSegContourFilename)
         # print(cell_seg_file)
         file_list.append(cell_con_file)
         self.channel_names.append("CON_Memb")
-        self.channels_to_mask.append(len(self.channel_names)-1)
+        self.channel_colors.append(_rgba255(255, 255, 0, 255))
+        self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # nucleus contour segmentation
         nuc_con_file = os.path.join(con_path, self.row.outputNucSegContourFilename)
         # print(nuc_seg_file)
         file_list.append(nuc_con_file)
         self.channel_names.append("CON_DNA")
-        self.channels_to_mask.append(len(self.channel_names)-1)
+        self.channel_colors.append(_rgba255(0, 255, 255, 255))
+        self.channels_to_mask.append(len(self.channel_names) - 1)
 
 
         # # structure contour segmentation
@@ -244,7 +242,7 @@ class ImageProcessor:
         #     # print(struct_con_file)
         #     file_list.append(struct_con_file)
         #     self.channel_names.append("CON_STRUCT")
-
+        #     self.channel_colors.append(_rgba255(255, 0, 255, 255))
 
 
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
@@ -341,7 +339,7 @@ class ImageProcessor:
                 assert seg.shape[1] == image.shape[2], f + ' has shape mismatch ' + str(seg.shape[1]) + ' vs ' + str(image.shape[2])
                 assert seg.shape[2] == image.shape[3], f + ' has shape mismatch ' + str(seg.shape[2]) + ' vs ' + str(image.shape[3])
                 # append channels containing segmentations
-                self.omexml.image().Pixels.append_channel(nch+i, self.channels[nch+i])
+                self.omexml.image().Pixels.append_channel(nch + i, self.channel_names[nch + i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
                 image = np.append(image, [seg], axis=0)
                 self.seg_indices.append(image.shape[0] - 1)
@@ -475,7 +473,7 @@ class ImageProcessor:
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
             with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
-                writer.save(transposed_image, omexml=omexml, channel_names=self.channels, channel_colors=self.channel_colors,
+                writer.save(transposed_image, omexml=omexml, channel_names=self.channel_names, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
 
         if self.row.cbrAddToDb:
