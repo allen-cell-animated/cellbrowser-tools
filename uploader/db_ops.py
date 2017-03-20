@@ -26,6 +26,15 @@ def deleteDuplicateImagesByName(namestr):
             names.append(imname)
 
 
+def deleteImagesByTagValue(tag, value):
+    xml = db_api.DbApi.getImagesByTagValue(tag, value)
+    print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
+    for i in xml:
+        imid = i.get("resource_uniq")
+        print(imid)
+        db_api.DbApi.deleteImage(imid)
+
+
 def removeRedundantTags():
     def visitor(xml):
         visitor.counter += 1
