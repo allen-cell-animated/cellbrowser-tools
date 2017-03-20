@@ -4,12 +4,7 @@
 #          Zach Crabtree zacharyc@alleninstitute.org
 
 from __future__ import print_function
-from aicsimagetools import *
-import argparse
 import numpy as np
-import os
-import scipy
-import sys
 import skimage.transform as t
 import math as m
 
@@ -17,14 +12,24 @@ z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
 # TODO documentation for each function outside of ThumbnailGenerator class
 
-def get_thresholds(image, border_percent=0.1):
+def get_thresholds(image, **kwargs):
     """
     This function finds thresholds for an image in order to reduce noise and bring up the peak contrast
 
     :param image: CYX-dimensioned image
-    :param border_percent: how much of the corners to ignore when calculating the threshold. Sometimes corners can be unnecessarily bright
+    :param kwargs:
+        "border_percent" : how much of the corners to ignore when calculating the threshold. Sometimes corners can be unnecessarily bright
+                           default = .1
+        "max_percent" : how much to ignore from the top intensities of the image
+                        default = .998
+        "min_percent" : what proportion of the bottom intensities of the image will be factored out
+                        default = .40
     :return: tuple of float values, the lower and upper thresholds of the image
     """
+    border_percent = .1 if not kwargs.has_key("border_percent") else float(kwargs["border_percent"])
+    max_percent = .998 if not kwargs.has_key("max_percent") else float(kwargs["max_percent"])
+    min_percent = .40 if not kwargs.has_key("min_percent") else float(kwargs["min_percent"])
+
     # expects CYX
     # using this allows us to ignore the bright corners of a cell image
     im_width = image.shape[2]
@@ -33,16 +38,27 @@ def get_thresholds(image, border_percent=0.1):
     right_bound = int(m.ceil((1 - border_percent) * im_width))
     bottom_bound = int(m.floor(border_percent * im_height))
     top_bound = int(m.ceil((1 - border_percent) * im_height))
-
     cut_border = image[:, left_bound:right_bound, bottom_bound:top_bound]
-    nonzeros = cut_border[np.nonzero(cut_border)]
-    upper_threshold = np.max(cut_border) * .998
-    lower_threshold = np.mean(nonzeros) - (np.median(nonzeros) / 3)
+
+    immin = cut_border.min()
+    immax = cut_border.max()
+    histogram, bin_edges = np.histogram(image, bins=256, range=(immin, immax))
+    total_cut = 0
+    total_pixels = sum(histogram)
+    lower_threshold = 0
+    for i in range(len(histogram)):
+        column = histogram[i]
+        total_cut += column
+        if total_cut >= total_pixels * min_percent:
+            lower_threshold = bin_edges[i]
+            break
+
+    upper_threshold = np.max(cut_border) * max_percent
 
     return lower_threshold, upper_threshold
 
 
-def resize_image(image, new_size):
+def resize_cyx_image(image, new_size):
     """
     This function resizes a CYX image.
 
@@ -50,23 +66,16 @@ def resize_image(image, new_size):
     :param new_size: tuple of shape of desired image dimensions in (C, Y, X)
     :return: image with shape of new_shape with image data
     """
-    try:
-        image = image.transpose((2, 1, 0))
-        scaling = (float(image.shape[1]) / new_size[1])
-        if scaling < 1:
-            scaling = (float(new_size[1]) / image.shape[1])
-            im_out = t.pyramid_expand(image, upscale=scaling)
-        else:
-            im_out = t.pyramid_reduce(image, downscale=scaling)
-        im_out = np.transpose(im_out, (2, 0, 1))
-    except ValueError:
-        new_size = np.array(new_size).astype('double')
-        old_size = np.array(image.shape).astype('double')
-
-        zoom_size = np.divide(new_size, old_size)
-        # precision?
-        im_out = scipy.ndimage.interpolation.zoom(image, zoom_size)
-
+    image = image.transpose((2, 1, 0))
+    scaling = (float(image.shape[1]) / new_size[1])
+    if scaling < 1:
+        scaling = 1.0/scaling
+        im_out = t.pyramid_expand(image, upscale=scaling)
+    elif scaling > 1:
+        im_out = np.asarray(t.pyramid_reduce(image, downscale=scaling))
+    else:
+        im_out = image
+    im_out = im_out.transpose((2, 0, 1))
     return im_out
 
 
@@ -75,7 +84,10 @@ def mask_image(image, mask):
     return im_masked
 
 
-def create_projection(image, axis, method='max', slice_index=0, sections=3):
+def create_projection(image, axis, method='max', **kwargs):
+    slice_index = 0 if not kwargs.has_key("slice_index") else int(kwargs["slice_index"])
+    sections = 3 if not kwargs.has_key("sections") else int(kwargs["sections"])
+
     if method == 'max':
         image = np.max(image, axis)
     elif method == 'mean':
@@ -130,11 +142,11 @@ def subtract_noise_floor(image, bins=256):
     # index of tallest peak in histogram
     peakind = np.argmax(hi)
     # subtract this out
-    thumb = image
-    thumb -= bin_edges[peakind]
+    subtracted = image.astype(np.float32)
+    subtracted -= bin_edges[peakind]
     # don't go negative
-    thumb[thumb < 0] = 0
-    return thumb
+    subtracted[subtracted < 0] = 0
+    return subtracted
 
 
 class ThumbnailGenerator:
@@ -149,10 +161,8 @@ class ThumbnailGenerator:
 
     """
 
-    def __init__(self, colors=_cmy, size=128,
-                 memb_index=0, struct_index=1, nuc_index=2,
-                 memb_seg_index=5, struct_seg_index=6, nuc_seg_index=4,
-                 layering="superimpose", projection="slice", proj_sections=-1):
+    def __init__(self, colors=_cmy, size=128, memb_index=0, struct_index=1, nuc_index=2,
+                 mask_channel_index=5, **kwargs):
         """
         :param colors: The color palette that will be used to color each channel. The default palette
                        colors the membrane channel cyan, structure with magenta, and nucleus with yellow.
@@ -189,14 +199,17 @@ class ThumbnailGenerator:
         :param proj_sections: The number of sections that will be used to determine projections, if projection="sections"
         """
 
+        layering = "alpha-blend" if not kwargs.has_key("layering") else kwargs["layering"]
+        projection = "max" if not kwargs.has_key("projection") else kwargs["projection"]
+        proj_sections = 3 if not kwargs.has_key("proj_sections") else kwargs["proj_sections"]
+
         assert len(colors) == 3 and len(colors[0]) == 3
         self.colors = colors
 
         self.size = size
         self.memb_index, self.struct_index, self.nuc_index = memb_index, struct_index, nuc_index
-        self.memb_seg_index, self.struct_seg_index, self.nuc_seg_index = memb_seg_index, struct_seg_index, nuc_seg_index
+        self.mask_channel_index = mask_channel_index
         self.channel_indices = [self.memb_index, self.struct_index, self.nuc_index]
-        self.seg_indices = [self.nuc_seg_index, self.memb_seg_index, self.struct_seg_index]
 
         assert layering == "superimpose" or layering == "alpha-blend"
         self.layering_mode = layering
@@ -243,11 +256,12 @@ class ThumbnailGenerator:
             rgb_out = np.repeat(rgb_out, 4, 2).astype('float')
             # inject color.  careful of type mismatches.
             rgb_out *= self.colors[i] + [1.0]
-            # normalize contrast
+            # normalize image
             rgb_out /= np.max(rgb_out)
+            # TODO can these ridiculous transpose calls be avoided here?
             rgb_out = rgb_out.transpose((2, 1, 0))
-            lower_threshold, upper_threshold = get_thresholds(rgb_out)
-            # ignore bright spots
+            min_percent = .4 if i == self.nuc_index else .6
+            lower_threshold, upper_threshold = get_thresholds(rgb_out, min_percent=min_percent)
             rgb_out = rgb_out.transpose((2, 1, 0))
 
             def superimpose(source_pixel, dest_pixel):
@@ -267,10 +281,7 @@ class ThumbnailGenerator:
                 else:
                     return dest_pixel
 
-            if self.layering_mode == "superimpose":
-                layering_method = superimpose
-            else:
-                layering_method = alpha_blend
+            layering_method = superimpose if self.layering_mode == "superimpose" else alpha_blend
 
             for x in range(rgb_out.shape[0]):
                 for y in range(rgb_out.shape[1]):
@@ -320,67 +331,13 @@ class ThumbnailGenerator:
             thumb = np.asarray(thumb).astype('double')
             im_proj = create_projection(thumb, 0, projection_type, slice_index=int(thumb.shape[0] // 2), sections=self.proj_sections)
             if apply_cell_mask:
-                mask_proj = create_projection(image[:, self.seg_indices[1]], 0, method="max")
+                mask_proj = create_projection(image[:, self.mask_channel_index], 0, method="slice", slice_index=int(image.shape[0] // 2))
                 mask_array.append(mask_proj)
             projection_array.append(im_proj)
 
         layered_image = self._layer_projections(projection_array, mask_array)
-        comp = resize_image(layered_image, shape_out_rgb)
+        comp = resize_cyx_image(layered_image, shape_out_rgb)
         comp /= np.max(comp)
         comp[comp < 0] = 0
         # returns a CYX array for the png writer
         return comp
-
-
-def main():
-    # python interleave.py --path /Volumes/aics/software_it/danielt/images/AICS/alphactinin/ --prefix img40_1
-    parser = argparse.ArgumentParser(description='Generate thumbnail from a cell image. '
-                                                 'Example: python thumbnailGenerator.py /path/to/images/myImg.ome.tif 0 1 2 3')
-    parser.add_argument('--path', required=True, help='input file path')
-    parser.add_argument('--dna', required=True, type=int, help='dna channel index')
-    parser.add_argument('--mem', required=True, type=int, help='membrane channel index')
-    parser.add_argument('--str', required=True, type=int, help='structure channel index')
-
-    # assume segmentation mask is last channel, by default .
-    parser.add_argument('--seg', default=-1, type=int, help='segmentation channel index')
-
-    parser.add_argument('--size', default=128, type=int, help='maximum edge size of image')
-    parser.add_argument('--outpath', default='./', help='output file path (directory only)')
-    # parser.add_argument('--prefix', nargs=1, help='input file name prefix')
-    args = parser.parse_args()
-
-    inpath = args.path
-
-    seg_channel_index = args.seg
-
-    if os.path.isfile(inpath):
-        reader = omeTifReader.OmeTifReader(inpath)
-        im1 = reader.load()
-    else:
-        raise 'Bad file path ' + inpath
-
-    base = os.path.basename(inpath)
-    # strips away .tif
-    base = os.path.splitext(base)[0]
-    # strips away .ome (?)
-    base = os.path.splitext(base)[0]
-
-    if not os.path.exists(args.outpath):
-        os.makedirs(args.outpath)
-    image_out = os.path.join(args.outpath, base + '.png')
-
-    # transpose xycz to xyzc
-    assert len(im1.shape) == 4
-    im1 = np.transpose(im1, (1, 0, 2, 3))
-
-    comp = make_segmented_thumbnail(im1, channel_indices=[args.dna, args.mem, args.str], size=args.size,
-                                    seg_channel_index=seg_channel_index)
-
-    pngwriter = pngWriter.PngWriter(image_out)
-    pngwriter.save(comp)
-
-
-if __name__ == "__main__":
-    print(" ".join(sys.argv))
-    main()
-    sys.exit(0)
