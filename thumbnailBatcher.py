@@ -4,8 +4,8 @@ import sys
 import os
 import random
 from thumbnailGenerator import ThumbnailGenerator
-from aicsimagetools.pngWriter import PngWriter
-from aicsimagetools.omeTifReader import OmeTifReader
+from aics.image.io.pngWriter import PngWriter
+from aics.image.io.omeTifReader import OmeTifReader
 
 # Author: Zach Crabtree zacharyc@alleninstitute.org
 
@@ -22,13 +22,14 @@ _rbg = ([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]], "rbg")
 _brg = ([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], "brg")
 _cwm = ([[0.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 0.0, 1.0]], "cwm")
 _mwc = ([[1.0, 0.0, 1.0], [1.0, 1.0, 1.0], [0.0, 1.0, 1.0]], "mwc")
-color_choices = [_cmy, _cwm, _cym, _mwc, _ycm, _ymc]
-layering_choices = ["alpha-blend", "superimpose"]
-projection_choices = [("sections", 3), ("sections", 4), ("sections", 5), ("slice", -1), ("max", -1)]
+color_choices = [_cym, _myc] # [_cmy, _cwm, _cym, _mwc, _ycm, _ymc]
+layering_choices = ["alpha-blend"] #, "superimpose"]
+projection_choices = [("sections", 5)] # [("sections", 3), ("sections", 4), ("sections", 5), ("slice", -1), ("max", -1)]
 
 
 def is_segmented_image(file_name):
     # TODO: find a better way to determine this... because the underscore count doesn't work in all cases.
+    file_name = file_name[file_name.rfind('/')+1:-8]
     underscore_count = file_name.count('_')
     if underscore_count == 3 or underscore_count == 5:
         return True
@@ -88,9 +89,9 @@ def main():
             random_file_list = []
             while len(random_file_list) != rand_max:
                 rand_index = random.randint(0, len(only_ome_tif) - 1)
-                while only_ome_tif[rand_index] in random_file_list:
-                    rand_index = random.randint(0, len(only_ome_tif))
-                random_file_list.append(only_ome_tif[rand_index])
+                ome_tif_file = only_ome_tif[rand_index]
+                if not ome_tif_file in random_file_list:
+                    random_file_list.append(only_ome_tif[rand_index])
         file_list = sorted(random_file_list)
     elif args.first is not 0:
         file_list = sorted(only_ome_tif)
