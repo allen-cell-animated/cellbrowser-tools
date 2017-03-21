@@ -23,6 +23,13 @@ class CellJob(object):
         self.structureSegOutputFolder = ''
         self.structureSegOutputFilename = ''
 
+        self.StructureSegmentationMethod = ''
+
+        self.outputSegmentationContourPath = ''
+        self.structureSegContourFilename = ''
+        self.outputNucSegContourFilename = ''
+        self.outputCellSegContourFilename = ''
+
         self.cbrImageLocation = './images'
         self.cbrThumbnailLocation = './images'
         self.cbrThumbnailURL = 'file:///images'
@@ -33,6 +40,7 @@ class CellJob(object):
         self.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
 
         self.cbrDatasetName = ''
+        self.cbrCellName = ''
 
         # processing
 
@@ -84,11 +92,20 @@ class CellJob(object):
             except ValueError:
                 self.timePoint = 0
                 self.cbrParseError = True
+
             self.outputSegmentationPath = csvRow.get('outputSegmentationPath')
             self.outputNucSegWholeFilename = csvRow.get('outputNucSegWholeFilename')
             self.outputCellSegWholeFilename = csvRow.get('outputCellSegWholeFilename')
             self.structureSegOutputFolder = csvRow.get('structureSegOutputFolder')
             self.structureSegOutputFilename = csvRow.get('structureSegOutputFilename')
+
+            self.StructureSegmentationMethod = csvRow.get('StructureSegmentationMethod', self.StructureSegmentationMethod)
+
+            self.structureSegContourFilename = csvRow.get('structureSegContourFilename')
+            self.outputSegmentationContourPath = csvRow.get('outputSegmentationContourPath')
+            self.outputNucSegContourFilename = csvRow.get('outputNucSegContourFilename')
+            self.outputCellSegContourFilename = csvRow.get('outputCellSegContourFilename')
+
             self.cbrImageLocation = csvRow.get('cbrImageLocation', self.cbrImageLocation)
             self.cbrThumbnailLocation = csvRow.get('cbrThumbnailLocation', self.cbrThumbnailLocation)
             self.cbrThumbnailURL = csvRow.get('cbrThumbnailURL', self.cbrThumbnailURL)
@@ -98,3 +115,5 @@ class CellJob(object):
             self.cbrGenerateSegmentedImages = csvRow.get('cbrGenerateSegmentedImages', self.cbrGenerateSegmentedImages)
             self.cbrGenerateFullFieldImages = csvRow.get('cbrGenerateFullFieldImages', self.cbrGenerateFullFieldImages)
             self.cbrAddToDb = csvRow.get('cbrAddToDb', self.cbrAddToDb)
+            self.cbrDatasetName = csvRow.get('cbrDatasetName', self.cbrDatasetName)
+            self.cbrCellName = csvRow.get('cbrCellName', self.cbrCellName)

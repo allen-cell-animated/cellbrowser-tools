@@ -31,7 +31,7 @@ def _int32(x):
     if x > 0xFFFFFFFF:
         raise OverflowError
     if x > 0x7FFFFFFF:
-        x = int(0x100000000-x)
+        x = int(0x100000000 - x)
         if x < 2147483648:
             return -x
         else:
@@ -67,8 +67,8 @@ def get_segmentation_bounds(segmentation_image, index, margin=5):
 
     # apply margins and clamp to image edges
     # TODO: margin in z is not the same as xy
-    xstart, ystart, zstart = clamp(xstart-margin, ystart-margin, zstart-margin, segmentation_image.shape)
-    xstop, ystop, zstop = clamp(xstop+margin, ystop+margin, zstop+margin, segmentation_image.shape)
+    xstart, ystart, zstart = clamp(xstart - margin, ystart - margin, zstart - margin, segmentation_image.shape)
+    xstop, ystop, zstop = clamp(xstop + margin, ystop + margin, zstop + margin, segmentation_image.shape)
 
     return [[xstart, xstop], [ystart, ystop], [zstart, zstop]]
 
@@ -122,6 +122,7 @@ def normalize_path(path):
     out_path = os.path.join(*path_as_list)
     return out_path
 
+
 def make_dir(dirname):
     if not os.path.exists(dirname):
         try:
@@ -130,6 +131,7 @@ def make_dir(dirname):
             if e.errno != errno.EEXIST:
                 raise
             pass
+
 
 class ImageProcessor:
 
@@ -141,20 +143,9 @@ class ImageProcessor:
     def __init__(self, info):
         self.row = info
 
-        self.channels = ['OBS_Memb', 'OBS_STRUCT', 'OBS_DNA', 'OBS_Trans', 'SEG_DNA', 'SEG_Memb', 'SEG_STRUCT']
-        self.channel_colors = [
-            _rgba255(255, 255, 0, 255),
-            _rgba255(255, 0, 255, 255),
-            _rgba255(0, 255, 255, 255),
-            _rgba255(255, 255, 255, 255),
-            _rgba255(255, 0, 0, 255),
-            _rgba255(0, 0, 255, 255),
-            _rgba255(127, 127, 0, 255)
-        ]
-
         # Setting up directory paths for images
         self.image_file = normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
-        self.file_name = str(os.path.splitext(self.row.inputFilename)[0])
+        self.file_name = self.row.cbrCellName  # str(os.path.splitext(self.row.inputFilename)[0])
         self._generate_paths()
 
         # Setting up segmentation channels for full image
@@ -198,25 +189,31 @@ class ImageProcessor:
             "OBS_DNA",
             "OBS_Trans"
         ]
+        self.channel_colors = [
+            _rgba255(128, 0, 128, 255),
+            _rgba255(128, 128, 0, 255),
+            _rgba255(0, 128, 128, 255),
+            _rgba255(128, 128, 128, 255)
+        ]
 
-        print("\nloading segmentations for " + self.file_name + "...", end="")
+        self.channels_to_mask = []
+
+        print("loading segmentations for " + file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
         seg_path = normalize_path(seg_path)
+        con_path = self.row.outputSegmentationContourPath
+        con_path = normalize_path(con_path)
         # print(seg_path)
         file_list = []
 
-        # nucleus segmentation
-        nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
-        # print(nuc_seg_file)
-        file_list.append(nuc_seg_file)
-        self.channel_names.append("SEG_DNA")
+        # # nucleus segmentation
+        # nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
+        # # print(nuc_seg_file)
+        # file_list.append(nuc_seg_file)
+        # self.channel_names.append("SEG_DNA")
+        # self.channel_colors.append(_rgba255(0, 255, 0, 255))
 
-        # cell segmentation
-        cell_seg_file = os.path.join(seg_path, self.row.outputCellSegWholeFilename)
-        # print(cell_seg_file)
-        file_list.append(cell_seg_file)
-        self.channel_names.append("SEG_Memb")
-
+        # structure segmentation
         struct_seg_path = self.row.structureSegOutputFolder
         if struct_seg_path != '' and not struct_seg_path.startswith('N/A'):
             struct_seg_path = normalize_path(struct_seg_path)
@@ -226,6 +223,45 @@ class ImageProcessor:
             # print(struct_seg_file)
             file_list.append(struct_seg_file)
             self.channel_names.append("SEG_STRUCT")
+            self.channel_colors.append(_rgba255(255, 0, 0, 255))
+
+        # cell segmentation
+        cell_seg_file = os.path.join(seg_path, self.row.outputCellSegWholeFilename)
+        # print(cell_seg_file)
+        file_list.append(cell_seg_file)
+        self.channel_names.append("SEG_Memb")
+        self.channel_colors.append(_rgba255(0, 0, 255, 255))
+        self.channels_to_mask.append(len(self.channel_names) - 1)
+
+        # cell contour segmentation
+        cell_con_file = os.path.join(con_path, self.row.outputCellSegContourFilename)
+        # print(cell_seg_file)
+        file_list.append(cell_con_file)
+        self.channel_names.append("CON_Memb")
+        self.channel_colors.append(_rgba255(255, 255, 0, 255))
+        self.channels_to_mask.append(len(self.channel_names) - 1)
+
+        # nucleus contour segmentation
+        nuc_con_file = os.path.join(con_path, self.row.outputNucSegContourFilename)
+        # print(nuc_seg_file)
+        file_list.append(nuc_con_file)
+        self.channel_names.append("CON_DNA")
+        self.channel_colors.append(_rgba255(0, 255, 255, 255))
+        self.channels_to_mask.append(len(self.channel_names) - 1)
+
+
+        # # structure contour segmentation
+        # struct_con_path = struct_seg_path
+        # if struct_con_path != '' and not struct_con_path.startswith('N/A'):
+        #     struct_con_path = normalize_path(struct_con_path)
+        #
+        #     # structure segmentation
+        #     struct_con_file = os.path.join(struct_con_path, self.row.structureSegContourFilename)
+        #     # print(struct_con_file)
+        #     file_list.append(struct_con_file)
+        #     self.channel_names.append("CON_STRUCT")
+        #     self.channel_colors.append(_rgba255(255, 0, 255, 255))
+
 
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
         image_file = normalize_path(image_file)
@@ -260,10 +296,10 @@ class ImageProcessor:
         image = image.transpose(1, 0, 2, 3)
         # assumption: channel indices are one-based.
         self.channel_indices = [
-            self.row.memChannel-1,
-            self.row.structureChannel-1,
-            self.row.nucChannel-1,
-            self.row.lightChannel-1
+            self.row.memChannel - 1,
+            self.row.structureChannel - 1,
+            self.row.nucChannel - 1,
+            self.row.lightChannel - 1
         ]
         # image.shape[0] is num of channels.
         assert(image.shape[0] > max(self.channel_indices))
@@ -306,11 +342,11 @@ class ImageProcessor:
             file_ext = os.path.splitext(f)[1]
             if file_ext == '.tiff' or file_ext == '.tif':
                 seg = TifReader(f).load()
-                assert seg.shape[0] == image.shape[1]
-                assert seg.shape[1] == image.shape[2]
-                assert seg.shape[2] == image.shape[3]
+                assert seg.shape[0] == image.shape[1], f + ' has shape mismatch ' + str(seg.shape[0]) + ' vs ' + str(image.shape[1])
+                assert seg.shape[1] == image.shape[2], f + ' has shape mismatch ' + str(seg.shape[1]) + ' vs ' + str(image.shape[2])
+                assert seg.shape[2] == image.shape[3], f + ' has shape mismatch ' + str(seg.shape[2]) + ' vs ' + str(image.shape[3])
                 # append channels containing segmentations
-                self.omexml.image().Pixels.append_channel(nch+i, self.channels[nch+i])
+                self.omexml.image().Pixels.append_channel(nch + i, self.channel_names[nch + i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
                 image = np.append(image, [seg], axis=0)
                 self.seg_indices.append(image.shape[0] - 1)
@@ -322,11 +358,13 @@ class ImageProcessor:
         return image
 
     def generate_and_save(self):
-        base = os.path.basename(self.image_file)
-        base = os.path.splitext(base)[0]
+        base = self.row.cbrCellName
 
+        # indices of channels in the original image
         # before this, indices have been re-organized in add_segs_to_img (in __init__)
-        memb_index, nuc_index, struct_index = 0,2,1
+        memb_index = 0
+        nuc_index = 2
+        struct_index = 1
 
         if self.row.cbrGenerateFullFieldImages:
             print("generating full fields...")
@@ -334,7 +372,7 @@ class ImageProcessor:
             self.row.cbrBounds = None
             self.row.cbrCellIndex = 0
             self.row.cbrSourceImageName = None
-            self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
+            # self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
 
             if self.row.cbrGenerateThumbnail:
                 print("making thumbnail...", end="")
@@ -369,10 +407,13 @@ class ImageProcessor:
 
                 bounds = get_segmentation_bounds(cell_segmentation_image, i)
                 cropped = crop_to_bounds(self.image, bounds)
-                # turn the seg channels into true masks
-                cropped[self.seg_indices[0]] = image_to_mask(cropped[self.seg_indices[0]], i)
-                cropped[self.seg_indices[1]] = image_to_mask(cropped[self.seg_indices[1]], i)
-                # structure segmentation does not use same masking index rules(?)
+                # Turn the seg channels into true masks
+                # by zeroing out all elements != i.
+                # Note that structure segmentation and contour does not use same masking index rules -
+                # the values stored are not indexed by cell number.
+                for mi in self.channels_to_mask:
+                    cropped[mi] = image_to_mask(cropped[mi], i, 255)
+
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
@@ -382,6 +423,38 @@ class ImageProcessor:
                     print("done")
                 else:
                     thumb = None
+
+                self.row.cbrCellIndex = i
+                self.row.cbrSourceImageName = base
+                self.row.cbrCellName = base + '_' + str(i)
+                self.row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
+                                      'ymin': bounds[1][0], 'ymax': bounds[1][1],
+                                      'zmin': bounds[2][0], 'zmax': bounds[2][1]}
+
+                for bn in self.row.cbrBounds:
+                    print(bn, self.row.cbrBounds[bn])
+                # copy self.omexml for output
+                copyxml = None
+                copied = copy.deepcopy(self.omexml.dom)
+                copyxml = OMEXML(rootnode=copied)
+                # now fix it up
+                pixels = copyxml.image().Pixels
+                pixels.set_SizeX(cropped.shape[3])
+                pixels.set_SizeY(cropped.shape[2])
+                pixels.set_SizeZ(cropped.shape[1])
+                # if sizeZ changed, then we have to use bounds to fix up the plane elements
+                minz = bounds[2][0]
+                maxz = bounds[2][1]
+                planes = []
+                for pi in range(pixels.get_plane_count()):
+                    planes.append(pixels.Plane(pi))
+                for p in planes:
+                    pz = p.get_TheZ()
+                    # TODO: CONFIRM THAT THIS IS CORRECT!!
+                    if pz >= maxz or pz < minz:
+                        pixels.node.remove(p.node)
+                    else:
+                        p.set_TheZ(pz - minz)
 
                 if not self.row.cbrGenerateCellImage:
                     cropped = None
@@ -448,7 +521,8 @@ class ImageProcessor:
             transposed_image = image.transpose(1, 0, 2, 3)
             print("saving image...", end="")
             with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
-                writer.save(transposed_image, omexml=omexml, channel_names=self.channels, channel_colors=self.channel_colors,
+                writer.save(transposed_image, omexml=omexml,
+                            # channel_names=self.channel_names, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
             print("done")
 
