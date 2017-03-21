@@ -10,7 +10,6 @@ import math as m
 
 z_axis_index = 0
 _cmy = [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
-# TODO documentation for each function outside of ThumbnailGenerator class
 
 def get_thresholds(image, **kwargs):
     """
@@ -80,11 +79,34 @@ def resize_cyx_image(image, new_size):
 
 
 def mask_image(image, mask):
+    """
+    This function eliminates all data in the image where mask = 0
+
+    :param image: an ndarray
+    :param mask: a boolean ndarray with the same shape as image
+    :return: an ndarray with the same shape as image
+    """
     im_masked = np.multiply(image, mask > 0)
     return im_masked
 
 
 def create_projection(image, axis, method='max', **kwargs):
+    """
+    This function creates a 2D projection out of an n-dimensional image.
+
+    :param image: ZCYX array
+    :param axis: the axis that the projection should be performed along
+    :param method: the method that will be used to create the projection
+                   Options: ["max", "mean", "sum", "slice", "sections"]
+                   - max will look through each axis-slice, and determine the max value for each pixel
+                   - mean will look through each axis-slice, and determine the mean value for each pixel
+                   - sum will look through each axis-slice, and sum all pixels together
+                   - slice will take the pixel values from the middle slice of the stack
+                   - sections will split the stack into proj_sections number of sections, and take a
+                   max projection for each.
+    :param kwargs:
+    :return:
+    """
     slice_index = 0 if not kwargs.has_key("slice_index") else int(kwargs["slice_index"])
     sections = 3 if not kwargs.has_key("sections") else int(kwargs["sections"])
 
@@ -161,8 +183,7 @@ class ThumbnailGenerator:
 
     """
 
-    def __init__(self, colors=_cmy, size=128, memb_index=0, struct_index=1, nuc_index=2,
-                 mask_channel_index=5, **kwargs):
+    def __init__(self, colors=_cmy, size=128, channel_indices=[0, 1, 2], mask_channel_index=5, **kwargs):
         """
         :param colors: The color palette that will be used to color each channel. The default palette
                        colors the membrane channel cyan, structure with magenta, and nucleus with yellow.
@@ -171,24 +192,17 @@ class ThumbnailGenerator:
         :param size: This constrains the image to have the X or Y dims max out at this value, but keep
                      the original aspect ratio of the image.
 
-        :param memb_index: The index in the image that contains the membrane channel
+        :param channel_indices: An array of channel indices to represent the three main channels of the cell
 
-        :param struct_index: The index in the image that contains the structure channel
+        :param mask_channel_index: The index for the segmentation channel in image that will be used to mask the thumbnail
 
-        :param nuc_index: The index in the image that contains the nucleus channel
-
-        :param memb_seg_index: The index in the image that contains the membrane segmentation channel
-
-        :param struct_seg_index: The index in the image that contains the structure segmentation channel
-
-        :param nuc_seg_index: The index in the image that contains the nucleus segmentation channel
-
-        :param layering: The method that will be used to layer each channel's projection over each other.
+        :param kwargs:
+            "layering" : The method that will be used to layer each channel's projection over each other.
                          Options: ["superimpose", "alpha-blend"]
                          - superimpose will overwrite pixels on the final image as it layers each channel
                          - alpha-blend will blend the final image's pixels with each new channel layer
 
-        :param projection: The method that will be used to generate each channel's projection. This is done
+            "projection" : The method that will be used to generate each channel's projection. This is done
                            for each pixel, through the z-axis
                            Options: ["max", "slice", "sections"]
                            - max will look through each z-slice, and determine the max value for each pixel
@@ -196,7 +210,7 @@ class ThumbnailGenerator:
                            - sections will split the zstack into proj_sections number of sections, and take a
                              max projection for each.
 
-        :param proj_sections: The number of sections that will be used to determine projections, if projection="sections"
+            "proj_sections" : The number of sections that will be used to determine projections, if projection="sections"
         """
 
         layering = "alpha-blend" if not kwargs.has_key("layering") else kwargs["layering"]
@@ -207,9 +221,11 @@ class ThumbnailGenerator:
         self.colors = colors
 
         self.size = size
-        self.memb_index, self.struct_index, self.nuc_index = memb_index, struct_index, nuc_index
+        self.memb_index = channel_indices[0]
+        self.struct_index = channel_indices[1]
+        self.nuc_index = channel_indices[2]
+        self.channel_indices = channel_indices
         self.mask_channel_index = mask_channel_index
-        self.channel_indices = [self.memb_index, self.struct_index, self.nuc_index]
 
         assert layering == "superimpose" or layering == "alpha-blend"
         self.layering_mode = layering
@@ -258,7 +274,6 @@ class ThumbnailGenerator:
             rgb_out *= self.colors[i] + [1.0]
             # normalize image
             rgb_out /= np.max(rgb_out)
-            # TODO can these ridiculous transpose calls be avoided here?
             rgb_out = rgb_out.transpose((2, 1, 0))
             min_percent = .4 if i == self.nuc_index else .6
             lower_threshold, upper_threshold = get_thresholds(rgb_out, min_percent=min_percent)

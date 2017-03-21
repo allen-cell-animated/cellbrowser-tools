@@ -3,7 +3,7 @@ import argparse
 import sys
 import os
 import random
-from thumbnailGenerator import ThumbnailGenerator
+from aics.image.processing.thumbnailGenerator import ThumbnailGenerator
 from aics.image.io.pngWriter import PngWriter
 from aics.image.io.omeTifReader import OmeTifReader
 

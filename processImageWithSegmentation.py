@@ -4,7 +4,7 @@
 #         Zach Crabtree zacharyc@alleninstitute.org
 
 from __future__ import print_function
-from aicsimagetools import *
+from aics.image.io import *
 import argparse
 import copy
 import errno
