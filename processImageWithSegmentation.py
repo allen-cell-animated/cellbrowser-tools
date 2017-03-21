@@ -4,7 +4,17 @@
 #         Zach Crabtree zacharyc@alleninstitute.org
 
 from __future__ import print_function
-from aics.image.io import *
+
+from aics.image.io.cziReader import CziReader
+from aics.image.io.tifReader import TifReader
+from aics.image.io.omeTifReader import OmeTifReader
+from aics.image.io.omeTifWriter import OmeTifWriter
+from aics.image.io.pngWriter import PngWriter
+from aics.image.io.omexml import OMEXML
+import cellJob
+from aics.image.processing import thumbnailGenerator
+from uploader import oneUp
+
 import argparse
 import copy
 import errno
@@ -14,9 +24,6 @@ import os
 import re
 import subprocess
 import sys
-import cellJob
-import thumbnailGenerator
-from uploader import oneUp
 import pprint
 
 
@@ -153,7 +160,7 @@ class ImageProcessor:
         # Setting up segmentation channels for full image
         self.seg_indices = []
         try:
-            with omeTifReader.OmeTifReader(self.ometif_dir + ".ome.tif") as reader:
+            with OmeTifReader(self.ometif_dir + ".ome.tif") as reader:
                 print("\nloading pre-made image for " + self.file_name + "...", end="")
                 self.image = reader.load()
                 if len(self.image.shape) == 5:
