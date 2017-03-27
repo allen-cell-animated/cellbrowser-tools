@@ -20,6 +20,7 @@ class DbApi(object):
                 'password': 'admin'
             }
         DbApi.db_uri = session_dict['root'] + '/data_service/'
+        DbApi.img_uri = session_dict['root'] + '/image_service/'
         DbApi.db_auth = (session_dict['user'], session_dict['password'])
 
     # data = open('edit.xml')
@@ -57,15 +58,16 @@ class DbApi(object):
     # get all image tags:
     # GET http://10.128.62.104:8080/data_service/image/00-iPDrkt4dZaL2uWLoCDmQEd?view=deep
     @staticmethod
-    def getImagesByName(name):
+    def getImagesByName(name, max_to_get=0):
         results = ElementTree.Element('results')
-        limit = '700'
         nlimit = 700
+        if max_to_get > 0 and max_to_get < nlimit:
+            nlimit = max_to_get
         n = 0
         more = True
         while more:
             try:
-                response = requests.get(DbApi.db_uri + 'image/?offset='+str(n)+'&tag_query=name:' + name + '&tag_order="@ts":desc&wpublic=false&limit=' + limit + '&view=deep', headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
+                response = requests.get(DbApi.db_uri + 'image/?offset='+str(n)+'&tag_query=name:' + name + '&tag_order="@ts":desc&wpublic=false&limit=' + str(nlimit) + '&view=deep', headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
                 print(e)
@@ -77,6 +79,9 @@ class DbApi(object):
                 if count < nlimit:
                     more = False
                 n += count
+                if max_to_get > 0 and n >= max_to_get:
+                    # TODO: trim results by max_to_get-n
+                    more = False
             else:
                 more = False
         return results
@@ -175,6 +180,17 @@ class DbApi(object):
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             print(e)
+
+    @staticmethod
+    def getImageMetadata(id):
+        # DbApi.db_uri + 'image/?extract=tag[value,%20name=%22'+name+'%22]'
+        try:
+            response = requests.get(DbApi.img_uri + id + '?meta', headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(e)
+        tree = ElementTree.fromstring(response.content)
+        return tree
 
     @staticmethod
     def deleteTagUri(taguri):
