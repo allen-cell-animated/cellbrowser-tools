@@ -4,6 +4,7 @@ import db_ops
 import math
 import requests
 import sys
+from timeit import default_timer as timer
 
 db = 'http://bisque-1079154594.us-west-2.elb.amazonaws.com/'
 
@@ -149,6 +150,7 @@ def main():
 
     db_api.DbApi.setSessionInfo(session_dict)
 
+    print('Gathering image ids...')
     # all of them
     xml = db_api.DbApi.getImagesByName('*')
     # first one
@@ -157,9 +159,11 @@ def main():
     n = 0
     for i in xml:
         imid = i.get("resource_uniq")
-        print(str(n) + ' : ' + i.get('name') + ' : ' + imid)
         reqs = construct_requests(imid)
+        start = timer()
         issue_requests(reqs, async=False)
+        end = timer()
+        print(str(n) + ' : ' + i.get('name') + ' : ' + imid + ' : ' + str(end-start) + 's')
         n = n + 1
 
 
