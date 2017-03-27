@@ -149,12 +149,18 @@ def main():
 
     db_api.DbApi.setSessionInfo(session_dict)
 
-    xml = db_api.DbApi.getImagesByName('*', 1)
+    # all of them
+    xml = db_api.DbApi.getImagesByName('*')
+    # first one
+    # xml = db_api.DbApi.getImagesByName('*', 1)
     print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
+    n = 0
     for i in xml:
         imid = i.get("resource_uniq")
+        print(str(n) + ' : ' + i.get('name') + ' : ' + imid)
         reqs = construct_requests(imid)
         issue_requests(reqs, async=False)
+        n = n + 1
 
 
 
