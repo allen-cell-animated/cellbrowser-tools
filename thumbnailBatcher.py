@@ -22,16 +22,16 @@ _rbg = ([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]], "rbg")
 _brg = ([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], "brg")
 _cwm = ([[0.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 0.0, 1.0]], "cwm")
 _mwc = ([[1.0, 0.0, 1.0], [1.0, 1.0, 1.0], [0.0, 1.0, 1.0]], "mwc")
-color_choices = [_cym, _myc] # [_cmy, _cwm, _cym, _mwc, _ycm, _ymc]
-layering_choices = ["alpha-blend"] #, "superimpose"]
-projection_choices = [("sections", 5)] # [("sections", 3), ("sections", 4), ("sections", 5), ("slice", -1), ("max", -1)]
+color_choices = [_myc]
+layering_choices = ["alpha-blend"]
+projection_choices = [("max", -1)]
 
 
 def is_segmented_image(file_name):
     # TODO: find a better way to determine this... because the underscore count doesn't work in all cases.
     file_name = file_name[file_name.rfind('/')+1:-8]
     underscore_count = file_name.count('_')
-    if underscore_count == 3 or underscore_count == 5:
+    if underscore_count == 2:
         return True
     else:
         return False
@@ -41,7 +41,14 @@ def full_field_batcher(ome_tif_files):
         for palette in color_choices:
             for layering in layering_choices:
                 print("\nProcessing images with " + palette[1] + " palette, " + layering + " layering, and " + str(projection) + " projections.")
-                generator = ThumbnailGenerator(colors=palette[0], layering=layering, projection=projection[0], proj_sections=projection[1])
+                generator = ThumbnailGenerator(colors=palette[0],
+                                               layering=layering,
+                                               projection=projection[0],
+                                               proj_sections=projection[1],
+                                               channel_indices=[0, 1, 2],
+                                               channel_thresholds=[0, .65, .65],
+                                               channel_multipliers=[3, 1, 1],
+                                               old_alg=True)
                 for file_name in ome_tif_files:
                     with OmeTifReader(file_name) as reader:
                         # converts to ZCYX
