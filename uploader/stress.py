@@ -76,6 +76,7 @@ def construct_requests(imid):
     # this goes in the resize options
     # max_texture_tile_size = { w: resizeX, h: resizeY };
 
+    # TODO need to VERIFY that these sizes are correct! Otherwise this is not warming the cache!
 
 
     # max of 3 for r,g,b channels
@@ -83,6 +84,8 @@ def construct_requests(imid):
     batchColors = [[255,0,0], [0,255,0], [0,0,255]]
     channelurls = []
     # generate channel urls
+
+    # print("Size Requested: " + str(resizeX) + ',' + str(resizeY))
 
     # http://bisque-1079154594.us-west-2.elb.amazonaws.com/image_service/image/00-txi2UgfXMLkqFW6DbQuuQ7?slice=,,,1&resize=341,292,BC,MX&dims
     channelurls.append(constructDimsUrl(imid=imid, sizex=resizeX, sizey=resizeY, atlas=False))
@@ -119,7 +122,7 @@ def construct_requests(imid):
         # http://bisque-1079154594.us-west-2.elb.amazonaws.com/image_service/image/00-txi2UgfXMLkqFW6DbQuuQ7?slice=,,,1&resize=341,292,BC,MX&textureatlas&depth=8,d,u&fuse=0,0,0;0,0,0;0,0,0;0,0,0;0,0,0;0,0,255;0,255,0;255,0,0;:m&format=png
         # http://bisque-1079154594.us-west-2.elb.amazonaws.com/image_service/image/00-txi2UgfXMLkqFW6DbQuuQ7?slice=,,,1&resize=341,292,BC,MX&textureatlas&depth=8,d,u&fuse=0,0,0;0,0,0;0,0,255;0,255,0;255,0,0;0,0,0;0,0,0;0,0,0;:m&format=png
         # http://bisque-1079154594.us-west-2.elb.amazonaws.com/image_service/image/00-txi2UgfXMLkqFW6DbQuuQ7?slice=,,,1&resize=341,292,BC,MX&textureatlas&depth=8,d,u&fuse=0,255,0;255,0,0;0,0,0;0,0,0;0,0,0;0,0,0;0,0,0;0,0,0;:m&format=png
-    return channelurls
+    return {"urls":channelurls, "x":resizeX, "y":resizeY}
 
 def issue_requests(reqs, async=False):
     #foo
@@ -159,11 +162,11 @@ def main():
     n = 0
     for i in xml:
         imid = i.get("resource_uniq")
-        reqs = construct_requests(imid)
         start = timer()
-        issue_requests(reqs, async=False)
+        reqs = construct_requests(imid)
+        issue_requests(reqs["urls"], async=False)
         end = timer()
-        print(str(n) + ' : ' + i.get('name') + ' : ' + imid + ' : ' + str(end-start) + 's')
+        print(str(n) + ' : ' + i.get('name') + ' : ' + imid + ' : ' + str(reqs["x"]) + ',' + str(reqs["y"]) + ' : ' + str(end-start) + 's')
         n = n + 1
 
 
