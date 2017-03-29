@@ -112,8 +112,7 @@ def normalize_path(path):
     if sys.platform.startswith('darwin'):
         dest_root = macroot[:-1]
     elif sys.platform.startswith('linux'):
-        # TODO: change to work on both local and remote systems
-        dest_root = "/run/user/1000/gvfs/smb-share:server=aibsdata,share=aics"
+        dest_root = linuxroot[:-1]
     else:
         dest_root = windowsroot[:-1]
 
