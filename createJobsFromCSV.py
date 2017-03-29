@@ -52,8 +52,8 @@ def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
                                                  'and set up a job script for each row.'
                                                  'Example: python createJobsFromCSV.py /path/to/csv')
-    parser.add_argument('input', nargs='+', help='input csv files')
-    parser.add_argument('--outpath', '-o', help='output path for job files', default='dryrun')
+    parser.add_argument('input', nargs='?', default='delivery_summary.csv', help='input csv files')
+    parser.add_argument('--outpath', '-o', help='output path for job files', default='test')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
 
     # assuming naming from CSV.  dataroot + dataset + csvname + image names
@@ -99,7 +99,7 @@ def main():
     # delivery_summary contains rows listing all the csv files to load
     datadir = './data/' + args.dataset
     jobcounter = 0
-    with open(datadir + '/delivery_summary.csv', 'rU') as summarycsvfile:
+    with open(datadir + '/' + args.input, 'rU') as summarycsvfile:
 
         # every cell I process will get a line in this file.
         cellnamemapfilename = datadir + '/cellnames.csv'
@@ -114,8 +114,6 @@ def main():
                 continue
             if summaryrow[summary_first_field] == "":
                 continue
-
-
 
             eid = summaryrow['Experiment ID']
             aicsnum = summaryrow['AICS-#']
@@ -192,6 +190,9 @@ def main():
                         else:
                             info.cbrGenerateSegmentedImages = True
                             info.cbrGenerateFullFieldImages = True
+
+                    if summaryrow.get('SkipStructureSeg'):
+                        info.cbrSkipStructureSegmentation = True
 
                     if aicsnum in generate_aicsnum_index:
                         generate_aicsnum_index[aicsnum] += 1
