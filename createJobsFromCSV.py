@@ -51,7 +51,7 @@ def generate_sh_for_row(outdir, jobname, jobnumber, subdir, info, do_run):
 def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
                                                  'and set up a job script for each row.'
-                                                 'Example: python createJobsFromCSV.py /path/to/csv')
+                                                 'Example: python createJobsFromCSV.py -c -n --dataset 2017_03_08_Struct_First_Pass_Seg')
     parser.add_argument('input', nargs='?', default='delivery_summary.csv', help='input csv files')
     parser.add_argument('--outpath', '-o', help='output path for job files', default='test')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
