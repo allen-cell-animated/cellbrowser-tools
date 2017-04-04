@@ -1,5 +1,7 @@
-test/
+dryrun/
 .idea/
 *.pyc
 exe/
+test/
+dryrun/
 data/testdata.csv

@@ -2,7 +2,7 @@
 
 # author: Greg Johnson, gregj@alleninstitute.org
 # Ported to python and based jobScheduler.m 1.1 by gregjohnso@gmail.com
-# 
+#
 # Aug 5, 2016
 
 # this should really be turned into an object, to avoid all the mess of variables being passed around
@@ -20,6 +20,7 @@ import subprocess
 
 import pdb
 
+
 def main(json_obj):
     startup('version 2.0')
 
@@ -34,7 +35,7 @@ def main(json_obj):
     # while FOREVER
     c = 1
     while c > 0:
-        c = c+1
+        c = c + 1
 
         json_obj = json.load(open(json_obj_path, 'r'))
         json_obj["work_dir"] = work_dir
@@ -48,7 +49,8 @@ def main(json_obj):
             logger.info('Waiting for next task')
 
         time.sleep(pausetime)
-                
+
+
 def get_logger(log_dir):
     if not os.path.exists(log_dir): os.makedirs(log_dir)
 
@@ -69,6 +71,7 @@ def get_logger(log_dir):
     logger.addHandler(ch)
 
     return logger
+
 
 def check_dirs(json_obj):
     work_dir = json_obj["work_dir"]
@@ -95,6 +98,7 @@ def check_dirs(json_obj):
 
     return work_dir, done_dir, err_dir, exe_dir, log_dir
 
+
 def get_jobs_running(json_obj):
     exe_str = 'qstat -u $(whoami) -q ' + json_obj["queue_name"] + ' | grep $(whoami) -c'
 
@@ -104,10 +108,12 @@ def get_jobs_running(json_obj):
 
     return n_jobs_running
 
+
 def get_jobs_to_submit(json_obj):
     files = glob.glob(json_obj["work_dir"] + os.sep + '*.sh')
 
     return files
+
 
 def submit_jobs(json_obj, logger):
     did_submit = False
@@ -122,7 +128,6 @@ def submit_jobs(json_obj, logger):
         # number of jobs that exist left to submit
         n_jobs_to_submit = len(files)
 
-    
     if n_jobs_to_submit > 0:
         logger.info('Submitting ' + str(n_jobs_to_submit) + ' jobs')
 
@@ -135,6 +140,7 @@ def submit_jobs(json_obj, logger):
         did_submit = True
 
     return did_submit
+
 
 def submit_job(file, json_obj, logger):
     exe_dir = json_obj['script_dir'] + os.sep + 'exe'
@@ -183,8 +189,8 @@ def submit_job(file, json_obj, logger):
 
     return out_file, err_file, job_id
 
-def cleanup(work_dir, done_dir, err_dir, exe_dir, logger):
 
+def cleanup(work_dir, done_dir, err_dir, exe_dir, logger):
     spent_scripts = glob.glob(work_dir + os.sep + '*.sh.e*')
 
     did_cleanup = False
@@ -214,16 +220,18 @@ def cleanup(work_dir, done_dir, err_dir, exe_dir, logger):
 
     return did_cleanup
 
+
 def startup(version):
-    lol = (' _____       _           _  _         _____       _____  _____  _____  _____ \n' 
+    lol = (' _____       _           _  _         _____       _____  _____  _____  _____ \n'
            '|   __| _ _ | |_  _____ |_|| |_  ___ |  _  | ___ |_   _|| __  ||     ||   | |\n'
            '|__   || | || . ||     || ||  _||___||     ||___|  | |  |    -||  |  || | | |\n'
            '|_____||___||___||_|_|_||_||_|       |__|__|       |_|  |__|__||_____||_|___|\n'
-        )
+           )
 
     print(lol);
     print(version)
     print('Ok lets go!')
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -239,4 +247,3 @@ if __name__ == "__main__":
     json_obj["work_dir"] = work_dir
 
     main(work_dir, json_obj)
-

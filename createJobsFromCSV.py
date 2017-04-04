@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# author: Dan Toloudis danielt@alleninstitute.org
+# authors: Dan Toloudis danielt@alleninstitute.org
+#          Zach Crabtree zacharyc@alleninstitute.org
 
 import argparse
 import cellJob
@@ -12,7 +13,6 @@ import platform
 import sys
 from processImageWithSegmentation import do_main
 import jobScheduler
-
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails

@@ -4,7 +4,17 @@
 #         Zach Crabtree zacharyc@alleninstitute.org
 
 from __future__ import print_function
-from aicsimagetools import *
+
+from aics.image.io.cziReader import CziReader
+from aics.image.io.tifReader import TifReader
+from aics.image.io.omeTifReader import OmeTifReader
+from aics.image.io.omeTifWriter import OmeTifWriter
+from aics.image.io.pngWriter import PngWriter
+from aics.image.io.omexml import OMEXML
+import cellJob
+from aics.image.processing import thumbnailGenerator
+from uploader import oneUp
+
 import argparse
 import copy
 import errno
@@ -14,11 +24,7 @@ import os
 import re
 import subprocess
 import sys
-import cellJob
-import thumbnail2
-from uploader import oneUp
 import pprint
-import xml.etree.ElementTree as ET
 
 
 def _int32(x):
@@ -143,7 +149,18 @@ class ImageProcessor:
 
         # Setting up segmentation channels for full image
         self.seg_indices = []
-        self.image = self.add_segs_to_img()
+        try:
+            with OmeTifReader(self.ometif_dir + ".ome.tif") as reader:
+                print("\nloading pre-made image for " + self.file_name + "...", end="")
+                self.image = reader.load()
+                if len(self.image.shape) == 5:
+                    self.image = self.image[0]
+                self.image = self.image.transpose((1, 0, 2, 3))
+                self.omexml = reader.get_metadata()
+                self.seg_indices = [4, 5, 6]
+                print("done")
+        except AssertionError:
+            self.image = self.add_segs_to_img()
 
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
@@ -158,8 +175,6 @@ class ImageProcessor:
         self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
 
     def add_segs_to_img(self):
-        file_name = os.path.splitext(os.path.basename(self.row.inputFilename))[0]
-
         outdir = self.row.cbrImageLocation
         make_dir(outdir)
 
@@ -304,20 +319,9 @@ class ImageProcessor:
         #   channel_indices[1] to channel1
         #   channel_indices[2] to channel2
         #   channel_indices[3] to channel3
-        # FIXME There's got to be a more concise way to do this.  Use len(channel_indices) please!
         pix = self.omexml.image().Pixels
-        chxml = [
-            pix.Channel(self.channel_indices[0]),
-            pix.Channel(self.channel_indices[1]),
-            pix.Channel(self.channel_indices[2]),
-            pix.Channel(self.channel_indices[3])
-        ]
-        planes = [
-            pix.get_planes_of_channel(self.channel_indices[0]),
-            pix.get_planes_of_channel(self.channel_indices[1]),
-            pix.get_planes_of_channel(self.channel_indices[2]),
-            pix.get_planes_of_channel(self.channel_indices[3])
-        ]
+        chxml = [pix.Channel(channel) for channel in self.channel_indices]
+        planes = [pix.get_planes_of_channel(channel) for channel in self.channel_indices]
         for i in channels_to_remove:
             pix.remove_channel(i)
         # reset all plane indices
@@ -362,7 +366,7 @@ class ImageProcessor:
         struct_index = 1
 
         if self.row.cbrGenerateFullFieldImages:
-            print("generating full field images...", end="")
+            print("generating full fields...")
             # necessary for bisque metadata, this is the config for a fullfield image
             self.row.cbrBounds = None
             self.row.cbrCellIndex = 0
@@ -370,18 +374,20 @@ class ImageProcessor:
             # self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
 
             if self.row.cbrGenerateThumbnail:
-                ffthumb = thumbnail2.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                print("making thumbnail...", end="")
+                ffthumb = thumbnailGenerator.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                print("done")
             else:
                 ffthumb = None
 
             if self.row.cbrGenerateCellImage:
+                print("making image...", end="")
                 im_to_save = self.image
+                print("done")
             else:
                 im_to_save = None
 
             self._save_and_post(image=im_to_save, thumbnail=ffthumb, omexml=self.omexml)
-
-            print("done")
 
         if self.row.cbrGenerateSegmentedImages:
             # assumption: less than 256 cells segmented in the file.
@@ -392,7 +398,7 @@ class ImageProcessor:
             h0 = np.unique(cell_segmentation_image)
             h0 = h0[h0 > 0]
             # for each cell segmented from this image:
-            print("generating segmented images...", end="")
+            print("generating segmented cells...", end="")
             for i in h0:
                 if i == 0:
                     continue
@@ -410,12 +416,10 @@ class ImageProcessor:
                 # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
 
                 if self.row.cbrGenerateThumbnail:
-                    thumbnail = thumbnail2.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index,
-                                                                                                     memb_index,
-                                                                                                     struct_index],
-                                                                    size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
-                    # making it CYX for the png writer
-                    thumb = thumbnail.transpose(2, 0, 1)
+                    print("making thumbnail...", end="")
+                    thumb = thumbnailGenerator.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
+                                                                        size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
+                    print("done")
                 else:
                     thumb = None
 
@@ -453,6 +457,41 @@ class ImageProcessor:
 
                 if not self.row.cbrGenerateCellImage:
                     cropped = None
+                    copyxml = None
+                else:
+                    print("making image...", end="")
+
+                    self.row.cbrCellIndex = i
+                    self.row.cbrSourceImageName = base
+                    self.row.cbrCellName = base + '_' + str(i)
+                    self.row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
+                                          'ymin': bounds[1][0], 'ymax': bounds[1][1],
+                                          'zmin': bounds[2][0], 'zmax': bounds[2][1]}
+
+                    # for bn in self.row.cbrBounds:
+                    #     print(bn, self.row.cbrBounds[bn])
+                    # copy self.omexml for output
+                    copied = copy.deepcopy(self.omexml.dom)
+                    copyxml = OMEXML(rootnode=copied)
+                    # now fix it up
+                    pixels = copyxml.image().Pixels
+                    pixels.set_SizeX(cropped.shape[3])
+                    pixels.set_SizeY(cropped.shape[2])
+                    pixels.set_SizeZ(cropped.shape[1])
+                    # if sizeZ changed, then we have to use bounds to fix up the plane elements
+                    minz = bounds[2][0]
+                    maxz = bounds[2][1]
+                    planes = []
+                    for pi in range(pixels.get_plane_count()):
+                        planes.append(pixels.Plane(pi))
+                    for p in planes:
+                        pz = p.get_TheZ()
+                        # TODO: CONFIRM THAT THIS IS CORRECT!!
+                        if pz >= maxz or pz < minz:
+                            pixels.node.remove(p.node)
+                        else:
+                            p.set_TheZ(pz - minz)
+                    print("done")
 
                 self._save_and_post(image=cropped, thumbnail=thumb, seg_cell_index=i, omexml=copyxml)
             print("done")
@@ -472,17 +511,22 @@ class ImageProcessor:
             png_url += '.png'
 
         if thumbnail is not None:
+            print("saving thumbnail...", end="")
             with PngWriter(file_path=png_dir, overwrite_file=True) as writer:
                 writer.save(thumbnail)
+            print("done")
 
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
+            print("saving image...", end="")
             with OmeTifWriter(file_path=ometif_dir, overwrite_file=True) as writer:
                 writer.save(transposed_image, omexml=omexml,
                             # channel_names=self.channel_names, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
+            print("done")
 
         if self.row.cbrAddToDb:
+            print("adding to db...", end="")
             self.row.channelNames = self.channel_names
             self.row.cbrThumbnailURL = png_url
             session_info = {
@@ -491,6 +535,7 @@ class ImageProcessor:
                 'password': 'admin'
             }
             dbkey = oneUp.oneUp(session_info, self.row.__dict__, None)
+            print("done")
 
 
 def do_main(fname):

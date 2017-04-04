@@ -2,17 +2,24 @@
 
 # author: Dan Toloudis danielt@alleninstitute.org
 
-from aicsimagetools import *
+from aics.image.io.cziReader import CziReader
+from aics.image.io.tifReader import TifReader
+from aics.image.io.omeTifWriter import OmeTifWriter
+from aics.image.io.pngWriter import PngWriter
+from aics.image.io.omeTifReader import OmeTifReader
+from aics.image.processing import thumbnailGenerator
+
+from uploader import oneUp
+
 import argparse
 # from xml.etree import cElementTree as etree
 import math
 import numpy as np
+import scipy
 import os
 import re
 import sys
 
-import thumbnail2
-from uploader import oneUp
 
 def int32(x):
     if x > 0xFFFFFFFF:
@@ -223,11 +230,11 @@ def splitAndCrop(row):
 
         if row.cbrGenerateThumbnail:
             # assumes cropped is CZYX
-            thumbnail = thumbnail2.make_segmented_thumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel), int(row.structureChannel)],
-                                                            size=row.cbrThumbnailSize, seg_channel_index=cell_seg_channel)
+            thumbnail = thumbnailGenerator.make_segmented_thumbnail(cropped, channel_indices=[int(row.nucChannel), int(row.memChannel), int(row.structureChannel)],
+                                                                    size=row.cbrThumbnailSize, seg_channel_index=cell_seg_channel)
 
             out_thumbnaildir = normalizePath(thumbnaildir)
-            pngwriter = pngWriter.PngWriter(os.path.join(out_thumbnaildir, outname + '.png'))
+            pngwriter = PngWriter(os.path.join(out_thumbnaildir, outname + '.png'))
             pngwriter.save(thumbnail)
 
         if row.cbrGenerateCellImage:

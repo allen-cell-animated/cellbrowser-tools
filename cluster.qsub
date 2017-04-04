@@ -1,0 +1,18 @@
+#!/bin/sh
+
+{%- set job = prefs.jobname %}
+#PBS -q {{ prefs.queue|default('aics') }}
+#PBS -l vmem={{ prefs.vmem|default('4gb') }}
+#PBS -l walltime={{ prefs.walltime|default('04:00:00') }}
+#PBS -l ncpus={{ prefs.ncpus|default('1') }}
+#PBS -N {{ job }}
+#PBS -r {{ prefs.retry_on_error|default('n') }}
+#PBS -j {{ prefs.merge_stdout_stderr|default('n') }}
+#PBS -o {{ prefs.output_location + job + ".o" }}
+#PBS -e {{ prefs.err_location + job + ".e" }}
+#PBS -m {{ prefs.email_condition|default('n') }}
+{%- if prefs.email_condition is not none and prefs.email_address is not none %}
+#PBS -M {{ prefs.email_address|default('null') }}
+{%- endif %}
+export PYTHONPATH=$PYTHONPATH$( find /data/aics/software/cellbrowser-tools/ -not -path '*/\.*' -type d -printf ':%p' )
+python /data/aics/software/cellbrowser-tools/processImageWithSegmentation.py {{ prefs.variable_arg}}
