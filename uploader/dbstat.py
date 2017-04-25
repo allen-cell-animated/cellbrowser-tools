@@ -45,10 +45,7 @@ def main():
         src = child_el.attrib['value']
         # TODO find a nicer way to get this grouping.
         # strip away all after the last underscore.
-        if src.startswith('35000'):
-            src = src[:src.index('_')]
-        else:
-            src = src[:src.rindex('_')]
+        src = src[:src.rindex('_')]
         # add to dict
         if src not in srcdict:
             srcdict[src] = 1
@@ -65,10 +62,7 @@ def main():
         src = child_el.attrib['value']
         # TODO find a nicer way to get this grouping.
         # strip away all after the last underscore.
-        if src.startswith('35000'):
-            src = src[:src.index('_')]
-        else:
-            src = src[:src.rindex('_')]
+        src = src[:src.rindex('_')]
         # add to dict
         if src not in srcdict:
             srcdict[src] = 1
