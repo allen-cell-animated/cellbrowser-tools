@@ -1,6 +1,6 @@
 {
-  "template_path" : "/data/aics/software/cellbrowser-tools/cluster.qsub",
-  "script_out_dir" : "/data/aics/software/cellbrowser-tools/dryrun/",
+  "template_path" : "/allen/aics/apps/holding/cellbrowser-tools/cluster.qsub",
+  "script_out_dir" : "/allen/aics/apps/holding/cellbrowser-tools/dryrun/",
   "batcher_args" : {
     "batch_dir" : "C:/Users/matthewbo/Git/microscopy-tools/test_data/",
     "match_condition" : "3500000418*",
@@ -16,7 +16,7 @@
     "output_location" : "/home/matthewb/output_",
     "err_location" : "/home/matthewb/error_",
     "args" : {
-      "working_dir" : "/data/workingdir",
+      "working_dir" : "/allen/workingdir",
       "script" : "script.sh",
       "pre_commands" : [
         "module load thing"

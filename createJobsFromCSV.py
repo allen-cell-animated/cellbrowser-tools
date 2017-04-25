@@ -33,9 +33,9 @@ def generate_sh_for_row(outdir, jobname, jobnumber, subdir, info, do_run):
         do_main(pathjson)
     else:
         script_string = ""
-        script_string += "export PYTHONPATH=$PYTHONPATH$( find /data/aics/software/cellbrowser-tools/ " \
+        script_string += "export PYTHONPATH=$PYTHONPATH$( find /allen/aics/apps/holding/cellbrowser-tools/ " \
                          "-not -path '*/\.*' -type d -printf ':%p' )\n"
-        script_string += "python /data/aics/software/cellbrowser-tools/processImageWithSegmentation.py "
+        script_string += "python /allen/aics/apps/holding/cellbrowser-tools/processImageWithSegmentation.py "
         script_string += jsonname
         path = os.path.join(outdir, 'aicsCellJob_' + cell_job_postfix + '.sh')
         with open(path, 'w') as fp:
@@ -142,8 +142,8 @@ def main():
                     info = cellJob.CellJob(row)
                     info.cbrAddToDb = True
 
-                    info.cbrDataRoot = '/data/aics/software_it/danielt/images/AICS/bisque/'
-                    info.cbrThumbnailRoot = '/data/aics/software_it/danielt/demos/bisque/thumbnails/'
+                    info.cbrDataRoot = '/allen/aics/software/danielt/images/AICS/bisque/'
+                    info.cbrThumbnailRoot = '/allen/aics/software/danielt/demos/bisque/thumbnails/'
                     info.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
 
                     info.cbrDatasetName = ''

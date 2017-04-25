@@ -76,16 +76,16 @@ def image_to_mask(image3d, index, mask_positive_value=1):
 
 
 def normalizePath(path):
-    # expects windows paths to start with \\aibsdata !!
-    # windows: \\\\aibsdata\\aics
+    # expects windows paths to start with \\allen !!
+    # windows: \\\\allen\\aics
     # mac:     /Volumes/aics (???)
-    # linux:   /data/aics
+    # linux:   /allen/aics
 
     # 1. strip away the root.
-    if path.startswith('\\\\aibsdata\\aics\\'):
-        path = path[len('\\\\aibsdata\\aics\\'):]
-    elif path.startswith('/data/aics/'):
-        path = path[len('/data/aics/'):]
+    if path.startswith('\\\\allen\\aics\\'):
+        path = path[len('\\\\allen\\aics\\'):]
+    elif path.startswith('/allen/aics/'):
+        path = path[len('/allen/aics/'):]
     elif path.startswith('/Volumes/aics/'):
         path = path[len('/Volumes/aics/'):]
 
@@ -97,9 +97,9 @@ def normalizePath(path):
     if sys.platform.startswith('darwin'):
         dest_root = '/Volumes/aics'
     elif sys.platform.startswith('linux'):
-        dest_root = '/data/aics'
+        dest_root = '/allen/aics'
     else:
-        dest_root = '\\\\aibsdata\\aics'
+        dest_root = '\\\\allen\\aics'
 
     path_as_list.insert(0, dest_root)
 
@@ -253,7 +253,7 @@ def splitAndCrop(row):
             row.cbrCellIndex = i
             row.cbrSourceImageName = base
             row.cbrCellName = outname
-            row.cbrThumbnailURL = thumbnaildir.replace('/data/aics/software_it/danielt/demos', 'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + outname + '.png'
+            row.cbrThumbnailURL = thumbnaildir.replace('/allen/aics/software/danielt/demos', 'http://stg-aics.corp.alleninstitute.org/danielt_demos') + '/' + outname + '.png'
             dbkey = oneUp.oneUp(None, row.__dict__, None)
 
 def imresize(im, new_size):
@@ -337,7 +337,7 @@ def main():
     args = parser.parse_args()
 
     # do_main(args.input)
-    do_main('\\\\aibsdata\\aics\\software_it\\danielt\\images\\AICS\\bisque\\20160705_I01\\20160705_I01_001_2.ome.tif')
+    do_main('\\\\allen\\aics\\software\\danielt\\images\\AICS\\bisque\\20160705_I01\\20160705_I01_001_2.ome.tif')
 
 if __name__ == "__main__":
     print sys.argv
