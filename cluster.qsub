@@ -14,5 +14,5 @@
 {%- if prefs.email_condition is not none and prefs.email_address is not none %}
 #PBS -M {{ prefs.email_address|default('null') }}
 {%- endif %}
-export PYTHONPATH=$PYTHONPATH$( find /allen/aics/apps/holding/cellbrowser-tools/ -not -path '*/\.*' -type d -printf ':%p' )
-python /allen/aics/apps/holding/cellbrowser-tools/processImageWithSegmentation.py {{ prefs.variable_arg}}
+export PYTHONPATH=$PYTHONPATH$( find /allen/aics/apps/tools/cellbrowser-tools/ -not -path '*/\.*' -type d -printf ':%p' )
+python /allen/aics/apps/tools/cellbrowser-tools/processImageWithSegmentation.py {{ prefs.variable_arg}}

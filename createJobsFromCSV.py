@@ -33,9 +33,9 @@ def generate_sh_for_row(outdir, jobname, jobnumber, subdir, info, do_run):
         do_main(pathjson)
     else:
         script_string = ""
-        script_string += "export PYTHONPATH=$PYTHONPATH$( find /allen/aics/apps/holding/cellbrowser-tools/ " \
+        script_string += "export PYTHONPATH=$PYTHONPATH$( find /allen/aics/apps/tools/cellbrowser-tools/ " \
                          "-not -path '*/\.*' -type d -printf ':%p' )\n"
-        script_string += "python /allen/aics/apps/holding/cellbrowser-tools/processImageWithSegmentation.py "
+        script_string += "python /allen/aics/apps/tools/cellbrowser-tools/processImageWithSegmentation.py "
         script_string += jsonname
         path = os.path.join(outdir, 'aicsCellJob_' + cell_job_postfix + '.sh')
         with open(path, 'w') as fp:
