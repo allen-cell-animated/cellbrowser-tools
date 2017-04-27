@@ -85,12 +85,12 @@ def image_to_mask(image3d, index, mask_positive_value=1):
 
 def normalize_path(path):
     # expects windows paths to start with \\aibsdata !!
-    # windows: \\\\aibsdata\\aics
-    windowsroot = '\\\\aibsdata\\aics\\'
+    # windows: \\\\allen\\aics
+    windowsroot = '\\\\allen\\aics\\'
     # mac:     /Volumes/aics (???)
     macroot = '/Volumes/aics/'
-    # linux:   /data/aics
-    linuxroot = '/data/aics/'
+    # linux:   /allen/aics
+    linuxroot = '/allen/aics/'
 
     # 1. strip away the root.
     if path.startswith(windowsroot):

@@ -8,8 +8,8 @@ import zipfile
 
 def make_zips(dataset_name):
     dataset_files = './data/%s/auxiliary_spreadsheets/imageID_ometif_*.xlsx' % dataset_name
-    # image_dir = '\\\\aibsdata\\aics\\software_it\\danielt\\images\\AICS\\bisque\\%s\\' % dataset_name
-    image_dir = '/data/aics/software_it/danielt/images/AICS/bisque/%s/' % dataset_name
+    # image_dir = '\\\\allen\\aics\\software\\danielt\\images\\AICS\\bisque\\%s\\' % dataset_name
+    image_dir = '/allen/aics/software/danielt/images/AICS/bisque/%s/' % dataset_name
     inputfiles = glob.glob(dataset_files)
     for inputfile in inputfiles:
         dfs = pd.read_excel(inputfile)

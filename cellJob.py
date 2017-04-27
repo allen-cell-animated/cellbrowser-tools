@@ -35,8 +35,8 @@ class CellJob(object):
         self.cbrThumbnailURL = 'file:///images'
         self.cbrThumbnailSize = 128
 
-        self.cbrDataRoot = '/data/aics/software_it/danielt/images/AICS/bisque/'
-        self.cbrThumbnailRoot = '/data/aics/software_it/danielt/demos/bisque/thumbnails/'
+        self.cbrDataRoot = '/allen/aics/software/danielt/images/AICS/bisque/'
+        self.cbrThumbnailRoot = '/allen/aics/software/danielt/demos/bisque/thumbnails/'
         self.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
 
         self.cbrDatasetName = ''
