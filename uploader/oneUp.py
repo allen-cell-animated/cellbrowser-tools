@@ -58,6 +58,18 @@ def oneUp(sessionInfo, dict, outfile):
     cbrDataRoot = dict['cbrDataRoot']
     cbrThumbnailWebRoot = dict['cbrThumbnailWebRoot']
 
+    # avoid dups:
+    # before adding this entry,
+    # destroy any db entries with this name or this inputFilename
+    ims = api.getImagesByName(cbrCellName)
+    if ims is not None:
+        for image in ims:
+            api.deleteImage(image.get("resource_uniq"))
+    ims = api.getImagesByTagValue(name='inputFilename', value=dict['inputFilename'])
+    if ims is not None:
+        for image in ims:
+            api.deleteImage(image.get("resource_uniq"))
+
     # strip spaces and hyphens for dictionary lookup.
     structureProteinKey = structureProteinName.replace('-', '').replace(' ', '').replace(',', '').upper()
     structureDisplayName = 'Unknown'

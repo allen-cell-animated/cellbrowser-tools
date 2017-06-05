@@ -47,11 +47,41 @@ def generate_sh_for_row(outdir, jobname, jobnumber, subdir, info, do_run):
             logger = jobScheduler.get_logger('test/logs')
             jobScheduler.submit_job(path, json_obj, logger)
 
+# don't forget to commit cellnameid.csv back into git every time it's updated for production!
+class CellIdDatabase(object):
+    def __init__(self):
+        self.filename = './data/cellnameid.csv'
+        with open(self.filename, 'rU') as id_authority_file:
+            id_authority_filereader = csv.reader(id_authority_file)
+            # AICS_CELL_LINE_ID, IMAGE_NAMING_INDEX_ID
+            self.db = {rows[0]:rows[1] for rows in id_authority_filereader}
+
+    def get_new_cell_name(self, aicscelllineid):
+        if aicscelllineid in self.db:
+            self.db[aicscelllineid] += 1
+        else:
+            self.db[aicscelllineid] = 0
+        cellindex = self.db.get(aicscelllineid)
+        self.writedb()
+        # write back to db file, trying to keep this file current.
+        return cellindex
+
+    def writedb(self):
+        with open(self.filename, 'wb') as csv_file:
+            writer = csv.writer(csv_file)
+            for key, value in self.db.items():
+                writer.writerow([key, value])
+
+
 
 def main():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
                                                  'and set up a job script for each row.'
                                                  'Example: python createJobsFromCSV.py -c -n --dataset 2017_03_08_Struct_First_Pass_Seg')
+
+    # python createJobsFromCSV.py -r -n --first 1 --dataset 2017_03_08_Struct_First_Pass_Seg
+    # python createJobsFromCSV.py -r -n --first 1 --dataset 2017_03_08_Struct_First_Pass_Seg delivery_test.csv
+
     parser.add_argument('input', nargs='?', default='delivery_summary.csv', help='input csv files')
     parser.add_argument('--outpath', '-o', help='output path for job files', default='test')
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
@@ -59,9 +89,6 @@ def main():
     # assuming naming from CSV.  dataroot + dataset + csvname + image names
     # can this be inferred or provided from csv?
     parser.add_argument('--dataset', '-D', help='output directory name for whole batch', default='')
-
-    # database location.  TODO: provide no default and force it to be explicit?
-    parser.add_argument('--dburi', help='database url', default='http://10.128.62.104')
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--dryrun', '-d', help='write only to local dir and do not add to db', action='store_true')
@@ -94,18 +121,34 @@ def main():
     #     args.input = filenames
     # input_files = args.input
 
-    generate_aicsnum_index = {}
+    # get the "current" max ids from this database.
+    id_authority = CellIdDatabase()
+
     # plan: read from delivery_summary based on "dataset" arg
     # delivery_summary contains rows listing all the csv files to load
+
     datadir = './data/' + args.dataset
+
+    generate_aicsnum_index = {}
+    # every cell I process will get a line in this file.
+    cellnamemapfilename = datadir + '/cellnames.csv'
+    cellnamemapfile = open(cellnamemapfilename, 'rU')
+    cellnamemapreader = csv.reader(cellnamemapfile)
+    cellnamemap = {rows[1]:rows[0] for rows in cellnamemapreader}
+    for key in cellnamemap:
+        name = cellnamemap[key]
+        # AICS-##_###
+        #  0   1   2
+        inds = re.split('_-', name)
+        cell_line = inds[1]
+        # find the max.
+        if cell_line in generate_aicsnum_index:
+            if inds[2] > generate_aicsnum_index[cell_line]:
+                generate_aicsnum_index[cell_line] = inds[2]
+
+
     jobcounter = 0
     with open(datadir + '/' + args.input, 'rU') as summarycsvfile:
-
-        # every cell I process will get a line in this file.
-        cellnamemapfilename = datadir + '/cellnames.csv'
-        cellnamemapfile = open(cellnamemapfilename, 'rU')
-        cellnamemapreader = csv.reader(cellnamemapfile)
-        cellnamemap = {rows[1]:rows[0] for rows in cellnamemapreader}
 
         summaryreader = csv.DictReader(summarycsvfile)
         summary_first_field = summaryreader.fieldnames[0]
@@ -116,7 +159,7 @@ def main():
                 continue
 
             eid = summaryrow['Experiment ID']
-            aicsnum = summaryrow['AICS-#']
+            aicscelllineid = summaryrow['AICS-#']
 
             # which csv file to load next.
             file_name = eid + '_3ChSeg' + '.csv'
@@ -194,14 +237,14 @@ def main():
                     if summaryrow.get('SkipStructureSeg'):
                         info.cbrSkipStructureSegmentation = True
 
-                    if aicsnum in generate_aicsnum_index:
-                        generate_aicsnum_index[aicsnum] += 1
-                    else:
-                        generate_aicsnum_index[aicsnum] = 0
-                    cellindex = generate_aicsnum_index.get(aicsnum)
-                    info.cbrCellName = aicsnum + '_' + str(cellindex)
+                    # does this cell already have a number?
                     if cellnamemap[row['inputFilename']]:
                         info.cbrCellName = cellnamemap[row['inputFilename']]
+                    else:
+                        cellindex = id_authority.get_new_cell_name(aicscelllineid)
+                        info.cbrCellName = aicscelllineid + '_' + str(cellindex)
+                        cellnamemap[row['inputFilename']] = info.cbrCellName
+
                     # cellnamemapfile.write(info.cbrCellName + ',' + row['inputFilename'])
                     # cellnamemapfile.write(os.linesep)
 
