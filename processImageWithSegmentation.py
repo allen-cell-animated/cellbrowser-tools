@@ -5,14 +5,14 @@
 
 from __future__ import print_function
 
-from aics.image.io.cziReader import CziReader
-from aics.image.io.tifReader import TifReader
-from aics.image.io.omeTifReader import OmeTifReader
-from aics.image.io.omeTifWriter import OmeTifWriter
-from aics.image.io.pngWriter import PngWriter
-from aics.image.io.omexml import OMEXML
+from aicsimage.io.cziReader import CziReader
+from aicsimage.io.tifReader import TifReader
+from aicsimage.io.omeTifReader import OmeTifReader
+from aicsimage.io.omeTifWriter import OmeTifWriter
+from aicsimage.io.pngWriter import PngWriter
+from aicsimage.io.omexml import OMEXML
 import cellJob
-from aics.image.processing import thumbnailGenerator
+from aicsimage.processing import thumbnailGenerator
 from uploader import oneUp
 
 import argparse
