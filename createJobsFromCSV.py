@@ -148,7 +148,7 @@ def parse_args():
     return args
 
 
-def do_image_list(args, inputfilename, output_dir, skip_structure_segmentation=False):
+def do_image_list(args, inputfilename, skip_structure_segmentation=False):
     # get the "current" max ids from this database.
     id_authority = CellIdDatabase()
 
@@ -171,7 +171,8 @@ def do_image_list(args, inputfilename, output_dir, skip_structure_segmentation=F
             info.cbrDatasetName = args.dataset
 
         aicscelllineid = info.cellLineId
-        subdir = 'AICS-' + aicscelllineid
+        subdir = 'AICS-' + str(aicscelllineid)
+
         info.cbrImageLocation = info.cbrDataRoot + info.cbrDatasetName + '/' + subdir
         info.cbrThumbnailLocation = info.cbrThumbnailRoot + info.cbrDatasetName + '/' + subdir
         info.cbrThumbnailURL = info.cbrThumbnailWebRoot + info.cbrDatasetName + '/' + subdir
@@ -218,11 +219,15 @@ def do_image_list(args, inputfilename, output_dir, skip_structure_segmentation=F
             info.cbrSkipStructureSegmentation = True
 
         # does this cell already have a number?
-        cellindex = id_authority.get_new_cell_name(aicscelllineid)
-        info.cbrCellName = 'AICS-' + aicscelllineid + '_' + str(cellindex)
+        cellindex = id_authority.get_new_cell_name(str(aicscelllineid))
+        info.cbrCellName = 'AICS-' + str(aicscelllineid) + '_' + str(cellindex)
 
         # cellnamemapfile.write(info.cbrCellName + ',' + row['inputFilename'])
         # cellnamemapfile.write(os.linesep)
+
+        output_dir = os.path.join(args.outpath, subdir)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
         jobname = info.cbrCellName
         if args.run:
@@ -274,15 +279,11 @@ def do_main(args):
 
     jobcounter = 0
 
-    output_dir = os.path.join(args.outpath, args.cellline)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
     for workingFile in os.listdir(args.sheets):
         if workingFile.endswith('.xlsx') and not workingFile.startswith('~'):
             fp = os.path.join(args.sheets, workingFile)
             if os.path.isfile(fp):
-                jbs = do_image_list(args, fp, output_dir, False)
+                jbs = do_image_list(args, fp, False)
                 jobcounter += jbs
 
     # if cellnamemapfile:
