@@ -6,6 +6,7 @@ class CellJob(object):
         self.inputFolder = ''
         self.inputFilename = ''
         self.inputFileRow = 0
+        self.cellLineId = 0
 
         self.xyPixelSize = 0.0
         self.zPixelSize = 0.0
@@ -58,6 +59,7 @@ class CellJob(object):
             self.Version = csvRow.get('Version')
             self.inputFolder = csvRow.get('inputFolder')
             self.inputFilename = csvRow.get('inputFilename')
+            self.cellLineId = csvRow.get('CellLine')
             try:
                 self.xyPixelSize = float(csvRow.get('xyPixelSize', 0))
             except ValueError:

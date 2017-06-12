@@ -197,7 +197,7 @@ class ImageProcessor:
 
         self.channels_to_mask = []
 
-        print("loading segmentations for " + file_name + "...", end="")
+        print("loading segmentations for " + self.file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
         seg_path = normalize_path(seg_path)
         con_path = self.row.outputSegmentationContourPath
@@ -292,6 +292,7 @@ class ImageProcessor:
         assert len(image.shape) == 4
         # image shape from czi assumed to be ZCYX
         # assume no T dimension for now
+        # convert to CZYX, so that shape[0] is number of channels:
         image = image.transpose(1, 0, 2, 3)
         # assumption: channel indices are one-based.
         self.channel_indices = [
@@ -375,7 +376,12 @@ class ImageProcessor:
 
             if self.row.cbrGenerateThumbnail:
                 print("making thumbnail...", end="")
-                ffthumb = thumbnailGenerator.make_fullfield_thumbnail(self.image, memb_index=memb_index, nuc_index=nuc_index, struct_index=struct_index)
+                generator = thumbnailGenerator.ThumbnailGenerator(channel_indices=[memb_index, nuc_index, struct_index],
+                                                                  size=self.row.cbrThumbnailSize,
+                                                                  mask_channel_index=self.seg_indices[1],
+                                                                  colors=[[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 1.0]],
+                                                                  old_alg=True)
+                ffthumb = generator.make_thumbnail(self.image.transpose(1,0,2,3), apply_cell_mask=False)
                 print("done")
             else:
                 ffthumb = None
@@ -417,8 +423,14 @@ class ImageProcessor:
 
                 if self.row.cbrGenerateThumbnail:
                     print("making thumbnail...", end="")
-                    thumb = thumbnailGenerator.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
-                                                                        size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
+                    generator = thumbnailGenerator.ThumbnailGenerator(channel_indices=[memb_index, nuc_index, struct_index],
+                                                                      size=self.row.cbrThumbnailSize,
+                                                                      mask_channel_index=self.seg_indices[1],
+                                                                      colors=[[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 1.0]],
+                                                                      old_alg=True)
+                    thumb = generator.make_thumbnail(cropped.copy().transpose(1,0,2,3), apply_cell_mask=True)
+                    # thumb = thumbnailGenerator.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
+                    #                                                     size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     print("done")
                 else:
                     thumb = None
@@ -538,7 +550,7 @@ class ImageProcessor:
             print("done")
 
 
-def do_main(fname):
+def do_main_image(fname):
     with open(fname) as jobfile:
         jobspec = json.load(jobfile)
         info = cellJob.CellJob(jobspec)
@@ -567,7 +579,7 @@ def main():
     parser.add_argument('input', help='input json file')
     args = parser.parse_args()
 
-    do_main(args.input)
+    do_main_image(args.input)
 
 
 if __name__ == "__main__":
