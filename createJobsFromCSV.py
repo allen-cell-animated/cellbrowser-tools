@@ -79,17 +79,17 @@ class CellIdDatabase(object):
 
 def read_excel(inputfilename):
     df1 = pd.ExcelFile(inputfilename)
-    if len(df1.sheet_names) == 1:
-        x = df1.sheet_names[0]
-        df2 = pd.read_excel(inputfilename, sheetname=x, encoding='iso-8859-1')
-        return df2.to_dict(orient='records')
-    else:
-        dicts = []
-        for x in df1.sheet_names:
-            # out to csv
-            df2 = pd.read_excel(inputfilename, sheetname=x, encoding='iso-8859-1')
-            dicts.append(df2.to_dict(orient='records'))
-        return dicts
+    # only use first sheet.
+    x = df1.sheet_names[0]
+    df2 = pd.read_excel(inputfilename, sheetname=x, encoding='iso-8859-1')
+    return df2.to_dict(orient='records')
+    # else:
+    #     dicts = []
+    #     for x in df1.sheet_names:
+    #         # out to csv
+    #         df2 = pd.read_excel(inputfilename, sheetname=x, encoding='iso-8859-1')
+    #         dicts.append(df2.to_dict(orient='records'))
+    #     return dicts
 
 
 def read_csv(inputfilename):
