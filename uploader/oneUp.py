@@ -4,7 +4,7 @@ try:
     from lxml import etree
 except ImportError:
     import xml.etree.ElementTree as etree
-import db_api
+from . import db_api
 import os
 
 

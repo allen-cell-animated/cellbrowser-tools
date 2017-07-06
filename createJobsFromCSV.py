@@ -10,7 +10,7 @@ import glob
 import json
 import os
 import pandas as pd
-# import platform
+import platform
 import re
 import sys
 from processImageWithSegmentation import do_main_image
@@ -71,7 +71,7 @@ class CellIdDatabase(object):
         return cellindex
 
     def writedb(self):
-        with open(self.filename, 'wb') as csv_file:
+        with open(self.filename, 'w') as csv_file:
             writer = csv.writer(csv_file)
             for key, value in self.db.items():
                 writer.writerow([key, value])
@@ -245,15 +245,15 @@ def do_image_list(args, inputfilename, skip_structure_segmentation=False):
 
 
 def do_main(args):
-    # if platform.system() == 'Windows':
-    #     filenames = []
-    #     for filename in args.input:
-    #         if '*' in filename or '?' in filename or '[' in filename:
-    #             filenames += glob.glob(filename)
-    #         else:
-    #             filenames.append(filename)
-    #     args.input = filenames
-    # input_files = args.input
+    if platform.system() == 'Windows':
+        filenames = []
+        for filename in args.input:
+            if '*' in filename or '?' in filename or '[' in filename:
+                filenames += glob.glob(filename)
+            else:
+                filenames.append(filename)
+        args.input = filenames
+    input_files = args.input
 
     # plan: read from delivery_summary based on "dataset" arg
     # delivery_summary contains rows listing all the csv files to load

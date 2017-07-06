@@ -126,7 +126,7 @@ def make_dir(dirname):
     if not os.path.exists(dirname):
         try:
             os.makedirs(dirname)
-        except OSError, e:
+        except (OSError) as e:
             if e.errno != errno.EEXIST:
                 raise
             pass
@@ -149,6 +149,7 @@ class ImageProcessor:
 
         # Setting up segmentation channels for full image
         self.seg_indices = []
+        self.channels_to_mask = []
         try:
             with OmeTifReader(self.ometif_dir + ".ome.tif") as reader:
                 print("\nloading pre-made image for " + self.file_name + "...", end="")
