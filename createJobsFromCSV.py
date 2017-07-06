@@ -162,7 +162,7 @@ def do_image_list(args, inputfilename, skip_structure_segmentation=False):
         # drop images here
         info.cbrDataRoot = '/allen/aics/software/danielt/images/AICS/bisque/'
         # drop thumbnails here
-        info.cbrThumbnailRoot = '/allen/aics/software/danielt/demos/bisque/thumbnails/'
+        info.cbrThumbnailRoot = '/allen/aics/software/danielt/images/AICS/bisque/'
         # url to thumbnails
         info.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
 
