@@ -150,18 +150,18 @@ class ImageProcessor:
         # Setting up segmentation channels for full image
         self.seg_indices = []
         self.channels_to_mask = []
-        try:
-            with OmeTifReader(self.ometif_dir + ".ome.tif") as reader:
-                print("\nloading pre-made image for " + self.file_name + "...", end="")
-                self.image = reader.load()
-                if len(self.image.shape) == 5:
-                    self.image = self.image[0]
-                self.image = self.image.transpose((1, 0, 2, 3))
-                self.omexml = reader.get_metadata()
-                self.seg_indices = [4, 5, 6]
-                print("done")
-        except AssertionError:
-            self.image = self.add_segs_to_img()
+        # try:
+        #     with OmeTifReader(self.ometif_dir + ".ome.tif") as reader:
+        #         print("\nloading pre-made image for " + self.file_name + "...", end="")
+        #         self.image = reader.load()
+        #         if len(self.image.shape) == 5:
+        #             self.image = self.image[0]
+        #         self.image = self.image.transpose((1, 0, 2, 3))
+        #         self.omexml = reader.get_metadata()
+        #         self.seg_indices = [4, 5, 6]
+        #         print("done")
+        # except AssertionError:
+        self.image = self.add_segs_to_img()
 
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
