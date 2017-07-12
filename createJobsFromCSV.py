@@ -7,14 +7,15 @@ import argparse
 import cellJob
 import csv
 import glob
+import jobScheduler
 import json
 import os
 import pandas as pd
 import platform
 import re
 import sys
+from cellNameDb import CellNameDatabase
 from processImageWithSegmentation import do_main_image
-import jobScheduler
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
@@ -50,32 +51,6 @@ def generate_sh_for_row(outdir, jobname, info, do_run):
                 json_obj = json.load(jsonreader)
             logger = jobScheduler.get_logger('test/logs')
             jobScheduler.submit_job(path, json_obj, logger)
-
-
-class CellIdDatabase(object):
-    # don't forget to commit cellnameid.csv back into git every time it's updated for production!
-    def __init__(self):
-        self.filename = './data/cellnameid.csv'
-        with open(self.filename, 'rU') as id_authority_file:
-            id_authority_filereader = csv.reader(id_authority_file)
-            # AICS_CELL_LINE_ID (number only, as string), IMAGE_NAMING_INDEX_ID
-            self.db = {rows[0]: int(rows[1]) for rows in id_authority_filereader}
-
-    def get_new_cell_name(self, aicscelllineid):
-        if aicscelllineid in self.db:
-            self.db[aicscelllineid] += 1
-        else:
-            self.db[aicscelllineid] = 0
-        cellindex = self.db.get(aicscelllineid)
-        self.writedb()
-        # write back to db file, trying to keep this file current.
-        return cellindex
-
-    def writedb(self):
-        with open(self.filename, 'w') as csv_file:
-            writer = csv.writer(csv_file)
-            for key, value in self.db.items():
-                writer.writerow([key, value])
 
 
 def read_excel(inputfilename):
@@ -149,9 +124,9 @@ def parse_args():
     return args
 
 
-def do_image_list(args, inputfilename, skip_structure_segmentation=False):
+def do_image_list(args, inputfilename, skip_structure_segmentation=False, db):
     # get the "current" max ids from this database.
-    id_authority = CellIdDatabase()
+    id_authority = db
 
     rows = read_excel(inputfilename)
     count = 0
@@ -220,8 +195,7 @@ def do_image_list(args, inputfilename, skip_structure_segmentation=False):
             info.cbrSkipStructureSegmentation = True
 
         # does this cell already have a number?
-        cellindex = id_authority.get_new_cell_name(str(aicscelllineid))
-        info.cbrCellName = 'AICS-' + str(aicscelllineid) + '_' + str(cellindex)
+        info.cbrCellName = id_authority.get_cell_name(aicscelllineid, info.inputFilename)
 
         # cellnamemapfile.write(info.cbrCellName + ',' + row['inputFilename'])
         # cellnamemapfile.write(os.linesep)
@@ -256,39 +230,18 @@ def do_main(args):
         args.input = filenames
     input_files = args.input
 
-    # plan: read from delivery_summary based on "dataset" arg
-    # delivery_summary contains rows listing all the csv files to load
-
-    # datadir = './data/' + args.dataset
-
-    # generate_aicsnum_index = {}
-    # # every cell I process will get a line in this file.
-    # cellnamemapfilename = datadir + '/cellnames.csv'
-    # cellnamemapfile = open(cellnamemapfilename, 'rU')
-    # cellnamemapreader = csv.reader(cellnamemapfile)
-    # cellnamemap = {rows[1]: rows[0] for rows in cellnamemapreader}
-    # for key in cellnamemap:
-    #     name = cellnamemap[key]
-    #     # AICS-##_###
-    #     #  0   1   2
-    #     inds = re.split('_-', name)
-    #     cell_line = inds[1]
-    #     # find the max.
-    #     if cell_line in generate_aicsnum_index:
-    #         if inds[2] > generate_aicsnum_index[cell_line]:
-    #             generate_aicsnum_index[cell_line] = inds[2]
-
     jobcounter = 0
+    db = CellNameDatabase()
 
     for workingFile in os.listdir(args.sheets):
         if workingFile.endswith('.xlsx') and not workingFile.startswith('~'):
             fp = os.path.join(args.sheets, workingFile)
             if os.path.isfile(fp):
-                jbs = do_image_list(args, fp, False)
+                jbs = do_image_list(args, fp, False, db)
                 jobcounter += jbs
 
-    # if cellnamemapfile:
-    #     cellnamemapfile.close()
+    # nothing should have changed, but just in case.
+    db.writedb()
 
 
 def main():
