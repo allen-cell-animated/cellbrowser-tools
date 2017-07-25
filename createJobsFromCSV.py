@@ -124,7 +124,7 @@ def parse_args():
     return args
 
 
-def do_image_list(args, inputfilename, skip_structure_segmentation=False, db):
+def do_image_list(args, inputfilename, db, skip_structure_segmentation=False):
     # get the "current" max ids from this database.
     id_authority = db
 
@@ -237,7 +237,7 @@ def do_main(args):
         if workingFile.endswith('.xlsx') and not workingFile.startswith('~'):
             fp = os.path.join(args.sheets, workingFile)
             if os.path.isfile(fp):
-                jbs = do_image_list(args, fp, False, db)
+                jbs = do_image_list(args, fp, db, False)
                 jobcounter += jbs
 
     # nothing should have changed, but just in case.
