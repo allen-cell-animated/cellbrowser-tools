@@ -330,11 +330,12 @@ class ImageProcessor:
         for i in range(len(planes)):
             for j in planes[i]:
                 j.set("TheC", str(i))
-        chxml[0].ID = 'Channel:0:0'
-        chxml[1].ID = 'Channel:0:1'
-        chxml[2].ID = 'Channel:0:2'
-        chxml[3].ID = 'Channel:0:3'
         pix.set_SizeC(4)
+        chxml = [pix.Channel(channel) for channel in range(0, 4)]
+        chxml[0].set_ID('Channel:0:0')
+        chxml[1].set_ID('Channel:0:1')
+        chxml[2].set_ID('Channel:0:2')
+        chxml[3].set_ID('Channel:0:3')
 
         nch = 4
         self.seg_indices = []
