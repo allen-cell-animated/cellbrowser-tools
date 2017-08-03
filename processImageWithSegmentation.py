@@ -324,7 +324,9 @@ class ImageProcessor:
         pix = self.omexml.image().Pixels
         chxml = [pix.Channel(channel) for channel in self.channel_indices]
         planes = [pix.get_planes_of_channel(channel) for channel in self.channel_indices]
-        for i in channels_to_remove:
+        # remove channels in reverse order to preserve indices for next removal!!
+        # this assumes that channels_to_remove is in ascending order.
+        for i in reversed(channels_to_remove):
             pix.remove_channel(i)
         # reset all plane indices
         for i in range(len(planes)):
