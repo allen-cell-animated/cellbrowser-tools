@@ -56,7 +56,7 @@ class CellJob(object):
         if csvRow is not None:
             self.cbrParseError = csvRow.get('cbrParseError', False)
             self.DeliveryDate = csvRow.get('DeliveryDate')
-            self.Version = csvRow.get('Version')
+            self.Version = str(csvRow.get('Version'))
             self.inputFolder = csvRow.get('inputFolder')
             self.inputFilename = csvRow.get('inputFilename')
             self.cellLineId = csvRow.get('CellLine')

@@ -107,7 +107,7 @@ def oneUp(sessionInfo, dict, outfile):
     etree.SubElement(resource, 'tag', name='structureName', value=structureDisplayName, permission=perm)
     # this batch of images are all from microscope and not simulated.
     etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
-    etree.SubElement(resource, 'tag', name='segmentationVersion', value=cbrSegmentationVersion, permission=perm)
+    etree.SubElement(resource, 'tag', name='segmentationVersion', value=str(cbrSegmentationVersion), permission=perm)
     if cbrStructureSegmentationMethod:
         etree.SubElement(resource, 'tag', name='structureSegmentationMethod', value=cbrStructureSegmentationMethod, permission=perm)
     if dict['inputFilename']:
