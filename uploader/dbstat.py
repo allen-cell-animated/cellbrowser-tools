@@ -6,7 +6,7 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('input', help='db uri', nargs='?', default='10.128.62.104')
+    parser.add_argument('input', help='db uri', nargs='?', default='10.128.62.98')
     parser.add_argument('--name', '-n', help='name match', default='*')
     args = parser.parse_args()
 
