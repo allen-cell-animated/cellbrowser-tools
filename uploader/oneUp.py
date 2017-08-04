@@ -65,6 +65,7 @@ def oneUp(sessionInfo, dict, outfile):
     if ims is not None:
         for image in ims:
             api.deleteImage(image.get("resource_uniq"))
+    # big assumption: inputFilename is unique
     ims = api.getImagesByTagValue(name='inputFilename', value=dict['inputFilename'])
     if ims is not None:
         for image in ims:

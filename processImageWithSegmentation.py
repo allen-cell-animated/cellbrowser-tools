@@ -548,7 +548,7 @@ class ImageProcessor:
             self.row.channelNames = self.channel_names
             self.row.cbrThumbnailURL = png_url
             session_info = {
-                'root': 'http://10.128.62.104',
+                'root': 'http://10.128.62.98',
                 'user': 'admin',
                 'password': 'admin'
             }

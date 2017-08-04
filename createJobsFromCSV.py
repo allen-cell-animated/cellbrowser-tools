@@ -84,8 +84,13 @@ def parse_args():
     # python createJobsFromCSV.py -r -n --first 1 --dataset 2017_03_08_Struct_First_Pass_Seg
     # python createJobsFromCSV.py -r -n --first 1 --dataset 2017_03_08_Struct_First_Pass_Seg delivery_test.csv
 
+    # to generate images:
     # python createJobs --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY --dataset 2017_05_15_tubulin -c -n
     # python createJobs --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY --dataset 2017_05_15_tubulin -r -n
+
+    # to add images to bisque db:
+    # python createJobs --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY --dataset 2017_05_15_tubulin -c -p
+    # python createJobs --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY --dataset 2017_05_15_tubulin -r -p
 
     parser.add_argument('input', nargs='?', default='delivery_summary.csv', help='input csv files')
     parser.add_argument('--outpath', '-o', help='output path for job files', default='test')
