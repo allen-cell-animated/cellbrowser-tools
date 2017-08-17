@@ -133,7 +133,13 @@ def do_image_list(args, inputfilename, db, skip_structure_segmentation=False):
     # get the "current" max ids from this database.
     id_authority = db
 
-    rows = read_excel(inputfilename)
+    if inputfilename.endswith('.xlsx'):
+        rows = read_excel(inputfilename)
+    elif inputfilename.endswith('.csv'):
+        rows = read_csv(inputfilename)
+    else:
+        return 0
+
     count = 0
     for row in rows:
         print("Processing Row " + str(count) + " in " + inputfilename)
@@ -239,7 +245,7 @@ def do_main(args):
     db = CellNameDatabase()
 
     for workingFile in os.listdir(args.sheets):
-        if workingFile.endswith('.xlsx') and not workingFile.startswith('~'):
+        if (workingFile.endswith('.xlsx') or workingFile.endswith('.csv')) and not workingFile.startswith('~'):
             fp = os.path.join(args.sheets, workingFile)
             if os.path.isfile(fp):
                 jbs = do_image_list(args, fp, db, False)
