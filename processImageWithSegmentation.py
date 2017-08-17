@@ -84,7 +84,10 @@ def image_to_mask(image3d, index, mask_positive_value=1):
 
 
 def normalize_path(path):
-    # expects windows paths to start with \\aibsdata !!
+    # legacy: windows paths that start with \\aibsdata
+    path = path.replace("\\\\aibsdata\\aics\\AssayDevelopment", "\\\\allen\\aics\\assay-dev")
+    path = path.replace("\\\\aibsdata\\aics\\Microscopy", "\\\\allen\\aics\\microscopy")
+
     # windows: \\\\allen\\aics
     windowsroot = '\\\\allen\\aics\\'
     # mac:     /Volumes/aics (???)
