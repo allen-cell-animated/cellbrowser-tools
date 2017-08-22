@@ -153,12 +153,12 @@ def main():
 
     db_api.DbApi.setSessionInfo(session_dict)
 
-    print('Gathering image ids...')
+    print('Gathering image ids from ' + db + ' ...')
     # all of them
     xml = db_api.DbApi.getImagesByName('*')
     # first one
     # xml = db_api.DbApi.getImagesByName('*', 1)
-    print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
+    print ('Retrieved ' + str(len(xml.getchildren())) + ' images.')
     n = 0
     for i in xml:
         imid = i.get("resource_uniq")
@@ -168,7 +168,6 @@ def main():
         end = timer()
         print(str(n) + ' : ' + i.get('name') + ' : ' + imid + ' : ' + str(reqs["x"]) + ',' + str(reqs["y"]) + ' : ' + str(end-start) + 's')
         n = n + 1
-
 
 
 if __name__ == "__main__":

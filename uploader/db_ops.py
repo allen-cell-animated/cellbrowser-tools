@@ -5,7 +5,7 @@ import db_api
 # deleteImagesByName('20160708_C01*')
 def deleteImagesByName(namestr):
     xml = db_api.DbApi.getImagesByName(namestr)
-    print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
+    print('Retrieved ' + str(len(xml.getchildren())) + ' images.')
     for i in xml:
         imid = i.get("resource_uniq")
         print(imid)
@@ -14,7 +14,7 @@ def deleteImagesByName(namestr):
 
 def deleteDuplicateImagesByName(namestr):
     xml = db_api.DbApi.getImagesByName(namestr)
-    print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
+    print('Retrieved ' + str(len(xml.getchildren())) + ' images.')
     names = []
     for i in xml:
         imname = i.get("name")
@@ -28,7 +28,7 @@ def deleteDuplicateImagesByName(namestr):
 
 def deleteImagesByTagValue(tag, value):
     xml = db_api.DbApi.getImagesByTagValue(tag, value)
-    print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
+    print('Retrieved ' + str(len(xml.getchildren())) + ' images.')
     for i in xml:
         imid = i.get("resource_uniq")
         print(imid)
@@ -68,4 +68,4 @@ def addIsCroppedTag():
 
 def countImagesByName(namestr):
     xml = db_api.DbApi.getImagesByName(namestr)
-    print 'Retrieved ' + str(len(xml.getchildren())) + ' images.'
+    print('Retrieved ' + str(len(xml.getchildren())) + ' images.')
