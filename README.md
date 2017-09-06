@@ -18,10 +18,13 @@ rename directory to remove _TEST once confidence is high
 3. add images to bisque db  
     python createJobsFromCSV.py --sheets /path/to/dataset_cellnuc_seg_curated/2017_05_15_tubulin/spreasheets_contourXY --dataset 2017_05_15_tubulin -c -p
 
-4. prepare zip archives.  This is a global operation over the entire data set.  
+4. QA / validate final data  
+    python validateBisqueDb.py --sheets /path/to/dataset_cellnuc_seg_curated\2017_05_15_tubulin/spreasheets_contourXY
+
+5. prepare zip archives.  This is a global operation over the entire data set.  
     python dsplit.py -s 20000 \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\Cell-Viewer_Data \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\archive\manifest\  
     for i in $(ls *.txt); do tar -c -T ${i} | gzip -1 > ${i%.txt}.tar.gz; done
 
-5. Upon deployment, can run  
-python uploader/stress.py  
+6. Upon deployment, can run  
+    python uploader/stress.py  
 to precache the 3D data.  Verify that the correct db url is provided to stress.py!!
