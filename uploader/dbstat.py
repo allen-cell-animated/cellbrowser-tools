@@ -38,7 +38,7 @@ def main():
 
     # db_ops.countImagesByName(args.input)
     xml = db_api.DbApi.getImagesByTagValue("isCropped", "true")
-    print 'Retrieved ' + str(len(xml.getchildren())) + ' images with "isCropped" true.'
+    print('Retrieved ' + str(len(xml.getchildren())) + ' images with "isCropped" true.')
     srcdict = {}
     for element in xml:
         child_el = element.find('tag[@name="source"]')
@@ -55,7 +55,7 @@ def main():
         print(key+'\t'+str(value))
 
     xml = db_api.DbApi.getImagesByTagValue("isCropped", "false")
-    print 'Retrieved ' + str(len(xml.getchildren())) + ' images with "isCropped" false.'
+    print('Retrieved ' + str(len(xml.getchildren())) + ' images with "isCropped" false.')
     srcdict = {}
     for element in xml:
         child_el = element.find('tag[@name="name"]')
