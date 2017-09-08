@@ -110,7 +110,16 @@ def validate(batchname, jobname, info, sheet_row):
         xml = db_api.DbApi.getImagesByName(f)
         if len(xml.getchildren()) != 1:
             print('Retrieved ' + str(len(xml.getchildren())) + ' images with name ' + f)
-
+        if len(xml.getchildren()) > 1:
+            dbnames = []
+            for i in xml:
+                imname = i.get("name")
+                if imname in dbnames:
+                    imid = i.get("resource_uniq")
+                    print("  Deleting: " + imid)
+                    db_api.DbApi.deleteImage(imid)
+                else:
+                    dbnames.append(imname)
 
 def read_excel(inputfilename):
     df1 = pd.ExcelFile(inputfilename)
