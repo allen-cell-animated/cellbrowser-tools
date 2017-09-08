@@ -73,8 +73,12 @@ def newarchive(outputdirtarget, prefix, index, archivesize, thisarchivefiles):
 def addfile(targetarchivefile, fvalue):
     if veryverbose:
         stdout.write((IT + "%s " + RE) % fvalue)
-    fl = fvalue.replace('\\\\', '/')
+    fl = fvalue.replace(inputdir, '')
+    fl = fl.replace('\\\\', '/')
     fl = fl.replace('\\', '/')
+    fl = fl.replace(inputdir, '')
+    if fl.startswith('/'):
+        fl = fl[1:]
     targetarchivefile.write(fl + '\n')
 
 
@@ -153,6 +157,7 @@ for cellline in cellnamedict:
     files.sort(key=lambda l: sorter(l))
 
     listnameroot = cellline
+    stdout.write(("%s\n") % (cellline))
 
     (arfile, idx, volsize) = newarchive(outputdir, listnameroot, 0, 0, 0)
     thisvolfiles = 0
@@ -182,9 +187,9 @@ for cellline in cellnamedict:
         thisvolfiles += 1
         volsize += s
     # end for f
+    newarchive(outputdir, listnameroot, -1, volsize, thisvolfiles)
     if verbose:
         stdout.write(("%d files ("+UL+"%.2f MB"+RE+").\n") %
                      (thisdirfiles, thisdirsize/MB))
 
 # end for (...) in os.walk
-newarchive(outputdir, "", -1, idx, thisvolfiles)
