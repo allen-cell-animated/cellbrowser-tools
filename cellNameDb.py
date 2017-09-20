@@ -8,8 +8,9 @@ class CellNameDatabase(object):
         self.filename = './data/cellnames.csv'
         with open(self.filename, 'rU') as id_file:
             id_filereader = csv.reader(id_file)
-            # AICS_ID, IMAGE_NAME
+            # AICS_ID, IMAGE_NAME, ORIGINAL_DIR
             self.namedb = {rows[1]: rows[0] for rows in id_filereader}
+            self.pathdb = {rows[1]: rows[2] for rows in id_filereader}
             self.celllinedb = {}
             for key in self.namedb:
                 aicsname = self.namedb[key]
@@ -25,7 +26,7 @@ class CellNameDatabase(object):
                 else:
                     self.celllinedb[cell_line] = index
 
-    def get_cell_name(self, aicscelllineid, orig_name):
+    def get_cell_name(self, aicscelllineid, orig_name, orig_path):
         if orig_name in self.namedb:
             return self.namedb[orig_name]
 
@@ -39,6 +40,7 @@ class CellNameDatabase(object):
         # generate the name
         name = 'AICS-' + str(aicscelllineid) + '_' + str(index)
         self.namedb[orig_name] = name
+        self.pathdb[orig_name] = orig_path
 
         return name
 
@@ -46,4 +48,4 @@ class CellNameDatabase(object):
         with open(self.filename, 'w', newline='') as csv_file:
             writer = csv.writer(csv_file)
             for key, value in self.namedb.items():
-                writer.writerow([value, key])
+                writer.writerow([value, key, self.pathdb.get(key, "")])

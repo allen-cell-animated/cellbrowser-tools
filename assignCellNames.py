@@ -41,9 +41,10 @@ def parse_args():
 def do_image_list(inputfilename, db):
     rows = read_excel(inputfilename)
     for row in rows:
+        image_dir = row.get('inputFolder')
         image_filename = row.get('inputFilename')
         cell_line_id = row.get('CellLine')
-        db.get_cell_name(cell_line_id, image_filename)
+        db.get_cell_name(cell_line_id, image_filename, image_dir)
 
 
 def do_main(args):

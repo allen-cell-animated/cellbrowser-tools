@@ -206,7 +206,7 @@ def do_image_list(args, inputfilename, db, skip_structure_segmentation=False):
             info.cbrSkipStructureSegmentation = True
 
         # does this cell already have a number?
-        info.cbrCellName = id_authority.get_cell_name(aicscelllineid, info.inputFilename)
+        info.cbrCellName = id_authority.get_cell_name(aicscelllineid, info.inputFilename, info.inputFolder)
 
         # cellnamemapfile.write(info.cbrCellName + ',' + row['inputFilename'])
         # cellnamemapfile.write(os.linesep)

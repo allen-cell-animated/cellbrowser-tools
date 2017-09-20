@@ -183,7 +183,7 @@ def do_image_list(args, inputfilename, db, skip_structure_segmentation=False):
         subdir = 'AICS-' + str(aicscelllineid)
 
         # does this cell already have a number?
-        info.cbrCellName = id_authority.get_cell_name(aicscelllineid, info.inputFilename)
+        info.cbrCellName = id_authority.get_cell_name(aicscelllineid, info.inputFilename, info.inputFolder)
 
         jobname = info.cbrCellName
 
