@@ -212,7 +212,7 @@ def do_main(args):
         jobcounter += jbs
 
     # nothing should have changed, but just in case.
-    db.writedb()
+    # db.writedb()
 
 
 def main():
