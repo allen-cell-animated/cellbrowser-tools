@@ -6,11 +6,14 @@ class CellNameDatabase(object):
     # don't forget to commit cellnames.csv back into git every time it's updated for production!
     def __init__(self):
         self.filename = './data/cellnames.csv'
+        self.namedb = {}
+        self.pathdb = {}
         with open(self.filename, 'rU') as id_file:
             id_filereader = csv.reader(id_file)
             # AICS_ID, IMAGE_NAME, ORIGINAL_DIR
-            self.namedb = {rows[1]: rows[0] for rows in id_filereader}
-            self.pathdb = {rows[1]: rows[2] for rows in id_filereader}
+            for row in id_filereader:
+                self.namedb[row[1]] = row[0]
+                self.pathdb[row[1]] = row[2]
             self.celllinedb = {}
             for key in self.namedb:
                 aicsname = self.namedb[key]
@@ -48,4 +51,5 @@ class CellNameDatabase(object):
         with open(self.filename, 'w', newline='') as csv_file:
             writer = csv.writer(csv_file)
             for key, value in self.namedb.items():
-                writer.writerow([value, key, self.pathdb.get(key, "")])
+                p = self.pathdb.get(key, "")
+                writer.writerow([value, key, p])
