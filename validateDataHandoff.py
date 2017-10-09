@@ -66,6 +66,9 @@ def normalize_path(path):
 
 
 def validate(batchname, jobname, info):
+    if not info.cellLineId:
+        print(batchname + ": " + jobname + ": Bad CellLine: " + str(info.cellLineId))
+
     seg_path = info.outputSegmentationPath
     seg_path = normalize_path(seg_path)
     con_path = info.outputSegmentationContourPath
