@@ -141,15 +141,7 @@ def do_main(args):
     db = CellNameDatabase()
 
     # collect up the files to process
-    files = []
-    if os.path.isfile(args.sheets):
-        files.append(args.sheets)
-    else:
-        for workingFile in os.listdir(args.sheets):
-            if (workingFile.endswith('.xlsx') or workingFile.endswith('.csv')) and not workingFile.startswith('~'):
-                fp = os.path.join(args.sheets, workingFile)
-                if os.path.isfile(fp):
-                    files.append(fp)
+    files = utils.collect_files(args.sheets)
 
     # process each file
     for fp in files:

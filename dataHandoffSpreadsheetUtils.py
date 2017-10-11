@@ -79,3 +79,18 @@ def get_rows(inputfilename):
     else:
         rows = []
     return rows
+
+
+def collect_files(file_or_dir):
+    # collect up the files to process
+    files = []
+    if os.path.isfile(file_or_dir):
+        files.append(file_or_dir)
+    else:
+        for workingFile in os.listdir(file_or_dir):
+            if (workingFile.endswith('.xlsx') or workingFile.endswith('.csv')) and not workingFile.startswith('~'):
+                fp = os.path.join(file_or_dir, workingFile)
+                if os.path.isfile(fp):
+                    files.append(fp)
+    return files
+

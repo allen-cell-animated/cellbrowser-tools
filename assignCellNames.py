@@ -3,23 +3,11 @@
 # authors: Dan Toloudis danielt@alleninstitute.org
 
 import argparse
+import dataHandoffSpreadsheetUtils as utils
 import os
 import pandas as pd
 import sys
 from cellNameDb import CellNameDatabase
-
-
-def read_excel(inputfilename):
-    df1 = pd.ExcelFile(inputfilename)
-    # only use first sheet.
-    x = df1.sheet_names[0]
-    df2 = pd.read_excel(inputfilename, sheetname=x, encoding='iso-8859-1')
-    return df2.to_dict(orient='records')
-
-
-def read_csv(inputfilename):
-    df = pd.read_csv(inputfilename, comment='#')
-    return df.to_dict(orient='records')
 
 
 def parse_args():
@@ -39,7 +27,7 @@ def parse_args():
 
 
 def do_image_list(inputfilename, db):
-    rows = read_excel(inputfilename)
+    rows = utils.get_rows(inputfilename)
     for row in rows:
         image_dir = row.get('inputFolder')
         image_filename = row.get('inputFilename')
@@ -60,11 +48,9 @@ def do_main(args):
     # get the "current" max ids from this database.
     db = CellNameDatabase()
 
-    for workingFile in os.listdir(args.sheets):
-        if workingFile.endswith('.xlsx') and not workingFile.startswith('~'):
-            fp = os.path.join(args.sheets, workingFile)
-            if os.path.isfile(fp):
-                do_image_list(fp, db)
+    files = utils.collect_files(args.sheets)
+    for fp in files:
+        do_image_list(fp, db)
 
     db.writedb()
 
