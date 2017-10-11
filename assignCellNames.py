@@ -3,6 +3,7 @@
 # authors: Dan Toloudis danielt@alleninstitute.org
 
 import argparse
+import cellJob
 import dataHandoffSpreadsheetUtils as utils
 import os
 import pandas as pd
@@ -29,9 +30,12 @@ def parse_args():
 def do_image_list(inputfilename, db):
     rows = utils.get_rows(inputfilename)
     for row in rows:
-        image_dir = row.get('inputFolder')
-        image_filename = row.get('inputFilename')
-        cell_line_id = row.get('CellLine')
+        cell_job = cellJob.CellJob(row)
+
+        image_dir = cell_job.inputFolder
+        image_filename = cell_job.inputFilename
+        cell_line_id = cell_job.cellLineId
+
         db.get_cell_name(cell_line_id, image_filename, image_dir)
 
 
