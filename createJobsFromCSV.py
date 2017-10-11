@@ -6,6 +6,7 @@
 import argparse
 import cellJob
 import csv
+import dataHandoffSpreadsheetUtils as utils
 import glob
 import jobScheduler
 import json
@@ -51,29 +52,6 @@ def generate_sh_for_row(outdir, jobname, info, do_run):
                 json_obj = json.load(jsonreader)
             logger = jobScheduler.get_logger('test/logs')
             jobScheduler.submit_job(path, json_obj, logger)
-
-
-def read_excel(inputfilename):
-    df1 = pd.ExcelFile(inputfilename)
-    # only use first sheet.
-    x = df1.sheet_names[0]
-    df2 = pd.read_excel(inputfilename, sheetname=x, encoding='iso-8859-1')
-    return df2.to_dict(orient='records')
-    # else:
-    #     dicts = []
-    #     for x in df1.sheet_names:
-    #         # out to csv
-    #         df2 = pd.read_excel(inputfilename, sheetname=x, encoding='iso-8859-1')
-    #         dicts.append(df2.to_dict(orient='records'))
-    #     return dicts
-
-
-def read_csv(inputfilename):
-    df = pd.read_csv(inputfilename, comment='#')
-    return df.to_dict(orient='records')
-    # with open(csvfilename, 'rU') as csvfile:
-    #     reader = csv.DictReader(csvfile)
-    #     return [row for row in reader]
 
 
 def parse_args():
@@ -133,12 +111,7 @@ def do_image_list(args, inputfilename, db, skip_structure_segmentation=False):
     # get the "current" max ids from this database.
     id_authority = db
 
-    if inputfilename.endswith('.xlsx'):
-        rows = read_excel(inputfilename)
-    elif inputfilename.endswith('.csv'):
-        rows = read_csv(inputfilename)
-    else:
-        return 0
+    rows = utils.get_rows(inputfilename)
 
     count = 0
     for row in rows:

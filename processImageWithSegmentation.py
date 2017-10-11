@@ -12,6 +12,7 @@ from aicsimage.io.omeTifWriter import OmeTifWriter
 from aicsimage.io.pngWriter import PngWriter
 from aicsimage.io.omexml import OMEXML
 import cellJob
+import dataHandoffSpreadsheetUtils as utils
 from aicsimage.processing import thumbnailGenerator
 from uploader import oneUp
 
@@ -83,48 +84,6 @@ def image_to_mask(image3d, index, mask_positive_value=1):
     return np.where(image3d == index, mask_positive_value, 0).astype(image3d.dtype)
 
 
-def normalize_path(path):
-    # legacy: windows paths that start with \\aibsdata
-    path = path.replace("\\\\aibsdata\\aics\\AssayDevelopment", "\\\\allen\\aics\\assay-dev")
-    path = path.replace("\\\\aibsdata\\aics\\Microscopy", "\\\\allen\\aics\\microscopy")
-
-    # windows: \\\\allen\\aics
-    windowsroot = '\\\\allen\\aics\\'
-    # mac:     /Volumes/aics (???)
-    macroot = '/Volumes/aics/'
-    # linux:   /allen/aics
-    linuxroot = '/allen/aics/'
-
-    # 1. strip away the root.
-    if path.startswith(windowsroot):
-        path = path[len(windowsroot):]
-    elif path.startswith(linuxroot):
-        path = path[len(linuxroot):]
-    elif path.startswith(macroot):
-        path = path[len(macroot):]
-    else:
-        # if the path does not reference a known root, don't try to change it.
-        # it's probably a local path.
-        return path
-
-    # 2. split the path up into a list of dirs
-    path_as_list = re.split(r'\\|/', path)
-
-    # 3. insert the proper system root for this platform (without the trailing slash)
-    dest_root = ''
-    if sys.platform.startswith('darwin'):
-        dest_root = macroot[:-1]
-    elif sys.platform.startswith('linux'):
-        dest_root = linuxroot[:-1]
-    else:
-        dest_root = windowsroot[:-1]
-
-    path_as_list.insert(0, dest_root)
-
-    out_path = os.path.join(*path_as_list)
-    return out_path
-
-
 def make_dir(dirname):
     if not os.path.exists(dirname):
         try:
@@ -146,7 +105,7 @@ class ImageProcessor:
         self.row = info
 
         # Setting up directory paths for images
-        self.image_file = normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
+        self.image_file = utils.normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
         self.file_name = self.row.cbrCellName  # str(os.path.splitext(self.row.inputFilename)[0])
         self._generate_paths()
 
@@ -168,11 +127,11 @@ class ImageProcessor:
 
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
-        thumbnaildir = normalize_path(self.row.cbrThumbnailLocation)
+        thumbnaildir = utils.normalize_path(self.row.cbrThumbnailLocation)
         make_dir(thumbnaildir)
 
         self.png_dir = os.path.join(thumbnaildir, self.file_name)
-        ometifdir = normalize_path(self.row.cbrImageLocation)
+        ometifdir = utils.normalize_path(self.row.cbrImageLocation)
         make_dir(ometifdir)
 
         self.ometif_dir = os.path.join(ometifdir, self.file_name)
@@ -203,9 +162,9 @@ class ImageProcessor:
 
         print("loading segmentations for " + self.file_name + "...", end="")
         seg_path = self.row.outputSegmentationPath
-        seg_path = normalize_path(seg_path)
+        seg_path = utils.normalize_path(seg_path)
         con_path = self.row.outputSegmentationContourPath
-        con_path = normalize_path(con_path)
+        con_path = utils.normalize_path(con_path)
         # print(seg_path)
         file_list = []
 
@@ -219,7 +178,7 @@ class ImageProcessor:
         # structure segmentation
         struct_seg_path = self.row.structureSegOutputFolder
         if struct_seg_path != '' and not struct_seg_path.startswith('N/A') and not self.row.cbrSkipStructureSegmentation:
-            struct_seg_path = normalize_path(struct_seg_path)
+            struct_seg_path = utils.normalize_path(struct_seg_path)
 
             # structure segmentation
             struct_seg_file = os.path.join(struct_seg_path, self.row.structureSegOutputFilename)
@@ -256,7 +215,7 @@ class ImageProcessor:
         # # structure contour segmentation
         # struct_con_path = struct_seg_path
         # if struct_con_path != '' and not struct_con_path.startswith('N/A'):
-        #     struct_con_path = normalize_path(struct_con_path)
+        #     struct_con_path = utils.normalize_path(struct_con_path)
         #
         #     # structure segmentation
         #     struct_con_file = os.path.join(struct_con_path, self.row.structureSegContourFilename)
@@ -267,7 +226,7 @@ class ImageProcessor:
 
 
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
-        image_file = normalize_path(image_file)
+        image_file = utils.normalize_path(image_file)
         # print(image_file)
 
         # 1. obtain OME XML metadata from original microscopy image
