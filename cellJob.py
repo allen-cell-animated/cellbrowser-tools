@@ -60,10 +60,13 @@ class CellJob(object):
             self.inputFolder = csvRow.get('inputFolder')
             self.inputFilename = csvRow.get('inputFilename')
 
-            # check for either CellLine or cell_line_ID
+            # check for either CellLine or cell_line_ID in spreadsheet row,
+            # or cellLineId if this was loaded from json
             self.cellLineId = csvRow.get('CellLine')
             if self.cellLineId is None:
                 self.cellLineId = csvRow.get('cell_line_ID')
+            if self.cellLineId is None:
+                self.cellLineId = csvRow.get('cellLineId')
             if self.cellLineId is None:
                 self.cbrParseError = True
 
