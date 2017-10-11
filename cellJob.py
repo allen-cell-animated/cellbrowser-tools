@@ -59,7 +59,14 @@ class CellJob(object):
             self.Version = str(csvRow.get('Version'))
             self.inputFolder = csvRow.get('inputFolder')
             self.inputFilename = csvRow.get('inputFilename')
+
+            # check for either CellLine or cell_line_ID
             self.cellLineId = csvRow.get('CellLine')
+            if self.cellLineId is None:
+                self.cellLineId = csvRow.get('cell_line_ID')
+            if self.cellLineId is None:
+                self.cbrParseError = True
+
             try:
                 self.xyPixelSize = float(csvRow.get('xyPixelSize', 0))
             except ValueError:
