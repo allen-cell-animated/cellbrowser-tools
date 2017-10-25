@@ -1,6 +1,6 @@
 {
   "data_files_complete": "../dataset_cellnuc_seg_curated/*/spreadsheets_contourXY/*.csv",
-  "data_files": "D:\\src\\aics\\dataset_cellnuc_seg_curated\\2017-10-04_ST6GAL1\\spreadsheets_contourXY\\*.csv",
+  "data_files": "../dataset_cellnuc_seg_curated/2017-10-04_ST6GAL1/spreadsheets_contourXY/*.csv",
   "out_status": "//allen/aics/software/danielt/imgproc",
   "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.1.0/Cell-Viewer_Data_TMP",
   "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.1.0/Cell-Viewer_Thumbnails_TMP",
