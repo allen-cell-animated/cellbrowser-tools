@@ -38,7 +38,6 @@ class CellJob(object):
 
         self.cbrDataRoot = '/allen/aics/software/danielt/images/AICS/bisque/'
         self.cbrThumbnailRoot = '/allen/aics/software/danielt/demos/bisque/thumbnails/'
-        self.cbrThumbnailWebRoot = 'http://stg-aics.corp.alleninstitute.org/danielt_demos/bisque/thumbnails/'
 
         self.cbrDatasetName = ''
         self.cbrCellName = ''

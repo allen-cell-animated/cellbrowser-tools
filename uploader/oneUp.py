@@ -56,7 +56,6 @@ def oneUp(sessionInfo, dict, outfile):
     cbrCellName = dict['cbrCellName']
     structureProteinName = dict['structureProteinName']
     cbrDataRoot = dict['cbrDataRoot']
-    cbrThumbnailWebRoot = dict['cbrThumbnailWebRoot']
 
     # avoid dups:
     # before adding this entry,
@@ -92,7 +91,7 @@ def oneUp(sessionInfo, dict, outfile):
     relpath = fullpath.replace(cbrDataRoot, '')
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = cbrThumbnailURL
-    relpath_thumbnail = thumbnail.replace(cbrThumbnailWebRoot, '')
+    relpath_thumbnail = thumbnail
     resource = etree.Element('image',
                              name=cbrCellName + tifext,
                              value=relpath)
