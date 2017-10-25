@@ -518,27 +518,20 @@ class ImageProcessor:
             print("done")
 
 
+def do_main_image_with_celljob(info):
+    processor = ImageProcessor(info)
+    processor.generate_and_save()
+
+
 def do_main_image(fname):
     with open(fname) as jobfile:
         jobspec = json.load(jobfile)
         info = cellJob.CellJob(jobspec)
-
-    # jobspec is expected to be a dictionary of:
-    #  ,DeliveryDate,Version,inputFolder,inputFilename,
-    #  xyPixelSize,zPixelSize,memChannel,nucChannel,structureChannel,structureProteinName,
-    #  lightChannel,timePoint,
-    #  outputSegmentationPath,outputNucSegWholeFilename,outputCellSegWholeFilename,
-    #  structureSegOutputFolder,structureSegOutputFilename,
-    # image_db_location,
-    # thumbnail_location
-
-    if info.cbrParseError:
-        sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
-        pprint.pprint(jobspec, stream=sys.stderr)
-        return
-
-    processor = ImageProcessor(info)
-    processor.generate_and_save()
+        if info.cbrParseError:
+            sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
+            pprint.pprint(jobspec, stream=sys.stderr)
+            return
+    return do_main_image_with_celljob(info)
 
 
 def main():

@@ -46,7 +46,7 @@ def validate(batchname, jobname, info, sheet_row):
     # assume that the file location has same name as this subdir name of where the spreadsheet lives:
     data_subdir = batchname.split('\\')[-3]
     # data_subdir = '2017_03_08_Struct_First_Pass_Seg'
-    cell_line = 'AICS-' + str(sheet_row["CellLine"])
+    cell_line = 'AICS-' + str(sheet_row["cell_line_ID"])
     for f in names:
         # check for thumbnail
         fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
@@ -60,8 +60,8 @@ def validate(batchname, jobname, info, sheet_row):
 
         # see if image is in bisque db.
         session_dict = {
-            # 'root': 'http://dev-aics-dtp-001',
-            'root': 'http://10.128.62.98',
+            'root': 'http://dev-aics-dtp-001',
+            # 'root': 'http://10.128.62.98',
             'user': 'admin',
             'password': 'admin'
         }

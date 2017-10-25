@@ -14,6 +14,8 @@ run:
     python createJobsFromCSV.py --sheets /path/to/dataset_cellnuc_seg_curated/2017_05_15_tubulin/spreadsheets_contourXY --dataset 2017_05_15_tubulin_TEST -c -n  
 verify images by eye (?!?!)  (use aics internal imageviewer to inspect)  
 rename directory to remove _TEST once confidence is high
+copy ome.tif image files to \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\Cell-Viewer_Data
+copy png thumbnails to \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\Cell-Viewer_Thumbnails
 
 3. add images to bisque db  
     python createJobsFromCSV.py --sheets /path/to/dataset_cellnuc_seg_curated/2017_05_15_tubulin/spreadsheets_contourXY --dataset 2017_05_15_tubulin -c -p
