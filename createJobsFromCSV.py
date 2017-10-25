@@ -35,7 +35,7 @@ def generate_sh_for_row(outdir, jobname, info, do_run, prefs):
     with open(pathjson, 'w') as fp:
         json.dump(info.__dict__, fp)
     script_string = ""
-    script_string += "export PYTHONPATH=$PYTHONPATH$( find /allen/aics/apps/tools/cellbrowser-tools/ " \
+    script_string += "export PYTHONPATH=$PYTHONPATH$( find " + os.getcwd() + "/ " \
                      "-not -path '*/\.*' -type d -printf ':%p' )\n"
     script_string += "source activate /home/danielt/.conda/envs/cellbrowser\n"
     script_string += "python " + os.getcwd() + "/processImageWithSegmentation.py "
