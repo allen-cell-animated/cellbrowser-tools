@@ -64,7 +64,7 @@ def touch(fname):
     else:
         open(fname, 'w').close()
 
-def submit_job_deps(files, json_obj, tmp_file_name='tmp_script.sh'):
+def submit_job_deps(files, json_obj, tmp_file_name='tmp_script'):
     #this is a workaround function to get over the fact that we can have only a limited number of dependencies for a job
     #so we submit all jobs, and have jobs that wait for a handfull of those jobs to finish, and so on and so forth
 
@@ -89,3 +89,14 @@ def submit_job_deps(files, json_obj, tmp_file_name='tmp_script.sh'):
 
     return job_ids
 
+
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
+
+
+def submit_jobs_batches(files, json_obj, tmp_file_name='tmp_script'):
+    for x in batch(files, 40):
+        last_deps = submit_job_deps(x, json_obj, tmp_file_name)
+        json_obj['deps'] = last_deps

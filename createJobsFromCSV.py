@@ -173,12 +173,6 @@ def do_image(args, prefs, row, index, total_jobs):
         return generate_sh_for_row(output_dir, jobname, info, "cluster", prefs)
 
 
-def batch(iterable, n=1):
-    l = len(iterable)
-    for ndx in range(0, l, n):
-        yield iterable[ndx:min(ndx + n, l)]
-
-
 def do_main(args, prefs):
     # Get all the .csv files in the data dir
     data_paths = glob.glob(prefs['data_files'])
@@ -218,11 +212,8 @@ def do_main(args, prefs):
             cmdlist.append(shcmd)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
-        # submit up to 40 at a time, and use the previous 40 as deps for the next 40.
         jobprefs = prefs['job_prefs']
-        for x in batch(cmdlist, 40):
-            last_deps = jobScheduler.submit_job_deps(cmdlist, jobprefs)
-            jobprefs['deps'] = last_deps
+        jobScheduler.submit_jobs_batches(cmdlist, jobprefs)
 
     else:
         # run serially
