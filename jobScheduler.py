@@ -19,7 +19,7 @@ def submit_job(files, json_obj, tmp_file_name='tmp_script.sh', files_deps=[]):
 
         if len(files_deps) >= len(files):
             # one dep in json_obj['deps'] per file in files list.
-            deps = ' -W depend=afterany' + str(files_deps[i])
+            deps = ' -W depend=afterany:' + str(files_deps[i])
         elif 'deps' in json_obj:
             # one dep in json_obj['deps'] per file in files list.
             deps = ' -W depend=afterany' + str(json_obj['deps'][i])
