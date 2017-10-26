@@ -174,31 +174,9 @@ def do_image(args, prefs, row, index, total_jobs):
 
 
 def do_main(args, prefs):
-    # Get all the .csv files in the data dir
-    data_paths = glob.glob(prefs['data_files'])
-
-    # cell name listing
-    db = CellNameDatabase()
 
     # Read every .csv file and concat them together
-    data = list()
-    for path in data_paths:
-        data_tmp = utils.get_rows(path)
-        for r in data_tmp:
-            r['source_data'] = utils.normalize_path(path)
-            cellLineId = r.get('CellLine')
-            if cellLineId is None:
-                cellLineId = r.get('cell_line_ID')
-            if cellLineId is None:
-                cellLineId = r.get('cellLineId')
-            r['cell_line_ID'] = cellLineId
-            r['cbrCellName'] = db.get_cell_name(r['cell_line_ID'], r['inputFilename'], r['inputFolder'])
-            # print(r['cbrCellName'])
-        data = data + data_tmp
-
-    # nothing should have changed, but just in case.
-    db.writedb()
-    # done with db now.
+    data = utils.collect_data_rows(prefs['data_files'])
 
     total_jobs = len(data)
     print('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')

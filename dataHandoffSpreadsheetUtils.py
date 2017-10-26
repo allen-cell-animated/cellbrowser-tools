@@ -1,3 +1,5 @@
+from cellNameDb import CellNameDatabase
+import glob
 import os
 import pandas as pd
 import re
@@ -94,3 +96,31 @@ def collect_files(file_or_dir):
                     files.append(fp)
     return files
 
+
+def collect_data_rows(data_glob):
+    # Get all the .csv files in the data dir
+    data_paths = glob.glob(data_glob)
+
+    # cell name listing
+    db = CellNameDatabase()
+
+    # Read every .csv file and concat them together
+    data = list()
+    for path in data_paths:
+        data_tmp = get_rows(path)
+        for r in data_tmp:
+            r['source_data'] = normalize_path(path)
+
+            # get cell line id by whatever means necessary
+            cellLineId = r.get('CellLine')
+            if cellLineId is None:
+                cellLineId = r.get('cell_line_ID')
+            if cellLineId is None:
+                cellLineId = r.get('cellLineId')
+            r['cell_line_ID'] = cellLineId
+
+            r['cbrCellName'] = db.get_cell_name(r['cell_line_ID'], r['inputFilename'], r['inputFolder'])
+            # print(r['cbrCellName'])
+        data = data + data_tmp
+    db.writedb()
+    return data
