@@ -117,8 +117,8 @@ def do_image(args, prefs, row, index, total_jobs):
 
     info.cbrDatasetName = dataset
 
-    info.cbrImageLocation = info.cbrDataRoot + info.cbrDatasetName + '/' + subdir
-    info.cbrThumbnailLocation = info.cbrThumbnailRoot + info.cbrDatasetName + '/' + subdir
+    info.cbrImageLocation = os.path.join(info.cbrDataRoot, info.cbrDatasetName, subdir)
+    info.cbrThumbnailLocation = os.path.join(info.cbrThumbnailRoot, info.cbrDatasetName, subdir)
     info.cbrThumbnailURL = info.cbrDatasetName + '/' + subdir
 
     info.dbUrl = prefs['out_bisquedb']
