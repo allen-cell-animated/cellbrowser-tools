@@ -3,12 +3,9 @@
 # authors: Dan Toloudis danielt@alleninstitute.org
 
 import argparse
-import cellJob
 import dataHandoffSpreadsheetUtils as utils
-import os
-import pandas as pd
+import json
 import sys
-from cellNameDb import CellNameDatabase
 
 
 def parse_args():
@@ -19,7 +16,9 @@ def parse_args():
     # python assignCellNames --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY
     # python assignCellNames --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY
 
-    # sheets replaces input...
+    parser.add_argument('prefs', nargs='?', default='prefs.json', help='prefs file')
+
+    # sheets overrides prefs file...
     parser.add_argument('--sheets', help='directory containing *.xlsx', default='')
 
     args = parser.parse_args()
@@ -27,41 +26,17 @@ def parse_args():
     return args
 
 
-def do_image_list(inputfilename, db):
-    rows = utils.get_rows(inputfilename)
-    for row in rows:
-        cell_job = cellJob.CellJob(row)
-
-        image_dir = cell_job.inputFolder
-        image_filename = cell_job.inputFilename
-        cell_line_id = cell_job.cellLineId
-
-        db.get_cell_name(cell_line_id, image_filename, image_dir)
-
-
-def do_main(args):
-    # GAME PLAN
-    # LOAD CELLNAMES.CSV
-    # FIND MAX ID PER CELL LINE
-    # ADD ENTRIES FROM THE DATA DELIVERY SPREADSHEETS
-    # SAVE TABLE BACK TO CELLNAMES.CSV
-    # USE TABLE ENTRIES IN CREATEJOBSFROMCSV
-
-    # BIG ASSUMPTION: CELL NAMES ARE UNIQUE
-
-    # get the "current" max ids from this database.
-    db = CellNameDatabase()
-
-    files = utils.collect_files(args.sheets)
-    for fp in files:
-        do_image_list(fp, db)
-
-    db.writedb()
+def do_main(args, prefs):
+    # Read every .csv file and concat them together
+    # this will assign cell names and rewite the cell name db.
+    utils.collect_data_rows(prefs['data_files'])
 
 
 def main():
     args = parse_args()
-    do_main(args)
+    with open(args.prefs) as f:
+        prefs = json.load(f)
+    do_main(args, prefs)
 
 
 if __name__ == "__main__":

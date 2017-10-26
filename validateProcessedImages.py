@@ -26,13 +26,9 @@ from processImageWithSegmentation import do_main_image
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 
-def do_image(args, prefs, row, index, total_jobs):
-    batchname = row['source_data']
-    jobname = row['inputFilename']
-    info = cellJob.CellJob(row)
-
+def validate(batchname, jobname, info, sheet_row):
     imageName = info.cbrCellName
-    segs = row["outputCellSegIndex"]
+    segs = sheet_row["outputCellSegIndex"]
     segs = segs.split(";")
     # get rid of empty strings in segs
     segs = list(filter(None, segs))
@@ -50,17 +46,17 @@ def do_image(args, prefs, row, index, total_jobs):
     # assume that the file location has same name as this subdir name of where the spreadsheet lives:
     data_subdir = batchname.split('\\')[-3]
     # data_subdir = '2017_03_08_Struct_First_Pass_Seg'
-    cell_line = 'AICS-' + str(row["cell_line_ID"])
+    cell_line = 'AICS-' + str(sheet_row["cell_line_ID"])
     for f in names:
         # check for thumbnail
         fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
         if not os.path.isfile(fullf):
-            print(batchname + ": " + jobname + ": Could not find file: " + fullf)
+            print(batchname + ": Could not find file: " + fullf)
 
         # check for image
         fullf = os.path.join(data_dir, data_subdir, cell_line, f + '.ome.tif')
         if not os.path.isfile(fullf):
-            print(batchname + ": " + jobname + ": Could not find file: " + fullf)
+            print(batchname + ": Could not find file: " + fullf)
 
         # see if image is in bisque db.
         session_dict = {
@@ -92,7 +88,7 @@ def parse_args():
 
     # python validateDataHandoff --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY
 
-    parser.add_argument('prefs', nargs='?', default='prefs.json', help='input prefs')
+    parser.add_argument('prefs', nargs='?', default='prefs.json', help='prefs file')
 
     # sheets replaces input...
     parser.add_argument('--sheets', help='directory containing *.xlsx', default='')
@@ -100,6 +96,42 @@ def parse_args():
     args = parser.parse_args()
 
     return args
+
+
+def do_image(args, prefs, row, index, total_jobs):
+    info = cellJob.CellJob(row)
+
+    imageName = info.cbrCellName
+    segs = row["outputCellSegIndex"]
+    segs = segs.split(";")
+    # get rid of empty strings in segs
+    segs = list(filter(None, segs))
+
+    names = [imageName]
+    for seg in segs:
+        # str(int(seg)) removes leading zeros
+        names.append(imageName + "_" + str(int(seg)))
+
+    exts = ['.ome.tif', '.png']
+    # check existence of ome.tif and png.
+
+    data_dir = prefs['out_ometifroot']
+    thumbs_dir = prefs['out_thumbnailroot']
+    # assume that the file location has same name as this subdir name of where the spreadsheet lives:
+    path_as_list = re.split(r'\\|/', row['source_data'])
+    data_subdir = path_as_list[-3]
+    # data_subdir = '2017_03_08_Struct_First_Pass_Seg'
+    cell_line = 'AICS-' + str(row["cell_line_ID"])
+    for f in names:
+        # check for thumbnail
+        fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
+        if not os.path.isfile(fullf):
+            print("ERROR: " + row['source_data'] + ' : Could not find file: ' + fullf)
+
+        # check for image
+        fullf = os.path.join(data_dir, data_subdir, cell_line, f + '.ome.tif')
+        if not os.path.isfile(fullf):
+            print("ERROR: " + row['source_data'] + ' : Could not find file: ' + fullf)
 
 
 def do_main(args, prefs):

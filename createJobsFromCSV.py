@@ -157,13 +157,10 @@ def do_image(args, prefs, row, index, total_jobs):
             info.cbrGenerateSegmentedImages = True
             info.cbrGenerateFullFieldImages = True
 
-
-    output_dir = os.path.join(info.cbrDataRoot, subdir)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    output_th_dir = os.path.join(info.cbrThumbnailRoot, subdir)
-    if not os.path.exists(output_th_dir):
-        os.makedirs(output_th_dir)
+    if not os.path.exists(info.cbrImageLocation):
+        os.makedirs(info.cbrImageLocation)
+    if not os.path.exists(info.cbrThumbnailLocation):
+        os.makedirs(info.cbrThumbnailLocation)
 
     jobname = info.cbrCellName
     if args.run:

@@ -97,7 +97,7 @@ def collect_files(file_or_dir):
     return files
 
 
-def collect_data_rows(data_glob):
+def collect_data_rows(data_glob, save_db=True):
     # Get all the .csv files in the data dir
     data_paths = glob.glob(data_glob)
 
@@ -122,5 +122,7 @@ def collect_data_rows(data_glob):
             r['cbrCellName'] = db.get_cell_name(r['cell_line_ID'], r['inputFilename'], r['inputFolder'])
             # print(r['cbrCellName'])
         data = data + data_tmp
-    db.writedb()
+    if save_db:
+        db.writedb()
     return data
+

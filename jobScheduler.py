@@ -104,10 +104,9 @@ def batch(iterable, n=1):
         yield iterable[ndx:min(ndx + n, l)]
 
 
-def submit_jobs_batches(files, json_obj, tmp_file_name='tmp_script'):
-    max_in_flight = 40
+def submit_jobs_batches(files, json_obj, batch_size=40, tmp_file_name='tmp_script'):
     i = 0
     last_deps = []
-    for x in batch(files, max_in_flight):
+    for x in batch(files, batch_size):
         last_deps = submit_job(x, json_obj, tmp_file_name + '_' +str(i)+'.sh', last_deps)
         i = i + 1

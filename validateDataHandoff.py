@@ -24,7 +24,10 @@ from processImageWithSegmentation import do_main_image
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 
-def validate(batchname, jobname, info):
+def do_image(args, prefs, row, index, total_jobs):
+    batchname = row['source_data']
+    jobname = row['inputFilename']
+    info = cellJob.CellJob(row)
     if not info.cellLineId:
         print(batchname + ": " + jobname + ": Bad CellLine: " + str(info.cellLineId))
 
@@ -74,7 +77,7 @@ def parse_args():
 
     # python validateDataHandoff --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY
 
-    parser.add_argument('input', nargs='?', default='delivery_summary.csv', help='input csv files')
+    parser.add_argument('prefs', nargs='?', default='prefs.json', help='input prefs')
 
     # sheets replaces input...
     parser.add_argument('--sheets', help='directory containing *.xlsx', default='')
@@ -84,63 +87,24 @@ def parse_args():
     return args
 
 
-def do_image_list(args, inputfilename, db, skip_structure_segmentation=False):
-    # get the "current" max ids from this database.
-    id_authority = db
+def do_main(args, prefs):
+    # Read every .csv file and concat them together
+    data = utils.collect_data_rows(prefs['data_files'], save_db=False)
 
-    rows = utils.get_rows(inputfilename)
-
-    count = 0
-    print("# Validating " + inputfilename)
-    for row in rows:
-        # print("Processing Row " + str(count) + " in " + inputfilename)
-        info = cellJob.CellJob(row)
-        info.cbrAddToDb = True
-
-        aicscelllineid = info.cellLineId
-        subdir = 'AICS-' + str(aicscelllineid)
-
-        # does this cell already have a number?
-        info.cbrCellName = id_authority.get_cell_name(aicscelllineid, info.inputFilename, info.inputFolder)
-
-        jobname = info.cbrCellName
-
-        validate(inputfilename, jobname, info)
-
-        count += 1
-
-    return count  # len(rows)
-
-
-def do_main(args):
-    if platform.system() == 'Windows':
-        filenames = []
-        for filename in args.input:
-            if '*' in filename or '?' in filename or '[' in filename:
-                filenames += glob.glob(filename)
-            else:
-                filenames.append(filename)
-        args.input = filenames
-    input_files = args.input
-
-    jobcounter = 0
-    db = CellNameDatabase()
-
-    # collect up the files to process
-    files = utils.collect_files(args.sheets)
+    total_jobs = len(data)
+    print('VALIDATING ' + str(total_jobs) + ' ROWS')
 
     # process each file
-    for fp in files:
-        jbs = do_image_list(args, fp, db, False)
-        jobcounter += jbs
-
-    # nothing should have changed, but just in case.
-    # db.writedb()
+    # run serially
+    for index, row in enumerate(data):
+        do_image(args, prefs, row, index, total_jobs)
 
 
 def main():
     args = parse_args()
-    do_main(args)
+    with open(args.prefs) as f:
+        prefs = json.load(f)
+    do_main(args, prefs)
 
 
 if __name__ == "__main__":
