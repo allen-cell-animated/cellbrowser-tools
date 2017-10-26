@@ -2,20 +2,28 @@ import subprocess
 import os
 import time
 
-def submit_job(files, json_obj, tmp_file_name='tmp_script.sh'):
+def submit_job(files, json_obj, tmp_file_name='tmp_script.sh', files_deps=[]):
 
     if type(files) is not list:
         files = list([files])
 
     str_list = list()
 
-    for file in files:
+
+
+    for i, file in enumerate(files):
         queuename = " -q " + json_obj["queue_name"]
         walltime = " -l walltime=" + json_obj["walltime"]
         memory = " -l mem=" + json_obj["memory"]
 
-        if 'deps' in json_obj:
-            deps = ' -W depend=afterany' + ''.join([':' + str(dep_job) for dep_job in json_obj['deps']])
+
+        if len(files_deps) >= len(files):
+            # one dep in json_obj['deps'] per file in files list.
+            deps = ' -W depend=afterany' + str(files_deps[i])
+        elif 'deps' in json_obj:
+            # one dep in json_obj['deps'] per file in files list.
+            deps = ' -W depend=afterany' + str(json_obj['deps'][i])
+#             deps = ' -W depend=afterany' + ''.join([':' + str(dep_job) for dep_job in json_obj['deps']])
         else:
             deps = ''
 
@@ -99,7 +107,7 @@ def batch(iterable, n=1):
 def submit_jobs_batches(files, json_obj, tmp_file_name='tmp_script'):
     max_in_flight = 40
     i = 0
+    last_deps = []
     for x in batch(files, max_in_flight):
-        last_deps = submit_job_deps(x, json_obj, tmp_file_name + '_' +str(i)+'.sh')
-        json_obj['deps'] = last_deps
+        last_deps = submit_job(x, json_obj, tmp_file_name + '_' +str(i)+'.sh', last_deps)
         i = i + 1
