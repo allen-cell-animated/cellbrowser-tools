@@ -48,7 +48,8 @@ def do_image(args, prefs, row, index, total_jobs):
     data_dir = '\\\\allen\\aics\\animated-cell\\Allen-Cell-Explorer\\Allen-Cell-Explorer_1.1.0\\Cell-Viewer_Data'
     thumbs_dir = '\\\\allen\\aics\\animated-cell\\Allen-Cell-Explorer\\Allen-Cell-Explorer_1.1.0\\Cell-Viewer_Thumbnails'
     # assume that the file location has same name as this subdir name of where the spreadsheet lives:
-    data_subdir = batchname.split('\\')[-3]
+    path_as_list = re.split(r'\\|/', batchname)
+    data_subdir = path_as_list[-3]
     # data_subdir = '2017_03_08_Struct_First_Pass_Seg'
     cell_line = 'AICS-' + str(row["cell_line_ID"])
     for f in names:
@@ -64,7 +65,7 @@ def do_image(args, prefs, row, index, total_jobs):
 
         # see if image is in bisque db.
         session_dict = {
-            'root': 'http://dev-aics-dtp-001',
+            'root': prefs['out_bisquedb'],
             # 'root': 'http://10.128.62.98',
             'user': 'admin',
             'password': 'admin'
