@@ -25,7 +25,7 @@ from processImageWithSegmentation import do_main_image_with_celljob
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 
-def generate_sh_for_row(outdir, jobname, info, do_run, prefs):
+def generate_sh_for_row(jobname, info, prefs):
     # dump row data into json
     # Cell_job_postfix = subdir + "_" + str(jobnumber)
     cell_job_postfix = jobname
@@ -167,7 +167,7 @@ def do_image(args, prefs, row, index, total_jobs):
         do_main_image_with_celljob(info)
     elif args.cluster:
         # TODO: set arg to copy each indiv file to another output
-        return generate_sh_for_row(output_dir, jobname, info, "cluster", prefs)
+        return generate_sh_for_row(jobname, info, prefs)
 
 
 def do_main(args, prefs):
