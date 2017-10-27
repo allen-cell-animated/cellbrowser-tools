@@ -31,7 +31,7 @@ def generate_sh_for_row(outdir, jobname, info, do_run, prefs):
     cell_job_postfix = jobname
     current_dir = os.path.join(prefs['out_status'], prefs['script_dir']) # os.path.join(os.getcwd(), outdir)
     jsonname = os.path.join(current_dir, 'aicsCellJob_'+cell_job_postfix+'.json')
-    pathjson = os.path.join(outdir, jsonname)
+    pathjson = jsonname
     with open(pathjson, 'w') as fp:
         json.dump(info.__dict__, fp)
     script_string = ""
