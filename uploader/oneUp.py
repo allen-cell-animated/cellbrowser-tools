@@ -41,6 +41,8 @@ proteinToStructure = {
 
     'MYOSINIIB': ['Non-muscle myosin IIB', 'Actomyosin'],
     'MYH10': ['Non-muscle myosin IIB', 'Actomyosin'],
+
+    'ST6GAL1': ['Sialyltransferase 1', 'Golgi'],
 }
 
 # create xml bundle for the bisque database entry pointing to this image.
@@ -79,7 +81,8 @@ def oneUp(sessionInfo, dict, outfile):
         structureDisplayName = structureNamePair[1]
         proteinDisplayName = structureNamePair[0]
     else:
-        print('Unknown structure protein name: ' + structureProteinName)
+        print('Unknown structure protein name: ' + structureProteinName + " for " + cbrCellName)
+        raise ValueError('Unknown structure protein name: ' + structureProteinName + " for " + cbrCellName)
 
     # Pass permission explicitly for each tag. This is to work around an apparent bug in the bisque back-end.
     # If we upgrade the back end we should check to see if this bug is fixed. The tag permissions should be inherited
