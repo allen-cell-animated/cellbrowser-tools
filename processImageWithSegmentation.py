@@ -22,10 +22,11 @@ import errno
 import json
 import numpy as np
 import os
+import pprint
 import re
 import subprocess
 import sys
-import pprint
+import traceback
 
 
 def _int32(x):
@@ -544,6 +545,12 @@ def main():
 
 
 if __name__ == "__main__":
-    print (sys.argv)
-    main()
-    sys.exit(0)
+    try:
+        print(sys.argv)
+        main()
+        sys.exit(0)
+
+    except Exception as e:
+        print(str(e), file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)
+        sys.exit(1)
