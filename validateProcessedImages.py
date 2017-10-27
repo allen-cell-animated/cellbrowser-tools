@@ -99,6 +99,8 @@ def parse_args():
 
 
 def do_image(args, prefs, row, index, total_jobs):
+    batchname = row['source_data']
+    jobname = row['inputFilename']
     info = cellJob.CellJob(row)
 
     imageName = info.cbrCellName
@@ -126,12 +128,12 @@ def do_image(args, prefs, row, index, total_jobs):
         # check for thumbnail
         fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
         if not os.path.isfile(fullf):
-            print("ERROR: " + row['source_data'] + ' : Could not find file: ' + fullf)
+            print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullf)
 
         # check for image
         fullf = os.path.join(data_dir, data_subdir, cell_line, f + '.ome.tif')
         if not os.path.isfile(fullf):
-            print("ERROR: " + row['source_data'] + ' : Could not find file: ' + fullf)
+            print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullf)
 
 
 def do_main(args, prefs):
