@@ -80,7 +80,7 @@ def do_image(args, prefs, row, index, total_jobs):
                 imname = i.get("name")
                 if imname in dbnames:
                     imid = i.get("resource_uniq")
-                    print("  Deleting: " + imid)
+                    print("  Deleting: " + imid + " : " + i.get("name"))
                     db_api.DbApi.deleteImage(imid)
                 else:
                     dbnames.append(imname)
