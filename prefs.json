@@ -1,4 +1,5 @@
 {
+  "imageIDs": "../dataset_cellnuc_seg_curated/imageIDs.csv",
   "data_files_complete": "../dataset_cellnuc_seg_curated/*/spreadsheets_contourXY/*.csv",
   "data_files": "../dataset_cellnuc_seg_curated/2017-10-04_ST6GAL1/spreadsheets_contourXY/*.csv",
   "out_status": "//allen/aics/software/danielt/imgproc",

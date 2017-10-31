@@ -138,7 +138,7 @@ def do_image(args, prefs, row, index, total_jobs):
 
 def do_main(args, prefs):
     # Read every .csv file and concat them together
-    data = utils.collect_data_rows(prefs['data_files'])
+    data = utils.collect_data_rows(prefs['data_files'], db_path=prefs['imageIDs'])
 
     total_jobs = len(data)
     print('VALIDATING ' + str(total_jobs) + ' JOBS')

@@ -4,8 +4,8 @@ import re
 
 class CellNameDatabase(object):
     # don't forget to commit cellnames.csv back into git every time it's updated for production!
-    def __init__(self):
-        self.filename = './data/cellnames.csv'
+    def __init__(self, db_path='imageIDs.csv'):
+        self.filename = db_path
         self.namedb = {}
         self.pathdb = {}
         with open(self.filename, 'rU') as id_file:

@@ -97,12 +97,12 @@ def collect_files(file_or_dir):
     return files
 
 
-def collect_data_rows(data_glob, save_db=True):
+def collect_data_rows(data_glob, save_db=True, db_path='imageIDs.csv'):
     # Get all the .csv files in the data dir
     data_paths = glob.glob(data_glob)
 
     # cell name listing
-    db = CellNameDatabase()
+    db = CellNameDatabase(db_path)
 
     # Read every .csv file and concat them together
     data = list()
