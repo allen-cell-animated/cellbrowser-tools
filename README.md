@@ -23,8 +23,9 @@ If not already, copy or move png thumbnails to final destination: \\allen\aics\a
 4. Count files, count db entries, and do final qa. 
 
 5. prepare zip archives.  This is a global operation over the entire data set.  
-    python dsplit.py -s 20000 \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\Cell-Viewer_Data \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\archive\manifest\  
-    for i in $(ls *.txt); do tar -c -T ${i} | gzip -1 > ${i%.txt}.tar.gz; done
+    python dsplit.py -s 20000 \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\Cell-Viewer_Data \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\archive\  
+    cd \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\Cell-Viewer_Data
+    for i in $(ls ../archive/*.txt); do tar -c -T ${i} | gzip -1 > ${i%.txt}.tar.gz; done
 
 6. Upon deployment, can run  
     python uploader/stress.py  
