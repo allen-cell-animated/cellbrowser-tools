@@ -5,28 +5,15 @@
 
 import argparse
 import cellJob
-import csv
 import dataHandoffSpreadsheetUtils as utils
-import glob
-import jobScheduler
 import json
 import os
-import pandas as pd
-import platform
 import re
 import sys
 import uploader.db_api as db_api
 
-from cellNameDb import CellNameDatabase
-from processImageWithSegmentation import do_main_image
 
-# cbrImageLocation path to cellbrowser images
-# cbrThumbnailLocation path to cellbrowser thumbnails
-# cbrThumbnailURL file:// uri to cellbrowser thumbnail
-# cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
-
-
-def do_image(args, prefs, row, index, total_jobs):
+def do_image(row, prefs):
     batchname = row['source_data']
     jobname = row['inputFilename']
     info = cellJob.CellJob(row)
@@ -42,11 +29,10 @@ def do_image(args, prefs, row, index, total_jobs):
         # str(int(seg)) removes leading zeros
         names.append(imageName + "_" + str(int(seg)))
 
-    exts = ['.ome.tif', '.png']
     # check existence of ome.tif and png.
 
-    data_dir = '\\\\allen\\aics\\animated-cell\\Allen-Cell-Explorer\\Allen-Cell-Explorer_1.1.0\\Cell-Viewer_Data'
-    thumbs_dir = '\\\\allen\\aics\\animated-cell\\Allen-Cell-Explorer\\Allen-Cell-Explorer_1.1.0\\Cell-Viewer_Thumbnails'
+    data_dir = prefs['out_ometifroot']
+    thumbs_dir = prefs['out_thumbnailroot']
     # assume that the file location has same name as this subdir name of where the spreadsheet lives:
     path_as_list = re.split(r'\\|/', batchname)
     data_subdir = path_as_list[-3]
@@ -63,14 +49,6 @@ def do_image(args, prefs, row, index, total_jobs):
         if not os.path.isfile(fullf):
             print(batchname + ": " + jobname + ": Could not find file: " + fullf)
 
-        # see if image is in bisque db.
-        session_dict = {
-            'root': prefs['out_bisquedb'],
-            # 'root': 'http://10.128.62.98',
-            'user': 'admin',
-            'password': 'admin'
-        }
-        db_api.DbApi.setSessionInfo(session_dict)
         xml = db_api.DbApi.getImagesByName(f)
         if len(xml.getchildren()) != 1:
             print('Retrieved ' + str(len(xml.getchildren())) + ' images with name ' + f)
@@ -103,6 +81,42 @@ def parse_args():
     return args
 
 
+def report_db_stats():
+    xml = db_api.DbApi.getImagesByTagValue("isCropped", "true")
+    print('Retrieved ' + str(len(xml.getchildren())) + ' images with "isCropped" true.')
+    srcdict = {}
+    for element in xml:
+        child_el = element.find('tag[@name="source"]')
+        src = child_el.attrib['value']
+        # TODO find a nicer way to get this grouping.
+        # strip away all after the last underscore.
+        src = src[:src.rindex('_')]
+        # add to dict
+        if src not in srcdict:
+            srcdict[src] = 1
+        else:
+            srcdict[src] += 1
+    for (key, value) in sorted(srcdict.items()):
+        print(key+'\t'+str(value))
+
+    xml = db_api.DbApi.getImagesByTagValue("isCropped", "false")
+    print('Retrieved ' + str(len(xml.getchildren())) + ' images with "isCropped" false.')
+    srcdict = {}
+    for element in xml:
+        child_el = element.find('tag[@name="name"]')
+        src = child_el.attrib['value']
+        # TODO find a nicer way to get this grouping.
+        # strip away all after the last underscore.
+        src = src[:src.rindex('_')]
+        # add to dict
+        if src not in srcdict:
+            srcdict[src] = 1
+        else:
+            srcdict[src] += 1
+    for (key, value) in sorted(srcdict.items()):
+        print(key+'\t'+str(value))
+
+
 def do_main(args, prefs):
     # Read every .csv file and concat them together
     data = utils.collect_data_rows(prefs['data_files'], db_path=prefs['imageIDs'])
@@ -110,10 +124,20 @@ def do_main(args, prefs):
     total_jobs = len(data)
     print('VALIDATING ' + str(total_jobs) + ' JOBS')
 
+    # initialize bisque db.
+    session_dict = {
+        'root': prefs['out_bisquedb'],
+        'user': 'admin',
+        'password': 'admin'
+    }
+    db_api.DbApi.setSessionInfo(session_dict)
+
     # process each file
     # run serially
     for index, row in enumerate(data):
-        do_image(args, prefs, row, index, total_jobs)
+        do_image(row, prefs)
+
+    report_db_stats()
 
 
 def main():
@@ -124,6 +148,6 @@ def main():
 
 
 if __name__ == "__main__":
-    print (sys.argv)
+    print(sys.argv)
     main()
     sys.exit(0)
