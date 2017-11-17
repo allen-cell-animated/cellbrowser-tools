@@ -49,16 +49,19 @@ def do_image(row, prefs):
         if not os.path.isfile(fullf):
             print(batchname + ": " + jobname + ": Could not find file: " + fullf)
 
+        expected_relpath = data_subdir + '/' + cell_line + '/' + f + '.ome.tif'
+
         xml = db_api.DbApi.getImagesByName(f)
         if len(xml.getchildren()) != 1:
             print('ERROR: Retrieved ' + str(len(xml.getchildren())) + ' images with name ' + f)
             if len(xml.getchildren()) > 1:
                 dbnames = []
                 for i in xml:
+                    imgnameindb = i.get("value")
                     imname = i.get("name")
-                    if imname in dbnames:
+                    if imname in dbnames or imgnameindb != expected_relpath:
                         imid = i.get("resource_uniq")
-                        print("  Deleting: " + imid + " : " + i.get("name"))
+                        print("  DELETING bad db entry : (" + f + ") : " + imid + " : " + i.get("name") + " : " + i.get("value"))
                         db_api.DbApi.deleteImage(imid)
                     else:
                         dbnames.append(imname)
@@ -66,9 +69,11 @@ def do_image(row, prefs):
             record = xml[0]
             imgnameindb = record.get("value")
             # compare to expected.
-            expected = data_subdir + '/' + cell_line + '/' + f + '.ome.tif'
-            if imgnameindb != expected:
-                print('ERROR: image name is ' + imgnameindb + ' and should be ' + expected)
+            if imgnameindb != expected_relpath:
+                print('ERROR: image name is ' + imgnameindb + ' and should be ' + expected_relpath)
+                imid = record.get("resource_uniq")
+                print("  DELETING bad db entry : " + f + " : " + imid + " : " + record.get("name") + " : " + imgnameindb)
+                db_api.DbApi.deleteImage(imid)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
