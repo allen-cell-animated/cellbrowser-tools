@@ -31,6 +31,7 @@ class CellJob(object):
         self.outputNucSegContourFilename = ''
         self.outputCellSegContourFilename = ''
 
+        self.cbrImageRelPath = 'images'
         self.cbrImageLocation = './images'
         self.cbrThumbnailLocation = './images'
         self.cbrThumbnailURL = 'file:///images'
@@ -119,6 +120,7 @@ class CellJob(object):
             self.outputNucSegContourFilename = csvRow.get('outputNucSegContourFilename')
             self.outputCellSegContourFilename = csvRow.get('outputCellSegContourFilename')
 
+            self.cbrImageRelPath = csvRow.get('cbrImageRelPath', self.cbrImageRelPath)
             self.cbrImageLocation = csvRow.get('cbrImageLocation', self.cbrImageLocation)
             self.cbrThumbnailLocation = csvRow.get('cbrThumbnailLocation', self.cbrThumbnailLocation)
             self.cbrThumbnailURL = csvRow.get('cbrThumbnailURL', self.cbrThumbnailURL)

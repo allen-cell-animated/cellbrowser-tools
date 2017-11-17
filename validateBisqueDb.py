@@ -51,18 +51,24 @@ def do_image(row, prefs):
 
         xml = db_api.DbApi.getImagesByName(f)
         if len(xml.getchildren()) != 1:
-            print('Retrieved ' + str(len(xml.getchildren())) + ' images with name ' + f)
-        if len(xml.getchildren()) > 1:
-            dbnames = []
-            for i in xml:
-                imname = i.get("name")
-                if imname in dbnames:
-                    imid = i.get("resource_uniq")
-                    print("  Deleting: " + imid + " : " + i.get("name"))
-                    db_api.DbApi.deleteImage(imid)
-                else:
-                    dbnames.append(imname)
-
+            print('ERROR: Retrieved ' + str(len(xml.getchildren())) + ' images with name ' + f)
+            if len(xml.getchildren()) > 1:
+                dbnames = []
+                for i in xml:
+                    imname = i.get("name")
+                    if imname in dbnames:
+                        imid = i.get("resource_uniq")
+                        print("  Deleting: " + imid + " : " + i.get("name"))
+                        db_api.DbApi.deleteImage(imid)
+                    else:
+                        dbnames.append(imname)
+        else:
+            record = xml[0]
+            imgnameindb = record.get("value")
+            # compare to expected.
+            expected = data_subdir + '/' + cell_line + '/' + f + '.ome.tif'
+            if imgnameindb != expected:
+                print('ERROR: image name is ' + imgnameindb + ' and should be ' + expected)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '

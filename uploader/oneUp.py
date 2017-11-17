@@ -91,7 +91,7 @@ def oneUp(sessionInfo, dict, outfile):
 
     tifext = '.ome.tif'
     fullpath = cbrImageLocation + '/' + cbrCellName + tifext
-    relpath = fullpath.replace(cbrDataRoot, '')
+    relpath = dict['cbrImageRelPath'] + '/' + cbrCellName + tifext
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = cbrThumbnailURL
     relpath_thumbnail = thumbnail
