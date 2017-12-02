@@ -86,6 +86,41 @@ class DbApi(object):
                 more = False
         return results
 
+    # get all images:
+    # GET http://10.128.62.104:8080/data_service/image/?view=deep
+    # get all image tags:
+    # GET http://10.128.62.104:8080/data_service/image/00-iPDrkt4dZaL2uWLoCDmQEd?view=deep
+    # this query returns all images beginning with name, not equal to name
+    # AICS-12_10 will return AICS-12_10, AICS-12_10_1, AICS-12_10_3, etc.
+    @staticmethod
+    def getImagesByNameRoot(name, max_to_get=0):
+        results = ElementTree.Element('results')
+        nlimit = 700
+        if max_to_get > 0 and max_to_get < nlimit:
+            nlimit = max_to_get
+        n = 0
+        more = True
+        while more:
+            try:
+                response = requests.get(DbApi.db_uri + 'image/?offset='+str(n)+'&tag_query=' + name + '&tag_order="@ts":desc&wpublic=false&limit=' + str(nlimit) + '&view=deep', headers=DbApi.headers, verify=False, auth=DbApi.db_auth)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                print(e)
+            tree = ElementTree.fromstring(response.content)
+            if tree is not None:
+                results.extend(tree.getchildren())
+                count = len(tree.getchildren())
+                # if more than 700 returned, loop around and get 700 more until we have all query results
+                if count < nlimit:
+                    more = False
+                n += count
+                if max_to_get > 0 and n >= max_to_get:
+                    # TODO: trim results by max_to_get-n
+                    more = False
+            else:
+                more = False
+        return results
+
     # Querying resources
     #
     # [[type:]name:]value

@@ -29,8 +29,6 @@ def do_image(row, prefs):
         # str(int(seg)) removes leading zeros
         names.append(imageName + "_" + str(int(seg)))
 
-    # check existence of ome.tif and png.
-
     data_dir = prefs['out_ometifroot']
     thumbs_dir = prefs['out_thumbnailroot']
     # assume that the file location has same name as this subdir name of where the spreadsheet lives:
@@ -38,6 +36,17 @@ def do_image(row, prefs):
     data_subdir = path_as_list[-3]
     # data_subdir = '2017_03_08_Struct_First_Pass_Seg'
     cell_line = 'AICS-' + str(row["cell_line_ID"])
+
+    # get associated images from db
+    query_result = []
+    xml = db_api.DbApi.getImagesByNameRoot(imageName)
+    for i in xml:
+        query_result.append(i.get("name"))
+
+
+    names_in_db = []
+    # make sure every segmented cell image is in the db
+    ids_to_delete = []
     for f in names:
         # check for thumbnail
         fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
@@ -51,29 +60,42 @@ def do_image(row, prefs):
 
         expected_relpath = data_subdir + '/' + cell_line + '/' + f + '.ome.tif'
 
-        xml = db_api.DbApi.getImagesByName(f)
-        if len(xml.getchildren()) != 1:
-            print('ERROR: Retrieved ' + str(len(xml.getchildren())) + ' images with name ' + f)
-            if len(xml.getchildren()) > 1:
-                dbnames = []
-                for i in xml:
-                    imgnameindb = i.get("value")
-                    imname = i.get("name")
-                    if imname in dbnames or imgnameindb != expected_relpath:
-                        imid = i.get("resource_uniq")
-                        print("  DELETING bad db entry : (" + f + ") : " + imid + " : " + i.get("name") + " : " + i.get("value"))
-                        db_api.DbApi.deleteImage(imid)
-                    else:
-                        dbnames.append(imname)
+        found_in_db = False
+        for i in xml:
+            imgnameindb = i.get("value")
+            imname = i.get("name")
+            if f + '.ome.tif' == imname:
+                found_in_db = True;
+                if imname in names_in_db:
+                    # repeated image in db.
+                    imid = i.get("resource_uniq")
+                    print("ERROR: DELETING {} : redundant db entry : {} : {} : {}".format(f, imid, imname, imgnameindb))
+                    ids_to_delete.append(imid);
+                elif imgnameindb != expected_relpath:
+                    print("ERROR path mismatch for " + f + ": db has " + imgnameindb + ' but expected ' + expected_relpath)
+                else:
+                    names_in_db.append(imname)
+        if not found_in_db:
+            print('ERROR: {} not found in db ( {},{} )'.format(f, batchname, jobname))
+
+
+    for i in xml:
+        imname = i.get("name")
+        if not imname[:-8] in names:
+            print('ERROR: DELETING {} : not part of data set for {} ( {},{} ) and will be deleted'.format(imname, imageName, batchname, jobname))
+            imid = i.get("resource_uniq")
+            ids_to_delete.append(imid);
         else:
-            record = xml[0]
-            imgnameindb = record.get("value")
-            # compare to expected.
+            # check pathing.
+            imgnameindb = i.get("value")
+            expected_relpath = data_subdir + '/' + cell_line + '/' + imname
             if imgnameindb != expected_relpath:
-                print('ERROR: image name is ' + imgnameindb + ' and should be ' + expected_relpath)
-                imid = record.get("resource_uniq")
-                print("  DELETING bad db entry : " + f + " : " + imid + " : " + record.get("name") + " : " + imgnameindb)
-                db_api.DbApi.deleteImage(imid)
+                print("ERROR path mismatch for " + f + ": db has " + imgnameindb + ' but expected ' + expected_relpath)
+
+    # UNCOMMENT TO DO ACTUAL DELETIONS. DANGER THIS MAY HAVE SIDE EFFECT OF REMOVING OME TIF FILES.
+    # for i in ids_to_delete:
+    #     db_api.DbApi.deleteImage(i)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
@@ -146,6 +168,8 @@ def do_main(args, prefs):
     # process each file
     # run serially
     for index, row in enumerate(data):
+        if index % 100 == 0:
+            print(str(index))
         do_image(row, prefs)
 
     report_db_stats()
