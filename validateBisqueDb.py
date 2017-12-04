@@ -156,6 +156,15 @@ def do_main(args, prefs):
 
     total_jobs = len(data)
     print('VALIDATING ' + str(total_jobs) + ' JOBS')
+    total_cells = 0
+    for index, row in enumerate(data):
+        segs = row["outputCellSegIndex"]
+        segs = segs.split(";")
+        # get rid of empty strings in segs
+        segs = list(filter(None, segs))
+        total_cells += len(segs)
+    print('EXPECTING ' + str(total_cells) + ' SINGLE CELLS')
+
 
     # initialize bisque db.
     session_dict = {
@@ -172,6 +181,7 @@ def do_main(args, prefs):
             print(str(index))
         do_image(row, prefs)
 
+    print('**DB REPORT**')
     report_db_stats()
 
 
