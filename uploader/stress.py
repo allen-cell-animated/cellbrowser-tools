@@ -80,8 +80,8 @@ def construct_requests(imid, session_dict):
 
     atlasDims = compute_atlas_size(x, y, z)
     maxTexture = 2048
-    resizeX = int(math.floor(2048/atlasDims[0]))
-    resizeY = int(math.floor(2048/atlasDims[1]))
+    resizeX = int(math.floor(maxTexture/atlasDims[0]))
+    resizeY = int(math.floor(maxTexture/atlasDims[1]))
     # this goes in the resize options
     # max_texture_tile_size = { w: resizeX, h: resizeY };
 
@@ -151,8 +151,8 @@ def check_atlas_size(imageindex, imagexml, imid, session_dict):
 
     atlasDims = compute_atlas_size(x, y, z)
     maxTexture = 2048
-    resizeX = int(math.floor(2048/atlasDims[0]))
-    resizeY = int(math.floor(2048/atlasDims[1]))
+    resizeX = int(math.floor(maxTexture/atlasDims[0]))
+    resizeY = int(math.floor(maxTexture/atlasDims[1]))
     # this goes in the resize options
     # max_texture_tile_size = { w: resizeX, h: resizeY };
 
@@ -204,18 +204,16 @@ def check_atlas_size(imageindex, imagexml, imid, session_dict):
         eh = min(resizeY, y)
         aspect = float(x)/float(y)
         if aspect < float(resizeX)/float(resizeY):
-            # keeps eh const, and adjusts
             ew = int(math.floor(eh*aspect))
         else:
             eh = int(math.floor(ew/aspect))
         expected_width = ew*atlasDims[0]
         expected_height = eh*atlasDims[1]
         if width < expected_width or height < expected_height:
-            print("ERROR: (" + str(index) + ") " + imid + " " + imagexml.get('name') + " expected (" + str(expected_width) + "," + str(expected_height) + "), and got (" + str(width) + "," + str(height) + ")")
+            print("ERROR: (" + str(imageindex) + ") " + imagexml.get('name') + " : " + imid + " : expected (" + str(expected_width) + "," + str(expected_height) + "), and got (" + str(width) + "," + str(height) + ")")
 
 
 def issue_requests(reqs, async=False):
-    #foo
     for i in range(0, len(reqs)):
         try:
             response = requests.get(reqs[i], headers=db_api.DbApi.headers, verify=False, auth=db_api.DbApi.db_auth)
