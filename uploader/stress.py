@@ -8,6 +8,7 @@ import shutil
 import struct
 import sys
 from timeit import default_timer as timer
+from threadpool import ThreadPool
 
 DEFAULT_DB = 'http://cellviewer-1-1-0.allencell.org/'
 # DEFAULT_DB = 'http://dev-aics-dtp-001/'
@@ -42,7 +43,7 @@ def constructAtlasUrl(dburl, imid, channel_count, channels, sizex, sizey):
 def compute_atlas_size(w, h, n):
     # w: image width
     # h: image height
-    # n: numbe rof image planes, Z stacks or time points
+    # n: number of image planes, Z stacks or time points
     # start with atlas composed of a row of images
     ww = w*n
     hh = h
@@ -87,7 +88,7 @@ def construct_requests(imid, session_dict):
     # TODO need to VERIFY that these sizes are correct! Otherwise this is not warming the cache!
 
     # max of 3 for r,g,b channels
-    batchSize = 3 # try 2 or 1 to test perf
+    batchSize = 3  # try 2 or 1 to test perf
     batchColors = [[255, 0, 0], [0, 255, 0], [0, 0, 255]]
     channelurls = []
     # generate channel urls
@@ -130,7 +131,8 @@ def construct_requests(imid, session_dict):
         # http://bisque-1079154594.us-west-2.elb.amazonaws.com/image_service/image/00-txi2UgfXMLkqFW6DbQuuQ7?slice=,,,1&resize=341,292,BC,MX&textureatlas&depth=8,d,u&fuse=0,255,0;255,0,0;0,0,0;0,0,0;0,0,0;0,0,0;0,0,0;0,0,0;:m&format=png
     return {"urls": channelurls, "x": resizeX, "y": resizeY}
 
-def check_atlas_size(index, imagexml, imid, session_dict):
+
+def check_atlas_size(imageindex, imagexml, imid, session_dict):
     # GENERATE ONE SINGLE ATLAS PNG REQUEST
 
     # get meta image_num_c, image_num_x, image_num_y
@@ -222,6 +224,15 @@ def issue_requests(reqs, async=False):
             print(e)
 
 
+def process_image(n, i, session_dict):
+    imid = i.get("resource_uniq")
+    start = timer()
+    reqs = construct_requests(imid, session_dict)
+    issue_requests(reqs["urls"], async=False)
+    check_atlas_size(n, i, imid, session_dict)
+    end = timer()
+    print(str(n) + ' : ' + i.get('name') + ' : ' + imid + ' : ' + str(reqs["x"]) + ',' + str(reqs["y"]) + ' : ' + str(end-start) + 's')
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input', help='db uri', nargs='?', default='http://cellviewer-1-1-0.allencell.org/')
@@ -252,15 +263,14 @@ def main():
     # xml = db_api.DbApi.getImagesByName('*', 1)
     print('Retrieved ' + str(len(xml.getchildren())) + ' images.')
     n = 0
+
+    NUM_THREADS = 4
+    pool = ThreadPool(NUM_THREADS)
+
     for i in xml:
-        imid = i.get("resource_uniq")
-        start = timer()
-        reqs = construct_requests(imid, session_dict)
-        issue_requests(reqs["urls"], async=False)
-        check_atlas_size(n, i, imid, session_dict)
-        end = timer()
-        print(str(n) + ' : ' + i.get('name') + ' : ' + imid + ' : ' + str(reqs["x"]) + ',' + str(reqs["y"]) + ' : ' + str(end-start) + 's')
+        pool.add_task(process_image, n, i, session_dict)
         n = n + 1
+    pool.wait_completion()
 
 
 if __name__ == "__main__":
