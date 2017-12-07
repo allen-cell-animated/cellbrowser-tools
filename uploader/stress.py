@@ -227,7 +227,7 @@ def main():
     print('Retrieved ' + str(len(xml.getchildren())) + ' images.')
     n = 0
 
-    pool = ThreadPool(args.threads)
+    pool = ThreadPool(int(args.threads))
 
     for i in xml:
         pool.add_task(process_image, n, i, session_dict)
