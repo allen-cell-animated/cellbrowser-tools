@@ -35,8 +35,10 @@ def generate_sh_for_row(jobname, info, prefs):
     with open(pathjson, 'w') as fp:
         json.dump(info.__dict__, fp)
     script_string = ""
-    script_string += "export PYTHONPATH=$PYTHONPATH$( find " + os.getcwd() + "/ " \
-                     "-not -path '*/\.*' -type d -printf ':%p' )\n"
+    # script_string += "env > /allen/aics/animated-cell/Dan/env.txt\n"
+    script_string += "export PATH=/bin:$PATH\n"
+    script_string += "export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools:/home/danielt/cellbrowserpipeline/cellbrowser-tools/uploader\n"
+    # script_string += "source /home/danielt/.conda/envs/cellbrowser/bin/activate\n"    
     script_string += "source activate /home/danielt/.conda/envs/cellbrowser\n"
     script_string += "python " + os.getcwd() + "/processImageWithSegmentation.py "
     script_string += jsonname
