@@ -29,8 +29,6 @@ def do_image(row, prefs):
         # str(int(seg)) removes leading zeros
         names.append(imageName + "_" + str(int(seg)))
 
-    # check existence of ome.tif and png.
-
     data_dir = prefs['out_ometifroot']
     thumbs_dir = prefs['out_thumbnailroot']
     # assume that the file location has same name as this subdir name of where the spreadsheet lives:
@@ -38,6 +36,17 @@ def do_image(row, prefs):
     data_subdir = path_as_list[-3]
     # data_subdir = '2017_03_08_Struct_First_Pass_Seg'
     cell_line = 'AICS-' + str(row["cell_line_ID"])
+
+    # get associated images from db
+    query_result = []
+    xml = db_api.DbApi.getImagesByNameRoot(imageName)
+    for i in xml:
+        query_result.append(i.get("name"))
+
+
+    names_in_db = []
+    # make sure every segmented cell image is in the db
+    ids_to_delete = []
     for f in names:
         # check for thumbnail
         fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
@@ -49,26 +58,44 @@ def do_image(row, prefs):
         if not os.path.isfile(fullf):
             print(batchname + ": " + jobname + ": Could not find file: " + fullf)
 
-        xml = db_api.DbApi.getImagesByName(f)
-        if len(xml.getchildren()) != 1:
-            print('ERROR: Retrieved ' + str(len(xml.getchildren())) + ' images with name ' + f)
-            if len(xml.getchildren()) > 1:
-                dbnames = []
-                for i in xml:
-                    imname = i.get("name")
-                    if imname in dbnames:
-                        imid = i.get("resource_uniq")
-                        print("  Deleting: " + imid + " : " + i.get("name"))
-                        db_api.DbApi.deleteImage(imid)
-                    else:
-                        dbnames.append(imname)
+        expected_relpath = data_subdir + '/' + cell_line + '/' + f + '.ome.tif'
+
+        found_in_db = False
+        for i in xml:
+            imgnameindb = i.get("value")
+            imname = i.get("name")
+            if f + '.ome.tif' == imname:
+                found_in_db = True;
+                if imname in names_in_db:
+                    # repeated image in db.
+                    imid = i.get("resource_uniq")
+                    print("ERROR: DELETING {} : redundant db entry : {} : {} : {}".format(f, imid, imname, imgnameindb))
+                    ids_to_delete.append(imid);
+                elif imgnameindb != expected_relpath:
+                    print("ERROR path mismatch for " + f + ": db has " + imgnameindb + ' but expected ' + expected_relpath)
+                else:
+                    names_in_db.append(imname)
+        if not found_in_db:
+            print('ERROR: {} not found in db ( {},{} )'.format(f, batchname, jobname))
+
+
+    for i in xml:
+        imname = i.get("name")
+        if not imname[:-8] in names:
+            print('ERROR: DELETING {} : not part of data set for {} ( {},{} ) and will be deleted'.format(imname, imageName, batchname, jobname))
+            imid = i.get("resource_uniq")
+            ids_to_delete.append(imid);
         else:
-            record = xml[0]
-            imgnameindb = record.get("value")
-            # compare to expected.
-            expected = data_subdir + '/' + cell_line + '/' + f + '.ome.tif'
-            if imgnameindb != expected:
-                print('ERROR: image name is ' + imgnameindb + ' and should be ' + expected)
+            # check pathing.
+            imgnameindb = i.get("value")
+            expected_relpath = data_subdir + '/' + cell_line + '/' + imname
+            if imgnameindb != expected_relpath:
+                print("ERROR path mismatch for " + f + ": db has " + imgnameindb + ' but expected ' + expected_relpath)
+
+    # UNCOMMENT TO DO ACTUAL DELETIONS. DANGER THIS MAY HAVE SIDE EFFECT OF REMOVING OME TIF FILES.
+    # for i in ids_to_delete:
+    #     db_api.DbApi.deleteImage(i)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
@@ -129,6 +156,15 @@ def do_main(args, prefs):
 
     total_jobs = len(data)
     print('VALIDATING ' + str(total_jobs) + ' JOBS')
+    total_cells = 0
+    for index, row in enumerate(data):
+        segs = row["outputCellSegIndex"]
+        segs = segs.split(";")
+        # get rid of empty strings in segs
+        segs = list(filter(None, segs))
+        total_cells += len(segs)
+    print('EXPECTING ' + str(total_cells) + ' SINGLE CELLS')
+
 
     # initialize bisque db.
     session_dict = {
@@ -141,8 +177,11 @@ def do_main(args, prefs):
     # process each file
     # run serially
     for index, row in enumerate(data):
+        if index % 100 == 0:
+            print(str(index))
         do_image(row, prefs)
 
+    print('**DB REPORT**')
     report_db_stats()
 
 
