@@ -116,12 +116,15 @@ def do_image(args, prefs, row, index, total_jobs):
     info.cbrDataRoot = prefs['out_ometifroot']
     # drop thumbnails here
     info.cbrThumbnailRoot = prefs['out_thumbnailroot']
+    # drop texture atlases here
+    info.cbrTextureAtlasRoot = prefs['out_atlasroot']
 
     info.cbrDatasetName = dataset
 
     info.cbrImageRelPath = os.path.join(info.cbrDatasetName, subdir)
     info.cbrImageLocation = os.path.join(info.cbrDataRoot, info.cbrImageRelPath)
     info.cbrThumbnailLocation = os.path.join(info.cbrThumbnailRoot, info.cbrImageRelPath)
+    info.cbrTextureAtlasLocation = os.path.join(info.cbrTextureAtlasRoot, info.cbrImageRelPath)
     info.cbrThumbnailURL = info.cbrDatasetName + '/' + subdir
 
     info.dbUrl = prefs['out_bisquedb']
@@ -209,6 +212,8 @@ def setup_prefs(json_path):
         os.makedirs(prefs['out_ometifroot'])
     if not os.path.exists(prefs['out_thumbnailroot']):
         os.makedirs(prefs['out_thumbnailroot'])
+    if not os.path.exists(prefs['out_atlasroot']):
+        os.makedirs(prefs['out_atlasroot'])
 
     json_path_local = prefs['out_status'] + os.sep + 'prefs.json';
     shutil.copyfile(json_path, json_path_local)

@@ -13,7 +13,9 @@ from aicsimage.io.pngWriter import PngWriter
 from aicsimage.io.omexml import OMEXML
 import cellJob
 import dataHandoffSpreadsheetUtils as utils
+from aicsimage.processing import aicsImage
 from aicsimage.processing import thumbnailGenerator
+from aicsimage.processing import textureAtlas
 from uploader import oneUp
 
 import argparse
@@ -130,13 +132,16 @@ class ImageProcessor:
         # full fields need different directories than segmented cells do
         thumbnaildir = utils.normalize_path(self.row.cbrThumbnailLocation)
         make_dir(thumbnaildir)
-
         self.png_dir = os.path.join(thumbnaildir, self.file_name)
+        self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
+
         ometifdir = utils.normalize_path(self.row.cbrImageLocation)
         make_dir(ometifdir)
-
         self.ometif_dir = os.path.join(ometifdir, self.file_name)
-        self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
+
+        atlasdir = utils.normalize_path(self.row.cbrTextureAtlasLocation)
+        make_dir(atlasdir)
+        self.atlas_dir = atlasdir
 
     def add_segs_to_img(self):
         outdir = self.row.cbrImageLocation
@@ -169,13 +174,6 @@ class ImageProcessor:
         # print(seg_path)
         file_list = []
 
-        # # nucleus segmentation
-        # nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
-        # # print(nuc_seg_file)
-        # file_list.append(nuc_seg_file)
-        # self.channel_names.append("SEG_DNA")
-        # self.channel_colors.append(_rgba255(0, 255, 0, 255))
-
         # structure segmentation
         struct_seg_path = self.row.structureSegOutputFolder
         if struct_seg_path != '' and not struct_seg_path.startswith('N/A') and not self.row.cbrSkipStructureSegmentation:
@@ -196,7 +194,15 @@ class ImageProcessor:
         self.channel_colors.append(_rgba255(0, 0, 255, 255))
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
-        # cell contour segmentation
+        # nucleus segmentation
+        nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
+        # print(nuc_seg_file)
+        file_list.append(nuc_seg_file)
+        self.channel_names.append("SEG_DNA")
+        self.channel_colors.append(_rgba255(0, 255, 0, 255))
+        self.channels_to_mask.append(len(self.channel_names) - 1)
+
+        # cell contour segmentation (good for viz in the volume viewer)
         cell_con_file = os.path.join(con_path, self.row.outputCellSegContourFilename)
         # print(cell_seg_file)
         file_list.append(cell_con_file)
@@ -204,7 +210,7 @@ class ImageProcessor:
         self.channel_colors.append(_rgba255(255, 255, 0, 255))
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
-        # nucleus contour segmentation
+        # nucleus contour segmentation (good for viz in the volume viewer)
         nuc_con_file = os.path.join(con_path, self.row.outputNucSegContourFilename)
         # print(nuc_seg_file)
         file_list.append(nuc_con_file)
@@ -362,7 +368,13 @@ class ImageProcessor:
             else:
                 im_to_save = None
 
-            self._save_and_post(image=im_to_save, thumbnail=ffthumb, omexml=self.omexml)
+            # do texture atlas here
+            aimage = aicsImage.AICSImage(self.image, dims="CZYX")
+            aimage.metadata = self.omexml
+            print('generating atlas ...')
+            atlas = textureAtlas.generate_texture_atlas(aimage, name=self.file_name, max_edge=2048, pack_order=None)
+
+            self._save_and_post(image=im_to_save, thumbnail=ffthumb, textureatlas=atlas, omexml=self.omexml)
 
         if self.row.cbrGenerateSegmentedImages:
             # assumption: less than 256 cells segmented in the file.
@@ -413,6 +425,9 @@ class ImageProcessor:
 
                 for bn in self.row.cbrBounds:
                     print(bn, self.row.cbrBounds[bn])
+
+                print("making image...", end="")
+
                 # copy self.omexml for output
                 copyxml = None
                 copied = copy.deepcopy(self.omexml.dom)
@@ -435,53 +450,22 @@ class ImageProcessor:
                         pixels.node.remove(p.node)
                     else:
                         p.set_TheZ(pz - minz)
+                print("done")
 
-                if not self.row.cbrGenerateCellImage:
-                    cropped = None
-                    copyxml = None
-                else:
-                    print("making image...", end="")
+                # do texture atlas here
+                aimage_cropped = aicsImage.AICSImage(cropped, dims="CZYX")
+                aimage_cropped.metadata = copyxml
+                print('generating atlas ...')
+                atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.file_name+'_'+str(i), max_edge=2048, pack_order=None)
 
-                    self.row.cbrCellIndex = i
-                    self.row.cbrSourceImageName = base
-                    self.row.cbrCellName = base + '_' + str(i)
-                    self.row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
-                                          'ymin': bounds[1][0], 'ymax': bounds[1][1],
-                                          'zmin': bounds[2][0], 'zmax': bounds[2][1]}
-
-                    # for bn in self.row.cbrBounds:
-                    #     print(bn, self.row.cbrBounds[bn])
-                    # copy self.omexml for output
-                    copied = copy.deepcopy(self.omexml.dom)
-                    copyxml = OMEXML(rootnode=copied)
-                    # now fix it up
-                    pixels = copyxml.image().Pixels
-                    pixels.set_SizeX(cropped.shape[3])
-                    pixels.set_SizeY(cropped.shape[2])
-                    pixels.set_SizeZ(cropped.shape[1])
-                    # if sizeZ changed, then we have to use bounds to fix up the plane elements
-                    minz = bounds[2][0]
-                    maxz = bounds[2][1]
-                    planes = []
-                    for pi in range(pixels.get_plane_count()):
-                        planes.append(pixels.Plane(pi))
-                    for p in planes:
-                        pz = p.get_TheZ()
-                        # TODO: CONFIRM THAT THIS IS CORRECT!!
-                        if pz >= maxz or pz < minz:
-                            pixels.node.remove(p.node)
-                        else:
-                            p.set_TheZ(pz - minz)
-                    print("done")
-
-                self._save_and_post(image=cropped, thumbnail=thumb, seg_cell_index=i, omexml=copyxml)
+                self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=i, omexml=copyxml)
             print("done")
 
-    def _save_and_post(self, image, thumbnail, seg_cell_index=0, omexml=None):
+    def _save_and_post(self, image, thumbnail, textureatlas, seg_cell_index=0, omexml=None):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
         physical_size = [self.row.xyPixelSize, self.row.xyPixelSize, self.row.zPixelSize]
-        png_dir, ometif_dir, png_url = self.png_dir, self.ometif_dir, self.png_url
+        png_dir, ometif_dir, png_url, atlas_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir
         if seg_cell_index != 0:
             png_dir += '_' + str(seg_cell_index) + '.png'
             ometif_dir += '_' + str(seg_cell_index) + '.ome.tif'
@@ -504,6 +488,11 @@ class ImageProcessor:
                 writer.save(transposed_image, omexml=omexml,
                             # channel_names=self.channel_names, channel_colors=self.channel_colors,
                             pixels_physical_size=physical_size)
+            print("done")
+
+        if textureatlas is not None:
+            print("saving texture atlas...", end="")
+            textureatlas.save(self.atlas_dir)
             print("done")
 
         if self.row.cbrAddToDb:

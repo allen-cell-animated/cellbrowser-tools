@@ -33,6 +33,7 @@ class CellJob(object):
 
         self.cbrImageRelPath = 'images'
         self.cbrImageLocation = './images'
+        self.cbrTextureAtlasLocation = './atlas'
         self.cbrThumbnailLocation = './images'
         self.cbrThumbnailURL = 'file:///images'
         self.cbrThumbnailSize = 128
@@ -122,6 +123,7 @@ class CellJob(object):
 
             self.cbrImageRelPath = csvRow.get('cbrImageRelPath', self.cbrImageRelPath)
             self.cbrImageLocation = csvRow.get('cbrImageLocation', self.cbrImageLocation)
+            self.cbrTextureAtlasLocation = csvRow.get('cbrTextureAtlasLocation', self.cbrTextureAtlasLocation)
             self.cbrThumbnailLocation = csvRow.get('cbrThumbnailLocation', self.cbrThumbnailLocation)
             self.cbrThumbnailURL = csvRow.get('cbrThumbnailURL', self.cbrThumbnailURL)
             self.cbrThumbnailSize = csvRow.get('cbrThumbnailSize', self.cbrThumbnailSize)
