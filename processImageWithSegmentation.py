@@ -11,6 +11,7 @@ from aicsimage.io.omeTifReader import OmeTifReader
 from aicsimage.io.omeTifWriter import OmeTifWriter
 from aicsimage.io.pngWriter import PngWriter
 from aicsimage.io.omexml import OMEXML
+from aicsimage.io.omexml import qn
 import cellJob
 import dataHandoffSpreadsheetUtils as utils
 from aicsimage.processing import aicsImage
@@ -95,6 +96,10 @@ def make_dir(dirname):
             if e.errno != errno.EEXIST:
                 raise
             pass
+
+
+def omexmlfind(obj, parent, tag):
+    return parent.findall(qn(obj.ns['ome'], tag))
 
 
 class ImageProcessor:
@@ -332,6 +337,82 @@ class ImageProcessor:
         print("done")
         return image
 
+    def generate_meta(self, a_im, row):
+        m = {}
+        names = a_im.get_channel_names()
+        for i, n in enumerate(names):
+            m["channel_"+str(i)+"_name"] = n
+
+        pix = a_im.metadata.image().Pixels
+        m["image_num_x"] = pix.get_SizeX()
+        m["image_num_y"] = pix.get_SizeY()
+        m["image_num_z"] = pix.get_SizeZ()
+        m["image_num_c"] = pix.get_SizeC()
+        m["image_num_t"] = pix.get_SizeT()
+
+        m["format"] = "OME-TIFF"
+
+        m['date_time'] = a_im.metadata.image().get_AcquisitionDate()
+
+        phys = a_im.get_physical_pixel_size()
+        m["pixel_resolution_x"] = phys[0]
+        m["pixel_resolution_y"] = phys[1]
+        m["pixel_resolution_z"] = phys[2]
+        m["pixel_resolution_t"] = 0
+        # fix this (get from metadata)
+        m["pixel_resolution_unit_x"] = "microns"
+        m["pixel_resolution_unit_y"] = "microns"
+        m["pixel_resolution_unit_z"] = "microns"
+        m["pixel_resolution_unit_t"] = "seconds"
+
+        m["image_dimensions"] = a_im.metadata.image().Pixels.get_DimensionOrder()
+
+        pixeltypes = {
+            'uint8':  ('unsigned integer', 8),
+            'uint16': ('unsigned integer', 16),
+            'uint32': ('unsigned integer', 32),
+            'uint64': ('unsigned integer', 64),
+            'int8':   ('signed integer', 8),
+            'int16':  ('signed integer', 16),
+            'int32':  ('signed integer', 32),
+            'int64':  ('signed integer', 64),
+            'float':  ('floating point', 32),
+            'double': ('floating point', 64),
+        }
+        try:
+            t = pixeltypes[a_im.metadata.image().Pixels.get_PixelType().lower()]
+            m['image_pixel_format'] = t[0]
+            m['image_pixel_depth']  = t[1]
+        except KeyError:
+            pass
+
+        instrument = omexmlfind(a_im.metadata, a_im.metadata.root_node, "Instrument")
+        if len(instrument) > 0:
+            instrument = instrument[0]
+            objective = omexmlfind(a_im.metadata, instrument, "Objective")
+            if len(objective) > 0:
+                objective = objective[0]
+                m['objective_magnification'] = objective.get("NominalMagnification")
+                m["numerical_aperture"] = objective.get("LensNA")
+
+        if row.cbrBounds is not None:
+            m["bounds"] = [row.cbrBounds['xmin'], row.cbrBounds['xmax'], row.cbrBounds['ymin'], row.cbrBounds['ymax'], row.cbrBounds['zmin'], row.cbrBounds['zmax']]
+
+        if row.cbrSourceImageName is not None:
+            m["source"] = row.cbrSourceImageName
+            m["isCropped"] = True
+        else:
+            m["isCropped"] = False
+        m["isModel"] = False
+
+        m["cell_line"] = row.cellLineId
+        m["segmentationVersion"] = row.Version
+        m["structureSegmentationMethod"] = row.StructureSegmentationMethod
+        m["inputFilename"] = row.inputFilename # czi
+        m["name"] = row.cbrCellName
+
+        return m
+
     def generate_and_save(self):
         base = self.row.cbrCellName
 
@@ -374,7 +455,10 @@ class ImageProcessor:
             print('generating atlas ...')
             atlas = textureAtlas.generate_texture_atlas(aimage, name=self.file_name, max_edge=2048, pack_order=None)
 
-            self._save_and_post(image=im_to_save, thumbnail=ffthumb, textureatlas=atlas, omexml=self.omexml)
+            # grab metadata for display
+            static_meta = self.generate_meta(aimage, self.row)
+
+            self._save_and_post(image=im_to_save, thumbnail=ffthumb, textureatlas=atlas, omexml=self.omexml, other_data=static_meta)
 
         if self.row.cbrGenerateSegmentedImages:
             # assumption: less than 256 cells segmented in the file.
@@ -458,19 +542,23 @@ class ImageProcessor:
                 print('generating atlas ...')
                 atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.file_name+'_'+str(i), max_edge=2048, pack_order=None)
 
-                self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=i, omexml=copyxml)
+                static_meta_cropped = self.generate_meta(aimage_cropped, self.row)
+
+                self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=i, omexml=copyxml, other_data=static_meta_cropped)
             print("done")
 
-    def _save_and_post(self, image, thumbnail, textureatlas, seg_cell_index=0, omexml=None):
+    def _save_and_post(self, image, thumbnail, textureatlas, seg_cell_index=0, omexml=None, other_data=None):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
         physical_size = [self.row.xyPixelSize, self.row.xyPixelSize, self.row.zPixelSize]
-        png_dir, ometif_dir, png_url, atlas_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir
+        png_dir, ometif_dir, png_url, atlas_dir, meta_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir, self.atlas_dir
         if seg_cell_index != 0:
+            meta_dir += '_' + str(seg_cell_index) + '_meta.json'
             png_dir += '_' + str(seg_cell_index) + '.png'
             ometif_dir += '_' + str(seg_cell_index) + '.ome.tif'
             png_url += '_' + str(seg_cell_index) + '.png'
         else:
+            meta_dir += '_meta.json'
             png_dir += '.png'
             ometif_dir += '.ome.tif'
             png_url += '.png'
@@ -493,6 +581,12 @@ class ImageProcessor:
         if textureatlas is not None:
             print("saving texture atlas...", end="")
             textureatlas.save(self.atlas_dir)
+            print("done")
+
+        if other_data is not None:
+            print("saving metadata json...", end="")
+            with open(meta_dir, 'w') as fp:
+                json.dump(other_data, fp)
             print("done")
 
         if self.row.cbrAddToDb:
