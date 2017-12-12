@@ -4,7 +4,7 @@
   "out_status": "/home/danielt/cellbrowserpipeline/cellbrowser-tools/processing",
   "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.1.1/Cell-Viewer_Data",
   "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.1.1/Cell-Viewer_Thumbnails",
-  "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.1.1/Cell-Viewer_Atlases",
+  "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.1.1/Cell-Viewer_Thumbnails",
   "out_bisquedb": "http://dev-aics-dtp-001",
 
   "script_dir": "scripts",
