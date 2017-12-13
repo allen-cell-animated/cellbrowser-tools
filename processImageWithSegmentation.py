@@ -551,7 +551,7 @@ class ImageProcessor:
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
         physical_size = [self.row.xyPixelSize, self.row.xyPixelSize, self.row.zPixelSize]
-        png_dir, ometif_dir, png_url, atlas_dir, meta_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir, self.atlas_dir
+        png_dir, ometif_dir, png_url, atlas_dir, meta_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir, self.png_dir
         if seg_cell_index != 0:
             meta_dir += '_' + str(seg_cell_index) + '_meta.json'
             png_dir += '_' + str(seg_cell_index) + '.png'
