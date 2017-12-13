@@ -194,7 +194,7 @@ def do_main(args, prefs):
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
         jobprefs = prefs['job_prefs']
-        jobScheduler.submit_jobs_batches(cmdlist, jobprefs)
+        jobScheduler.submit_jobs_batches(cmdlist, jobprefs, batch_size=196)
 
     else:
         # run serially
