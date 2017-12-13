@@ -503,9 +503,9 @@ class ImageProcessor:
                 self.row.cbrCellIndex = i
                 self.row.cbrSourceImageName = base
                 self.row.cbrCellName = base + '_' + str(i)
-                self.row.cbrBounds = {'xmin': bounds[0][0], 'xmax': bounds[0][1],
-                                      'ymin': bounds[1][0], 'ymax': bounds[1][1],
-                                      'zmin': bounds[2][0], 'zmax': bounds[2][1]}
+                self.row.cbrBounds = {'xmin': int(bounds[0][0]), 'xmax': int(bounds[0][1]),
+                                      'ymin': int(bounds[1][0]), 'ymax': int(bounds[1][1]),
+                                      'zmin': int(bounds[2][0]), 'zmax': int(bounds[2][1])}
 
                 for bn in self.row.cbrBounds:
                     print(bn, self.row.cbrBounds[bn])
