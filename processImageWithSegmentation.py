@@ -473,6 +473,8 @@ class ImageProcessor:
             segs = segs.split(";")
             # get rid of empty strings in segs
             segs = list(filter(None, segs))
+            # convert to ints
+            segs = list(map(int, segs))
 
             if self.image is not None:
                 # assumption: less than 256 cells segmented in the file.
