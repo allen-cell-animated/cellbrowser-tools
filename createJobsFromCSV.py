@@ -159,7 +159,7 @@ def do_image(args, prefs, row, index, total_jobs):
         elif args.segmentedonly:
             info.cbrGenerateSegmentedImages = True
             info.cbrGenerateFullFieldImages = False
-        else:
+        elif not args.dbonly:
             info.cbrGenerateSegmentedImages = True
             info.cbrGenerateFullFieldImages = True
 

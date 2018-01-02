@@ -121,12 +121,6 @@ def oneUp(sessionInfo, dict, outfile):
         for i in range(len(channel_names)):
             etree.SubElement(resource, 'tag', name='channelLabel_'+str(i), value=channel_names[i], permission=perm)
 
-    # assume bounding box exists...
-    if dict['cbrBounds'] is not None:
-        b = dict['cbrBounds']
-        # just a comma delimited string
-        bounds = str(b['xmin']) + ',' + str(b['xmax']) + ',' + str(b['ymin']) + ',' + str(b['ymax']) + ',' + str(b['zmin']) + ',' + str(b['zmax'])
-        etree.SubElement(resource, 'tag', name='bounds', value=bounds, permission=perm)
     if dict['cbrSourceImageName'] is not None:
         etree.SubElement(resource, 'tag', name='source', value=dict['cbrSourceImageName'], permission=perm)
         etree.SubElement(resource, 'tag', name='isCropped', value="true", permission=perm)

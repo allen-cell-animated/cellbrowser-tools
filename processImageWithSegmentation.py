@@ -7,7 +7,6 @@ from __future__ import print_function
 
 from aicsimage.io.cziReader import CziReader
 from aicsimage.io.tifReader import TifReader
-from aicsimage.io.omeTifReader import OmeTifReader
 from aicsimage.io.omeTifWriter import OmeTifWriter
 from aicsimage.io.pngWriter import PngWriter
 from aicsimage.io.omexml import OMEXML
@@ -26,7 +25,6 @@ import json
 import numpy as np
 import os
 import pprint
-import re
 import subprocess
 import sys
 import traceback
@@ -120,6 +118,7 @@ class ImageProcessor:
         # Setting up segmentation channels for full image
         self.seg_indices = []
         self.channels_to_mask = []
+        self.omexml = None
         # try:
         #     with OmeTifReader(self.ometif_dir + ".ome.tif") as reader:
         #         print("\nloading pre-made image for " + self.file_name + "...", end="")
@@ -148,13 +147,7 @@ class ImageProcessor:
         make_dir(atlasdir)
         self.atlas_dir = atlasdir
 
-    def add_segs_to_img(self):
-        outdir = self.row.cbrImageLocation
-        make_dir(outdir)
-
-        thumbnaildir = self.row.cbrThumbnailLocation
-        make_dir(thumbnaildir)
-
+    def build_file_list(self):
         # start with 4 channels for membrane, structure, nucleus and transmitted light
         self.channel_names = [
             "OBS_Memb",
@@ -223,7 +216,6 @@ class ImageProcessor:
         self.channel_colors.append(_rgba255(0, 255, 255, 255))
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
-
         # # structure contour segmentation
         # struct_con_path = struct_seg_path
         # if struct_con_path != '' and not struct_con_path.startswith('N/A'):
@@ -236,6 +228,20 @@ class ImageProcessor:
         #     self.channel_names.append("CON_STRUCT")
         #     self.channel_colors.append(_rgba255(255, 0, 255, 255))
 
+        return file_list
+
+    def add_segs_to_img(self):
+        outdir = self.row.cbrImageLocation
+        make_dir(outdir)
+
+        thumbnaildir = self.row.cbrThumbnailLocation
+        make_dir(thumbnaildir)
+
+        file_list = self.build_file_list()
+
+        # ALERT no images will be loaded!!!!
+        if self.row.cbrAddToDb:
+            return None
 
         image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
         image_file = utils.normalize_path(image_file)
@@ -285,8 +291,7 @@ class ImageProcessor:
             image[self.channel_indices[2]],
             image[self.channel_indices[3]]
         ])
-        channels_to_remove = [x for x in range(orig_num_channels) if not x in self.channel_indices]
-
+        channels_to_remove = [x for x in range(orig_num_channels) if x not in self.channel_indices]
 
         # 3. fix up XML to reorder channels
         # we want to preserve all channel and plane data for the channels we are keeping!
@@ -328,7 +333,7 @@ class ImageProcessor:
                 # append channels containing segmentations
                 self.omexml.image().Pixels.append_channel(nch + i, self.channel_names[nch + i])
                 # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
-                image = np.append(image, [seg[0,:,0,:,:]], axis=0)
+                image = np.append(image, [seg[0, :, 0, :, :]], axis=0)
                 self.seg_indices.append(image.shape[0] - 1)
                 i += 1
             else:
@@ -382,7 +387,7 @@ class ImageProcessor:
         try:
             t = pixeltypes[a_im.metadata.image().Pixels.get_PixelType().lower()]
             m['image_pixel_format'] = t[0]
-            m['image_pixel_depth']  = t[1]
+            m['image_pixel_depth'] = t[1]
         except KeyError:
             pass
 
@@ -408,7 +413,7 @@ class ImageProcessor:
         m["cell_line"] = row.cellLineId
         m["segmentationVersion"] = row.Version
         m["structureSegmentationMethod"] = row.StructureSegmentationMethod
-        m["inputFilename"] = row.inputFilename # czi
+        m["inputFilename"] = row.inputFilename  # czi
         m["name"] = row.cbrCellName
 
         return m
@@ -437,7 +442,7 @@ class ImageProcessor:
                                                                   mask_channel_index=self.seg_indices[1],
                                                                   colors=[[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 1.0]],
                                                                   old_alg=True)
-                ffthumb = generator.make_thumbnail(self.image.transpose(1,0,2,3), apply_cell_mask=False)
+                ffthumb = generator.make_thumbnail(self.image.transpose(1, 0, 2, 3), apply_cell_mask=False)
                 print("done")
             else:
                 ffthumb = None
@@ -449,42 +454,58 @@ class ImageProcessor:
             else:
                 im_to_save = None
 
-            # do texture atlas here
-            aimage = aicsImage.AICSImage(self.image, dims="CZYX")
-            aimage.metadata = self.omexml
-            print('generating atlas ...')
-            atlas = textureAtlas.generate_texture_atlas(aimage, name=self.file_name, max_edge=2048, pack_order=None)
-
-            # grab metadata for display
-            static_meta = self.generate_meta(aimage, self.row)
+            if self.image is not None:
+                # do texture atlas here
+                aimage = aicsImage.AICSImage(self.image, dims="CZYX")
+                aimage.metadata = self.omexml
+                print('generating atlas ...')
+                atlas = textureAtlas.generate_texture_atlas(aimage, name=self.file_name, max_edge=2048, pack_order=None)
+                # grab metadata for display
+                static_meta = self.generate_meta(aimage, self.row)
+            else:
+                atlas = None
+                static_meta = None
 
             self._save_and_post(image=im_to_save, thumbnail=ffthumb, textureatlas=atlas, omexml=self.omexml, other_data=static_meta)
 
         if self.row.cbrGenerateSegmentedImages:
-            # assumption: less than 256 cells segmented in the file.
-            # assumption: cell segmentation is a numeric index in the pixels
-            cell_segmentation_image = self.image[self.seg_indices[1], :, :, :]
-            # which bins have segmented pixels?
-            # note that this includes zeroes, which is to be ignored.
-            h0 = np.unique(cell_segmentation_image)
-            h0 = h0[h0 > 0]
-            # for each cell segmented from this image:
-            print("generating segmented cells...", end="")
-            for i in h0:
+            segs = self.row.outputCellSegIndex
+            segs = segs.split(";")
+            # get rid of empty strings in segs
+            segs = list(filter(None, segs))
+
+            if self.image is not None:
+                # assumption: less than 256 cells segmented in the file.
+                # assumption: cell segmentation is a numeric index in the pixels
+                cell_segmentation_image = self.image[self.seg_indices[1], :, :, :]
+                # which bins have segmented pixels?
+                # note that this includes zeroes, which is to be ignored.
+                h0 = np.unique(cell_segmentation_image)
+                h0 = h0[h0 > 0]
+
+            for i in segs:
+                # for each cell segmented from this image:
+                print("generating segmented cells...", end="")
                 if i == 0:
                     continue
                 print(i, end=" ")
 
-                bounds = get_segmentation_bounds(cell_segmentation_image, i)
-                cropped = crop_to_bounds(self.image, bounds)
-                # Turn the seg channels into true masks
-                # by zeroing out all elements != i.
-                # Note that structure segmentation and contour does not use same masking index rules -
-                # the values stored are not indexed by cell number.
-                for mi in self.channels_to_mask:
-                    cropped[mi] = image_to_mask(cropped[mi], i, 255)
-
-                # cropped[struct_seg_channel] = image_to_mask(cropped[struct_seg_channel], i)
+                if self.image is not None:
+                    bounds = get_segmentation_bounds(cell_segmentation_image, i)
+                    cropped = crop_to_bounds(self.image, bounds)
+                    # Turn the seg channels into true masks
+                    # by zeroing out all elements != i.
+                    # Note that structure segmentation and contour does not use same masking index rules -
+                    # the values stored are not indexed by cell number.
+                    for mi in self.channels_to_mask:
+                        cropped[mi] = image_to_mask(cropped[mi], i, 255)
+                    self.row.cbrBounds = {'xmin': int(bounds[0][0]), 'xmax': int(bounds[0][1]),
+                                          'ymin': int(bounds[1][0]), 'ymax': int(bounds[1][1]),
+                                          'zmin': int(bounds[2][0]), 'zmax': int(bounds[2][1])}
+                    for bn in self.row.cbrBounds:
+                        print(bn, self.row.cbrBounds[bn])
+                else:
+                    cropped = None
 
                 if self.row.cbrGenerateThumbnail:
                     print("making thumbnail...", end="")
@@ -493,7 +514,7 @@ class ImageProcessor:
                                                                       mask_channel_index=self.seg_indices[1],
                                                                       colors=[[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 1.0]],
                                                                       old_alg=True)
-                    thumb = generator.make_thumbnail(cropped.copy().transpose(1,0,2,3), apply_cell_mask=True)
+                    thumb = generator.make_thumbnail(cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True)
                     # thumb = thumbnailGenerator.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
                     #                                                     size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     print("done")
@@ -503,49 +524,48 @@ class ImageProcessor:
                 self.row.cbrCellIndex = i
                 self.row.cbrSourceImageName = base
                 self.row.cbrCellName = base + '_' + str(i)
-                self.row.cbrBounds = {'xmin': int(bounds[0][0]), 'xmax': int(bounds[0][1]),
-                                      'ymin': int(bounds[1][0]), 'ymax': int(bounds[1][1]),
-                                      'zmin': int(bounds[2][0]), 'zmax': int(bounds[2][1])}
 
-                for bn in self.row.cbrBounds:
-                    print(bn, self.row.cbrBounds[bn])
-
-                print("making image...", end="")
 
                 # copy self.omexml for output
                 copyxml = None
-                copied = copy.deepcopy(self.omexml.dom)
-                copyxml = OMEXML(rootnode=copied)
-                # now fix it up
-                pixels = copyxml.image().Pixels
-                pixels.set_SizeX(cropped.shape[3])
-                pixels.set_SizeY(cropped.shape[2])
-                pixels.set_SizeZ(cropped.shape[1])
-                # if sizeZ changed, then we have to use bounds to fix up the plane elements
-                minz = bounds[2][0]
-                maxz = bounds[2][1]
-                planes = []
-                for pi in range(pixels.get_plane_count()):
-                    planes.append(pixels.Plane(pi))
-                for p in planes:
-                    pz = p.get_TheZ()
-                    # TODO: CONFIRM THAT THIS IS CORRECT!!
-                    if pz >= maxz or pz < minz:
-                        pixels.node.remove(p.node)
-                    else:
-                        p.set_TheZ(pz - minz)
-                print("done")
+                if self.image is not None:
+                    print("making image...", end="")
+                    copied = copy.deepcopy(self.omexml.dom)
+                    copyxml = OMEXML(rootnode=copied)
+                    # now fix it up
+                    pixels = copyxml.image().Pixels
+                    pixels.set_SizeX(cropped.shape[3])
+                    pixels.set_SizeY(cropped.shape[2])
+                    pixels.set_SizeZ(cropped.shape[1])
+                    # if sizeZ changed, then we have to use bounds to fix up the plane elements
+                    minz = bounds[2][0]
+                    maxz = bounds[2][1]
+                    planes = []
+                    for pi in range(pixels.get_plane_count()):
+                        planes.append(pixels.Plane(pi))
+                    for p in planes:
+                        pz = p.get_TheZ()
+                        # TODO: CONFIRM THAT THIS IS CORRECT!!
+                        if pz >= maxz or pz < minz:
+                            pixels.node.remove(p.node)
+                        else:
+                            p.set_TheZ(pz - minz)
+                    print("done")
 
-                # do texture atlas here
-                aimage_cropped = aicsImage.AICSImage(cropped, dims="CZYX")
-                aimage_cropped.metadata = copyxml
-                print('generating atlas ...')
-                atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.file_name+'_'+str(i), max_edge=2048, pack_order=None)
+                    # do texture atlas here
+                    aimage_cropped = aicsImage.AICSImage(cropped, dims="CZYX")
+                    aimage_cropped.metadata = copyxml
+                    print('generating atlas ...')
+                    atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.file_name+'_'+str(i), max_edge=2048, pack_order=None)
 
-                static_meta_cropped = self.generate_meta(aimage_cropped, self.row)
+                    static_meta_cropped = self.generate_meta(aimage_cropped, self.row)
+                else:
+                    atlas_cropped = None
+                    static_meta_cropped = None
 
                 self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=i, omexml=copyxml, other_data=static_meta_cropped)
             print("done")
+
 
     def _save_and_post(self, image, thumbnail, textureatlas, seg_cell_index=0, omexml=None, other_data=None):
         # physical_size = [0.065, 0.065, 0.29]
