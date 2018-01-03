@@ -59,13 +59,15 @@ def oneUp(sessionInfo, dict, outfile):
     structureProteinName = dict['structureProteinName']
     cbrDataRoot = dict['cbrDataRoot']
 
+    tifext = '.ome.tif'
+
     # avoid dups:
     # before adding this entry,
     # destroy any db entries with this name or this inputFilename
-    # ims = api.getImagesByName(cbrCellName)
-    # if ims is not None:
-    #     for image in ims:
-    #         api.deleteImage(image.get("resource_uniq"))
+    ims = api.getImagesByName(cbrCellName)
+    if ims is not None:
+        for image in ims:
+            api.deleteImage(image.get("resource_uniq"))
     # We can't delete these because all the segmented images have the same inputFilename
     # ims = api.getImagesByTagValue(name='inputFilename', value=dict['inputFilename'])
     # if ims is not None:
@@ -89,7 +91,6 @@ def oneUp(sessionInfo, dict, outfile):
     # from the parent.
     perm = 'published'
 
-    tifext = '.ome.tif'
     fullpath = cbrImageLocation + '/' + cbrCellName + tifext
     relpath = dict['cbrImageRelPath'] + '/' + cbrCellName + tifext
     # assume thumbnail to be a png file and servable from thumbnailpath
