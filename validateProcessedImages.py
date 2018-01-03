@@ -26,61 +26,6 @@ from processImageWithSegmentation import do_main_image
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 
-def validate(batchname, jobname, info, sheet_row):
-    imageName = info.cbrCellName
-    segs = sheet_row["outputCellSegIndex"]
-    segs = segs.split(";")
-    # get rid of empty strings in segs
-    segs = list(filter(None, segs))
-
-    names = [imageName]
-    for seg in segs:
-        # str(int(seg)) removes leading zeros
-        names.append(imageName + "_" + str(int(seg)))
-
-    exts = ['.ome.tif', '.png']
-    # check existence of ome.tif and png.
-
-    data_dir = '\\\\allen\\aics\\animated-cell\\Allen-Cell-Explorer\\Allen-Cell-Explorer_1.1.0\\Cell-Viewer_Data'
-    thumbs_dir = '\\\\allen\\aics\\animated-cell\\Allen-Cell-Explorer\\Allen-Cell-Explorer_1.1.0\\Cell-Viewer_Thumbnails'
-    # assume that the file location has same name as this subdir name of where the spreadsheet lives:
-    data_subdir = batchname.split('\\')[-3]
-    # data_subdir = '2017_03_08_Struct_First_Pass_Seg'
-    cell_line = 'AICS-' + str(sheet_row["cell_line_ID"])
-    for f in names:
-        # check for thumbnail
-        fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
-        if not os.path.isfile(fullf):
-            print(batchname + ": Could not find file: " + fullf)
-
-        # check for image
-        fullf = os.path.join(data_dir, data_subdir, cell_line, f + '.ome.tif')
-        if not os.path.isfile(fullf):
-            print(batchname + ": Could not find file: " + fullf)
-
-        # see if image is in bisque db.
-        session_dict = {
-            'root': 'http://dev-aics-dtp-001',
-            # 'root': 'http://10.128.62.98',
-            'user': 'admin',
-            'password': 'admin'
-        }
-        db_api.DbApi.setSessionInfo(session_dict)
-        xml = db_api.DbApi.getImagesByName(f)
-        if len(xml.getchildren()) != 1:
-            print('Retrieved ' + str(len(xml.getchildren())) + ' images with name ' + f)
-        if len(xml.getchildren()) > 1:
-            dbnames = []
-            for i in xml:
-                imname = i.get("name")
-                if imname in dbnames:
-                    imid = i.get("resource_uniq")
-                    print("  Deleting: " + imid)
-                    db_api.DbApi.deleteImage(imid)
-                else:
-                    dbnames.append(imname)
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
                                                  'and set up a job script for each row.'
@@ -129,6 +74,22 @@ def do_image(args, prefs, row, index, total_jobs):
         fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
         if not os.path.isfile(fullf):
             print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullf)
+
+        # check for atlas meta
+        fullaj = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_atlas.json')
+        if not os.path.isfile(fullaj):
+            print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullaj)
+
+        # expect 3 atlas png files
+        for i in ['0', '1', '2']:
+            fullat = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_atlas_'+i+'.png')
+            if not os.path.isfile(fullat):
+                print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullat)
+
+        # check for image meta
+        fullmj = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_meta.json')
+        if not os.path.isfile(fullmj):
+            print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullmj)
 
         # check for image
         fullf = os.path.join(data_dir, data_subdir, cell_line, f + '.ome.tif')
