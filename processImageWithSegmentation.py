@@ -411,8 +411,9 @@ class ImageProcessor:
         m["isModel"] = False
 
         m["cell_line"] = row.cellLineId
-        m["segmentationVersion"] = row.Version
+        m["cellSegmentationVersion"] = row.VersionNucMemb
         m["structureSegmentationMethod"] = row.StructureSegmentationMethod
+        m["structureSegmentationVersion"] = row.VersionStructure
         m["inputFilename"] = row.inputFilename  # czi
         m["name"] = row.cbrCellName
 

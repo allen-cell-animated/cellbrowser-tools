@@ -2,7 +2,8 @@
 class CellJob(object):
     def __init__(self, csvRow):
         self.DeliveryDate = '00/00/0000'
-        self.Version = '0.0'
+        self.VersionNucMemb = '0.0'
+        self.VersionStructure = '0.0'
         self.inputFolder = ''
         self.inputFilename = ''
         self.inputFileRow = 0
@@ -59,7 +60,8 @@ class CellJob(object):
         if csvRow is not None:
             self.cbrParseError = csvRow.get('cbrParseError', False)
             self.DeliveryDate = csvRow.get('DeliveryDate')
-            self.Version = str(csvRow.get('Version'))
+            self.VersionNucMemb = str(csvRow.get('VersionNucMemb'))
+            self.VersionStructure = str(csvRow.get('VersionStructure'))
             self.inputFolder = csvRow.get('inputFolder')
             self.inputFilename = csvRow.get('inputFilename')
 
