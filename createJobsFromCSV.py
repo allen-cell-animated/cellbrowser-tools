@@ -215,7 +215,7 @@ def setup_prefs(json_path):
     if not os.path.exists(prefs['out_atlasroot']):
         os.makedirs(prefs['out_atlasroot'])
 
-    json_path_local = prefs['out_status'] + os.sep + 'prefs.json';
+    json_path_local = prefs['out_status'] + os.sep + 'prefs.json'
     shutil.copyfile(json_path, json_path_local)
     # if not os.path.exists(json_path_local):
     #     # make a copy of the json object in the parent directory
