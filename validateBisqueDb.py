@@ -12,6 +12,33 @@ import re
 import sys
 import uploader.db_api as db_api
 
+def verify_files(thumbs_dir, data_dir, data_subdir, cell_line, f, batchname, jobname):
+    # check for thumbnail
+    fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
+    if not os.path.isfile(fullf):
+        print(batchname + ": " + jobname + ": Could not find file: " + fullf)
+
+    # check for image
+    fullf = os.path.join(data_dir, data_subdir, cell_line, f + '.ome.tif')
+    if not os.path.isfile(fullf):
+        print(batchname + ": " + jobname + ": Could not find file: " + fullf)
+
+    # check for atlas meta
+    fullaj = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_atlas.json')
+    if not os.path.isfile(fullaj):
+        print(batchname + ": " + jobname + ": Could not find file: " + fullaj)
+
+    # expect 3 atlas png files
+    for i in ['0', '1', '2']:
+        fullat = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_atlas_'+i+'.png')
+        if not os.path.isfile(fullat):
+            print(batchname + ": " + jobname + ": Could not find file: " + fullat)
+
+    # check for image meta
+    fullmj = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_meta.json')
+    if not os.path.isfile(fullmj):
+        print(batchname + ": " + jobname + ": Could not find file: " + fullmj)
+
 
 def do_image(row, prefs):
     batchname = row['source_data']
@@ -48,16 +75,6 @@ def do_image(row, prefs):
     # make sure every segmented cell image is in the db
     ids_to_delete = []
     for f in names:
-        # check for thumbnail
-        fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
-        if not os.path.isfile(fullf):
-            print(batchname + ": " + jobname + ": Could not find file: " + fullf)
-
-        # check for image
-        fullf = os.path.join(data_dir, data_subdir, cell_line, f + '.ome.tif')
-        if not os.path.isfile(fullf):
-            print(batchname + ": " + jobname + ": Could not find file: " + fullf)
-
         expected_relpath = data_subdir + '/' + cell_line + '/' + f + '.ome.tif'
 
         found_in_db = False
@@ -93,9 +110,11 @@ def do_image(row, prefs):
                 print("ERROR path mismatch for " + f + ": db has " + imgnameindb + ' but expected ' + expected_relpath)
 
     # UNCOMMENT TO DO ACTUAL DELETIONS. DANGER THIS MAY HAVE SIDE EFFECT OF REMOVING OME TIF FILES.
-    # for i in ids_to_delete:
-    #     db_api.DbApi.deleteImage(i)
+    for i in ids_to_delete:
+        db_api.DbApi.deleteImage(i)
 
+    for f in names:
+        verify_files(thumbs_dir, data_dir, data_subdir, cell_line, f, batchname, jobname)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
