@@ -10,9 +10,9 @@
   "script_dir": "scripts",
   "data_log_name": "data_jobs_out.csv",
   "job_prefs": {
-    "host name": "qmaster",
-    "queue_name": "aics_assay_dev",
-    "njobs": "40",
+    "host name": "hpc_login",
+    "queue_name": "allencell",
+    "njobs": "64",
     "walltime": "03:00:00",
     "memory": "6gb",
     "debug": "false"
