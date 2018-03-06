@@ -617,7 +617,7 @@ class ImageProcessor:
             self.row.channelNames = self.channel_names
             self.row.cbrThumbnailURL = png_url
             session_info = {
-                'root': 'http://dev-aics-dtp-001',
+                'root': self.row.dbUrl,
                 'user': 'admin',
                 'password': 'admin'
             }
