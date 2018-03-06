@@ -47,6 +47,8 @@ class CellJob(object):
         self.cbrDatasetName = ''
         self.cbrCellName = ''
 
+        self.dbUrl = ''
+
         # processing
 
         self.cbrGenerateThumbnail = False
@@ -141,4 +143,6 @@ class CellJob(object):
             self.cbrDatasetName = csvRow.get('cbrDatasetName', self.cbrDatasetName)
             self.cbrCellName = csvRow.get('cbrCellName', self.cbrCellName)
             self.cbrSkipStructureSegmentation = csvRow.get('cbrSkipStructureSegmentation', self.cbrSkipStructureSegmentation)
+
+            self.dbUrl = csvRow.get('dbUrl', self.dbUrl)
 
