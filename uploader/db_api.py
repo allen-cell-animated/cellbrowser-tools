@@ -71,6 +71,7 @@ class DbApi(object):
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
                 print(e)
+                raise
             tree = ElementTree.fromstring(response.content)
             if tree is not None:
                 results.extend(tree.getchildren())

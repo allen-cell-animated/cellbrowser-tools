@@ -5,7 +5,7 @@
   "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.2.0/Cell-Viewer_Data",
   "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.2.0/Cell-Viewer_Thumbnails",
   "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.2.0/Cell-Viewer_Thumbnails",
-  "out_bisquedb": "http://dev-aics-dtp-001",
+  "out_bisquedb": "http://dev-aics-dtp-001.corp.alleninstitute.org:81",
 
   "script_dir": "scripts",
   "data_log_name": "data_jobs_out.csv",

@@ -39,6 +39,7 @@ proteinToStructure = {
     'ZO1': ['Tight junction ZO1', 'Tight junctions'],
     'TJP1': ['Tight junction ZO1', 'Tight junctions'],
 
+    'MYOSIN': ['Non-muscle myosin IIB', 'Actomyosin'],
     'MYOSINIIB': ['Non-muscle myosin IIB', 'Actomyosin'],
     'MYH10': ['Non-muscle myosin IIB', 'Actomyosin'],
 
