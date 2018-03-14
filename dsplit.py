@@ -53,7 +53,7 @@ OPTIONS
     sys.exit(0)
 
 
-def newarchive(outputdirtarget, prefix, index, archivesize, thisarchivefiles):
+def newarchive(outputdirtarget, inputdirtarget, prefix, index, archivesize, thisarchivefiles):
     if index != 0:
         stdout.write((BD+"Total: %.2f MB (%d files)\n"+RE) %
                      (archivesize / MB, thisarchivefiles))
@@ -66,7 +66,9 @@ def newarchive(outputdirtarget, prefix, index, archivesize, thisarchivefiles):
                      (index, verbose and "\n" or ""))
         arfilename = path.join(outputdirtarget, "%s-part%02d.txt" % (prefix, index))
         arfileobj = open(arfilename, "w", newline='\n')
-
+        arfileobj.write('-C%s\n' % outputdirtarget)
+        arfileobj.write('%s-part%02d.txt\n' % (prefix, index))
+        arfileobj.write('-C%s\n' % inputdirtarget)
         return arfileobj, index, archivesize
 
 
@@ -159,7 +161,7 @@ for cellline in cellnamedict:
     listnameroot = cellline
     stdout.write(("%s\n") % (cellline))
 
-    (arfile, idx, volsize) = newarchive(outputdir, listnameroot, 0, 0, 0)
+    (arfile, idx, volsize) = newarchive(outputdir, inputdir, listnameroot, 0, 0, 0)
     thisvolfiles = 0
 
     for f in files:
@@ -177,7 +179,7 @@ for cellline in cellnamedict:
                              (thisdirfiles, thisdirsize/MB))
 
             (arfile, idx, volsize) = \
-                newarchive(outputdir, listnameroot, idx, volsize, thisvolfiles)
+                newarchive(outputdir, inputdir, listnameroot, idx, volsize, thisvolfiles)
             thisvolfiles = 0
 
             # if verbose:
@@ -187,7 +189,7 @@ for cellline in cellnamedict:
         thisvolfiles += 1
         volsize += s
     # end for f
-    newarchive(outputdir, listnameroot, -1, volsize, thisvolfiles)
+    newarchive(outputdir, inputdir, listnameroot, -1, volsize, thisvolfiles)
     if verbose:
         stdout.write(("%d files ("+UL+"%.2f MB"+RE+").\n") %
                      (thisdirfiles, thisdirsize/MB))
