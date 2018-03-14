@@ -18,6 +18,7 @@ class CellJob(object):
         self.structureProteinName = ''
         self.lightChannel = 0
         self.timePoint = 0
+        self.colonyPosition = 0
 
         self.outputSegmentationPath = ''
         self.outputNucSegWholeFilename = ''
@@ -112,6 +113,11 @@ class CellJob(object):
                 self.timePoint = int(float(csvRow.get('timePoint', 0)))
             except ValueError:
                 self.timePoint = 0
+                self.cbrParseError = True
+            try:
+                self.colonyPosition = int(float(csvRow.get('colony_position', 0)))
+            except ValueError:
+                self.colonyPosition = 0
                 self.cbrParseError = True
 
             self.outputSegmentationPath = csvRow.get('outputSegmentationPath')

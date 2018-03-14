@@ -66,10 +66,10 @@ def oneUp(sessionInfo, dict, outfile):
     # avoid dups:
     # before adding this entry,
     # destroy any db entries with this name or this inputFilename
-    ims = api.getImagesByName(cbrCellName)
-    if ims is not None:
-        for image in ims:
-            api.deleteImage(image.get("resource_uniq"))
+    # ims = api.getImagesByName(cbrCellName)
+    # if ims is not None:
+    #     for image in ims:
+    #         api.deleteImage(image.get("resource_uniq"))
     # We can't delete these because all the segmented images have the same inputFilename
     # ims = api.getImagesByTagValue(name='inputFilename', value=dict['inputFilename'])
     # if ims is not None:
@@ -93,14 +93,14 @@ def oneUp(sessionInfo, dict, outfile):
     # from the parent.
     perm = 'published'
 
-    fullpath = cbrImageLocation + '/' + cbrCellName + tifext
-    relpath = dict['cbrImageRelPath'] + '/' + cbrCellName + tifext
+    relpath = dict['cbrImageRelPath']
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = cbrThumbnailURL
     relpath_thumbnail = thumbnail
+    relpath_ometif = thumbnail.replace('.png', tifext)
     resource = etree.Element('image',
                              name=cbrCellName + tifext,
-                             value=relpath)
+                             value=relpath + '/' + cbrCellName + tifext)
     resource.set('permission', perm)
 
     etree.SubElement(resource, 'tag', name='name', value=cbrCellName, permission=perm)
@@ -108,14 +108,13 @@ def oneUp(sessionInfo, dict, outfile):
     # etree.SubElement(resource, 'tag', name='filename', value=cbrCellName+tifext, permission=perm)
 
     etree.SubElement(resource, 'tag', name='thumbnail', value=relpath_thumbnail, permission=perm)
+    etree.SubElement(resource, 'tag', name='ometifpath', value=relpath_ometif, permission=perm)
     etree.SubElement(resource, 'tag', name='structureProteinName', value=proteinDisplayName, permission=perm)
     etree.SubElement(resource, 'tag', name='structureName', value=structureDisplayName, permission=perm)
     # this batch of images are all from microscope and not simulated.
     etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
     etree.SubElement(resource, 'tag', name='cellSegmentationVersion', value=str(cbrCellSegmentationVersion), permission=perm)
     etree.SubElement(resource, 'tag', name='structureSegmentationVersion', value=str(cbrStructureSegmentationVersion), permission=perm)
-    if cbrStructureSegmentationMethod:
-        etree.SubElement(resource, 'tag', name='structureSegmentationMethod', value=cbrStructureSegmentationMethod, permission=perm)
     if dict['inputFilename']:
         etree.SubElement(resource, 'tag', name='inputFilename', value=dict['inputFilename'], permission=perm)
 
@@ -126,12 +125,15 @@ def oneUp(sessionInfo, dict, outfile):
             etree.SubElement(resource, 'tag', name='channelLabel_'+str(i), value=channel_names[i], permission=perm)
 
     if dict['cbrSourceImageName'] is not None:
+        etree.SubElement(resource, 'tag', name='parentometifpath', value=relpath + '/' + dict['cbrSourceImageName'] + tifext, permission=perm)
         etree.SubElement(resource, 'tag', name='source', value=dict['cbrSourceImageName'], permission=perm)
         etree.SubElement(resource, 'tag', name='isCropped', value="true", permission=perm)
     else:
         etree.SubElement(resource, 'tag', name='isCropped', value="false", permission=perm)
 
     resource_uniq = api.add_image(resource)
+
+    fullpath = cbrImageLocation + '/' + cbrCellName + tifext
     print(cbrCellName + ',' + (resource_uniq if resource_uniq is not None else "None") + ',' + fullpath)
 
     if outfile is not None:
