@@ -115,6 +115,8 @@ def oneUp(sessionInfo, dict, outfile):
     etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
     etree.SubElement(resource, 'tag', name='cellSegmentationVersion', value=str(cbrCellSegmentationVersion), permission=perm)
     etree.SubElement(resource, 'tag', name='structureSegmentationVersion', value=str(cbrStructureSegmentationVersion), permission=perm)
+    etree.SubElement(resource, 'tag', name='colony_position', value=str(dict['colonyPosition']), permission=perm)
+    
     if dict['inputFilename']:
         etree.SubElement(resource, 'tag', name='inputFilename', value=dict['inputFilename'], permission=perm)
 

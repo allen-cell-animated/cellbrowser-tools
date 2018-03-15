@@ -18,7 +18,7 @@ class CellJob(object):
         self.structureProteinName = ''
         self.lightChannel = 0
         self.timePoint = 0
-        self.colonyPosition = 0
+        self.colonyPosition = ''
 
         self.outputSegmentationPath = ''
         self.outputNucSegWholeFilename = ''
@@ -63,8 +63,8 @@ class CellJob(object):
         if csvRow is not None:
             self.cbrParseError = csvRow.get('cbrParseError', False)
             self.DeliveryDate = csvRow.get('DeliveryDate')
-            self.VersionNucMemb = str(csvRow.get('VersionNucMemb'))
-            self.VersionStructure = str(csvRow.get('VersionStructure'))
+            self.VersionNucMemb = str(csvRow.get('VersionNucMemb', ' '))
+            self.VersionStructure = str(csvRow.get('VersionStructure', ' '))
             self.inputFolder = csvRow.get('inputFolder')
             self.inputFilename = csvRow.get('inputFilename')
 
@@ -114,11 +114,14 @@ class CellJob(object):
             except ValueError:
                 self.timePoint = 0
                 self.cbrParseError = True
-            try:
-                self.colonyPosition = int(float(csvRow.get('colony_position', 0)))
-            except ValueError:
-                self.colonyPosition = 0
-                self.cbrParseError = True
+
+            self.colonyPosition = csvRow.get('colony_position', ' ')
+            if self.colonyPosition == 'c':
+                self.colonyPosition = 'center'
+            elif self.colonyPosition == 'r':
+                self.colonyPosition = 'ridge'
+            elif self.colonyPosition == 'e':
+                self.colonyPosition = 'edge'
 
             self.outputSegmentationPath = csvRow.get('outputSegmentationPath')
             self.outputNucSegWholeFilename = csvRow.get('outputNucSegWholeFilename')
