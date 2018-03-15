@@ -397,7 +397,7 @@ class ImageProcessor:
             objective = omexmlfind(a_im.metadata, instrument, "Objective")
             if len(objective) > 0:
                 objective = objective[0]
-                m['objective_magnification'] = objective.get("NominalMagnification")
+                m['objective'] = objective.get("NominalMagnification")
                 m["numerical_aperture"] = objective.get("LensNA")
 
         if row.cbrBounds is not None:
