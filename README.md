@@ -28,7 +28,7 @@ If not already, copy or move png thumbnails to final destination: \\allen\aics\a
     python dsplit.py -s 20000 \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_VERSION\Cell-Viewer_Data \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_VERSION\archive\  
 
     cd \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_VERSION\Cell-Viewer_Data
-    for i in ../archive/*.txt; do tar -c -T "${i}" | gzip -1 > "${i%.txt}.tar.gz"; done
+    for i in ../archive/AICS*.txt; do tar -c -T "meta-${i}" -T "${i}" | gzip -1 > "${i%.txt}.tar.gz"; done
 
 6. Upon deployment, can run  
     python uploader/stress.py  

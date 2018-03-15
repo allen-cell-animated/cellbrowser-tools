@@ -64,10 +64,18 @@ def newarchive(outputdirtarget, inputdirtarget, prefix, index, archivesize, this
 
         stdout.write((BD + "Archive %02d:" + RE + "%s") %
                      (index, verbose and "\n" or ""))
+
+        armetafilename = path.join(outputdirtarget, "meta-%s-part%02d.txt" % (prefix, index))
+        armetafileobj = open(armetafilename, "w", newline='\n')
+        mypath = os.path.dirname(os.path.realpath(__file__))
+        armetafileobj.write('-C%s\n' % mypath)
+        armetafileobj.write('archive_readme.txt\n')
+        armetafileobj.write('-C%s\n' % outputdirtarget)
+        armetafileobj.write('%s-part%02d.txt\n' % (prefix, index))
+        armetafileobj.close()
+
         arfilename = path.join(outputdirtarget, "%s-part%02d.txt" % (prefix, index))
         arfileobj = open(arfilename, "w", newline='\n')
-        arfileobj.write('-C%s\n' % outputdirtarget)
-        arfileobj.write('%s-part%02d.txt\n' % (prefix, index))
         arfileobj.write('-C%s\n' % inputdirtarget)
         return arfileobj, index, archivesize
 
