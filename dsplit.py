@@ -72,11 +72,11 @@ def newarchive(outputdirtarget, inputdirtarget, prefix, index, archivesize, this
         armetafileobj.write('archive_readme.txt\n')
         armetafileobj.write('-C%s\n' % outputdirtarget)
         armetafileobj.write('%s-part%02d.txt\n' % (prefix, index))
+        armetafileobj.write('-C%s\n' % inputdirtarget)
         armetafileobj.close()
 
         arfilename = path.join(outputdirtarget, "%s-part%02d.txt" % (prefix, index))
         arfileobj = open(arfilename, "w", newline='\n')
-        arfileobj.write('-C%s\n' % inputdirtarget)
         return arfileobj, index, archivesize
 
 
