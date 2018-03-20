@@ -93,7 +93,7 @@ def oneUp(sessionInfo, dict, outfile):
     # from the parent.
     perm = 'published'
 
-    relpath = dict['cbrImageRelPath']
+    relpath = dict['cbrImageRelPath'].replace('\\', '/')
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = cbrThumbnailURL
     relpath_thumbnail = thumbnail
