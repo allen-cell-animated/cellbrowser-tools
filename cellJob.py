@@ -116,7 +116,7 @@ class CellJob(object):
                 self.cbrParseError = True
 
             self.colonyPosition = csvRow.get('colony_position', ' ')
-            print(self.colonyPosition)
+            # print(self.colonyPosition)
             self.colonyPosition = self.colonyPosition.strip()
             if self.colonyPosition == 'c':
                 self.colonyPosition = 'center'
