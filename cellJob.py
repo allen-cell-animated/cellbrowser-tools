@@ -115,7 +115,8 @@ class CellJob(object):
                 self.timePoint = 0
                 self.cbrParseError = True
 
-            self.colonyPosition = csvRow.get('colony_position', ' ')
+            self.colonyPosition = csvRow.get('colony_position', csvRow.get('colonyPosition', ' '))
+
             # print(self.colonyPosition)
             self.colonyPosition = self.colonyPosition.strip()
             if self.colonyPosition == 'c':
