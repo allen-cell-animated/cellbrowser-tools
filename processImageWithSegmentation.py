@@ -365,9 +365,9 @@ class ImageProcessor:
         m["pixel_resolution_z"] = phys[2]
         m["pixel_resolution_t"] = 0
         # fix this (get from metadata)
-        m["pixel_resolution_unit_x"] = "microns"
-        m["pixel_resolution_unit_y"] = "microns"
-        m["pixel_resolution_unit_z"] = "microns"
+        m["pixel_resolution_unit_x"] = "micrometers"
+        m["pixel_resolution_unit_y"] = "micrometers"
+        m["pixel_resolution_unit_z"] = "micrometers"
         m["pixel_resolution_unit_t"] = "seconds"
 
         m["image_dimensions"] = a_im.metadata.image().Pixels.get_DimensionOrder()
