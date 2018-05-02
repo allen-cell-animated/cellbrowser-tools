@@ -1,10 +1,10 @@
 {
   "imageIDs": "../dataset_cellnuc_seg_curated/imageIDs.csv",
-  "data_files": "../dataset_cellnuc_seg_curated/*/spreadsheets_contourXY/*.csv",
+  "data_files": "../dataset_cellnuc_seg_curated/2018_04_04_lamp1/spreadsheets_contourXY/*.csv",
   "out_status": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing",
-  "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.2.0/Cell-Viewer_Data",
-  "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.2.0/Cell-Viewer_Thumbnails",
-  "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.2.0/Cell-Viewer_Thumbnails",
+  "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Data",
+  "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Thumbnails",
+  "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Thumbnails",
   "out_bisquedb": "http://dev-aics-dtp-001.corp.alleninstitute.org:81",
 
   "script_dir": "scripts",
