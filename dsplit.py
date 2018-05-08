@@ -3,12 +3,14 @@
 # example:
 # python dsplit.py -s 20000 \\allen\aics\animated-cell\Allen-Cell-Explorer\Allen-Cell-Explorer_1.1.0\Cell-Viewer_Data test2
 
+import itertools
 import os
 import re
 import sys
 from sys import stdout, argv
 from os import path
 from getopt import getopt, GetoptError
+import dataHandoffSpreadsheetUtils
 
 # constants
 BD = "\033[36m" 	# Cyan
@@ -28,7 +30,6 @@ dvd2size = 8080*MB
 bdrsize = 23800*MB
 
 
-# Functions {{{1
 def die(msg):
     print(ER + msg + RE)
     sys.exit(1)
@@ -66,14 +67,14 @@ def newarchive(outputdirtarget, inputdirtarget, prefix, index, archivesize, this
                      (index, verbose and "\n" or ""))
 
         armetafilename = path.join(outputdirtarget, "meta-%s-part%02d.txt" % (prefix, index))
-        armetafileobj = open(armetafilename, "w", newline='\n')
+        # armetafileobj = open(armetafilename, "w", newline='\n')
         mypath = os.path.dirname(os.path.realpath(__file__))
-        armetafileobj.write('-C%s\n' % mypath)
-        armetafileobj.write('archive_readme.txt\n')
-        armetafileobj.write('-C%s\n' % outputdirtarget)
-        armetafileobj.write('%s-part%02d.txt\n' % (prefix, index))
-        armetafileobj.write('-C%s\n' % inputdirtarget)
-        armetafileobj.close()
+        # armetafileobj.write('-C%s\n' % mypath)
+        # armetafileobj.write('archive_readme.txt\n')
+        # armetafileobj.write('-C%s\n' % outputdirtarget)
+        # armetafileobj.write('%s-part%02d.txt\n' % (prefix, index))
+        # armetafileobj.write('-C%s\n' % inputdirtarget)
+        # armetafileobj.close()
 
         arfilename = path.join(outputdirtarget, "%s-part%02d.txt" % (prefix, index))
         arfileobj = open(arfilename, "w", newline='\n')
@@ -89,14 +90,89 @@ def addfile(targetarchivefile, fvalue):
     fl = fl.replace(inputdir, '')
     if fl.startswith('/'):
         fl = fl[1:]
-    targetarchivefile.write(fl + '\n')
+    dirandfile = fl.rsplit('/', 1)
+    targetarchivefile.write('-C%s\n' % dirandfile[0])
+    targetarchivefile.write(dirandfile[1] + '\n')
 
 
 def sorter(txt):
     r = re.search('AICS-[0-9]{1,3}_([0-9]{1,4})\.ome\.tif', txt)
     return int(r.group(1)) if r else 9999999
 
-# }}}
+
+def gather_aics_images(inputdir):
+    # search input dir and group all files by cell line from the filename
+    filegroups = {}
+    for root, dirs, files in os.walk(inputdir, True):
+        if verbose:
+            stdout.write("  %s: " % root)
+
+        if root.find(inputdir) != 0:
+            die("%s isn't a subdir of %s" % (root, inputdir))
+
+        for f in files:
+            match = re.match('(AICS-[0-9]{1,3})_[0-9]{1,4}\.ome\.tif', f)
+            if match is not None and match.group(1) is not None:
+                cellline = match.group(1)
+                if cellline in filegroups:
+                    filegroups[cellline].append(path.join(root, f))
+                else:
+                    filegroups[cellline] = [path.join(root, f)]
+    return filegroups
+
+
+def gather_drug_images(inputcsv):
+    filegroups = {}
+    rows = dataHandoffSpreadsheetUtils.get_rows(inputcsv)
+    for key, group in itertools.groupby(rows, lambda item: item["Drug_name_short"].lower()+'_'+item["Well Type"].lower()):
+        if key in filegroups:
+            filegroups[key].extend([item["Link to input data"] for item in group])
+        else:
+            filegroups[key] = [item["Link to input data"] for item in group]
+    return filegroups
+
+
+def run(filegroups, outputdir, sorter=None):
+    if not os.path.exists(outputdir):
+        os.mkdir(outputdir)
+
+    # convert this to generic groups rather than cell lines and cell names
+    # filegroup in filegroups
+    for filegroup in filegroups:
+        files = filegroups[filegroup]
+        if sorter is not None:
+            files.sort(key=lambda l: sorter(l))
+        else:
+            files.sort()
+
+        listnameroot = filegroup
+        stdout.write(("%s\n") % (filegroup))
+
+        (arfile, idx, volsize) = newarchive(outputdir, inputdir, listnameroot, 0, 0, 0)
+        thisvolfiles = 0
+
+        for f in files:
+            # File size without following symlinks.
+            s = os.lstat(f).st_size
+
+            # file alone is bigger than allowed archive size: report it and skip.
+            if s > maxSize:
+                stdout.write((ER + "%s (%.2f MB) " + RE) % (f, s / MB))
+                continue
+
+            elif float(s + volsize) > maxSize:
+                (arfile, idx, volsize) = \
+                    newarchive(outputdir, inputdir, listnameroot, idx, volsize, thisvolfiles)
+                thisvolfiles = 0
+
+                # if verbose:
+                #     stdout.write("  %s: " % root)
+
+            addfile(arfile, f)
+            thisvolfiles += 1
+            volsize += s
+        # end for f
+        newarchive(outputdir, inputdir, listnameroot, -1, volsize, thisvolfiles)
 
 # Code starts here
 
@@ -137,69 +213,8 @@ else:
 
 
 # search input dir and group all files by cell line from the filename
-cellnamedict = {}
-for root, dirs, files in os.walk(inputdir, True):
-    if verbose:
-        stdout.write("  %s: " % root)
+# filegroups = gather_aics_images(inputdir)
+# run(filegroups, outputdir, sorter)
 
-    thisdirfiles = 0
-    thisdirsize = 0
-
-    if root.find(inputdir) != 0:
-        die("%s isn't a subdir of %s" % (root, inputdir))
-
-    for f in files:
-
-        match = re.match('(AICS-[0-9]{1,3})_[0-9]{1,4}\.ome\.tif', f)
-        if match is not None and match.group(1) is not None:
-            cellline = match.group(1)
-            if cellline in cellnamedict:
-                cellnamedict[cellline].append(path.join(root, f))
-            else:
-                cellnamedict[cellline] = [path.join(root, f)]
-
-
-if not os.path.exists(outputdir):
-    os.mkdir(outputdir)
-
-for cellline in cellnamedict:
-    files = cellnamedict[cellline]
-    files.sort(key=lambda l: sorter(l))
-
-    listnameroot = cellline
-    stdout.write(("%s\n") % (cellline))
-
-    (arfile, idx, volsize) = newarchive(outputdir, inputdir, listnameroot, 0, 0, 0)
-    thisvolfiles = 0
-
-    for f in files:
-        # File size without following symlinks.
-        s = os.lstat(f).st_size
-
-        # file alone is bigger than allowed archive size: report it and skip.
-        if s > maxSize:
-            stdout.write((ER + "%s (%.2f MB) " + RE) % (f, s / MB))
-            continue
-
-        elif float(s + volsize) > maxSize:
-            if verbose:
-                stdout.write(("%d files ("+UL+"%.2f MB"+RE+").\n") %
-                             (thisdirfiles, thisdirsize/MB))
-
-            (arfile, idx, volsize) = \
-                newarchive(outputdir, inputdir, listnameroot, idx, volsize, thisvolfiles)
-            thisvolfiles = 0
-
-            # if verbose:
-            #     stdout.write("  %s: " % root)
-
-        addfile(arfile, f)
-        thisvolfiles += 1
-        volsize += s
-    # end for f
-    newarchive(outputdir, inputdir, listnameroot, -1, volsize, thisvolfiles)
-    if verbose:
-        stdout.write(("%d files ("+UL+"%.2f MB"+RE+").\n") %
-                     (thisdirfiles, thisdirsize/MB))
-
-# end for (...) in os.walk
+filegroups = gather_drug_images(inputdir)
+run(filegroups, outputdir)
