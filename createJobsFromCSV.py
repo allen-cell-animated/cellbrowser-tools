@@ -125,11 +125,12 @@ def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
     print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + dataset + ' : ' + row['cbrCellName'] + ' in ' + row['inputFilename'])
 
     aicscelllineid = row['cell_line_ID']
-    subdir = 'AICS-' + str(aicscelllineid)
+    celllinename = 'AICS-' + str(aicscelllineid)
+    subdir = celllinename
 
-    cell_line_data = cell_lines_data['AICS-'+aicscelllineid]
+    cell_line_data = cell_lines_data[celllinename]
     if cell_line_data is None:
-        raise('Can\'t find cell line ' + 'AICS-'+aicscelllineid)
+        raise('Can\'t find cell line ' + celllinename)
 
     info = cellJob.CellJob(row)
     info.cbrAddToDb = True
