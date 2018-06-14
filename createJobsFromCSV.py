@@ -22,7 +22,7 @@ from processImageWithSegmentation import do_main_image_with_celljob
 def load_cell_line_info():
     server_context = labkey.utils.create_server_context('aics.corp.alleninstitute.org', 'AICS', 'labkey', use_ssl=False)
     my_results = labkey.query.select_rows(
-        columns='CellLineId/Name,ProteinId/Name,StructureId/Name,GeneId/Name',
+        columns='CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name',
         server_context=server_context,
         schema_name='celllines',
         query_name='CellLineDefinition'
@@ -30,7 +30,7 @@ def load_cell_line_info():
     # organize into dictionary by cell line
     my_results = {
         d["CellLineId/Name"]: {
-            "ProteinName":d["ProteinId/Name"],
+            "ProteinName":d["ProteinId/DisplayName"],
             "StructureName":d["StructureId/Name"],
             "GeneName":d["GeneId/Name"]
         } for d in my_results['rows']
