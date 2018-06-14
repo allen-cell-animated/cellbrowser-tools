@@ -16,6 +16,7 @@ class CellJob(object):
         self.nucChannel = 0
         self.structureChannel = 0
         self.structureProteinName = ''
+        self.structureName = ''
         self.lightChannel = 0
         self.timePoint = 0
         self.colonyPosition = ''
@@ -104,6 +105,7 @@ class CellJob(object):
                 self.structureChannel = 0
                 self.cbrParseError = True
             self.structureProteinName = csvRow.get('structureProteinName')
+            self.structureName = csvRow.get('structureName')
             try:
                 self.lightChannel = int(float(csvRow.get('lightChannel', 0)))
             except ValueError:

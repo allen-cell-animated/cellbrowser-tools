@@ -10,14 +10,32 @@ import dataHandoffSpreadsheetUtils as utils
 import glob
 import jobScheduler
 import json
+import labkey
 import os
-import pandas as pd
 import platform
 import re
 import shutil
 import sys
 from cellNameDb import CellNameDatabase
 from processImageWithSegmentation import do_main_image_with_celljob
+
+def load_cell_line_info():
+    server_context = labkey.utils.create_server_context('aics.corp.alleninstitute.org', 'AICS', 'labkey', use_ssl=False)
+    my_results = labkey.query.select_rows(
+        columns='CellLineId/Name,ProteinId/Name,StructureId/Name,GeneId/Name',
+        server_context=server_context,
+        schema_name='celllines',
+        query_name='CellLineDefinition'
+    )
+    # organize into dictionary by cell line
+    my_results = {
+        d["CellLineId/Name"]: {
+            "ProteinName":d["ProteinId/Name"],
+            "StructureName":d["StructureId/Name"],
+            "GeneName":d["GeneId/Name"]
+        } for d in my_results['rows']
+    }
+    return my_results
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
@@ -99,7 +117,7 @@ def parse_args():
     return args
 
 
-def do_image(args, prefs, row, index, total_jobs):
+def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
     # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
     path_as_list = re.split(r'\\|/', row['source_data'])
     dataset = path_as_list[-3]
@@ -109,8 +127,15 @@ def do_image(args, prefs, row, index, total_jobs):
     aicscelllineid = row['cell_line_ID']
     subdir = 'AICS-' + str(aicscelllineid)
 
+    cell_line_data = cell_lines_data['AICS-'+aicscelllineid]
+    if cell_line_data is None:
+        raise('Can\'t find cell line ' + 'AICS-'+aicscelllineid)
+
     info = cellJob.CellJob(row)
     info.cbrAddToDb = True
+
+    info.structureProteinName = cell_line_data['ProteinName']
+    info.structureName = cell_line_data['StructureName']
 
     # drop images here
     info.cbrDataRoot = prefs['out_ometifroot']
@@ -178,6 +203,8 @@ def do_image(args, prefs, row, index, total_jobs):
 
 def do_main(args, prefs):
 
+    cell_lines_data = load_cell_line_info()
+
     # Read every .csv file and concat them together
     data = utils.collect_data_rows(prefs['data_files'], db_path=prefs['imageIDs'])
 
@@ -189,7 +216,7 @@ def do_main(args, prefs):
         # gather cluster commands and submit in batch
         cmdlist = list()
         for index, row in enumerate(data):
-            shcmd = do_image(args, prefs, row, index, total_jobs)
+            shcmd = do_image(args, prefs, cell_lines_data, row, index, total_jobs)
             cmdlist.append(shcmd)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
@@ -199,7 +226,7 @@ def do_main(args, prefs):
     else:
         # run serially
         for index, row in enumerate(data):
-            do_image(args, prefs, row, index, total_jobs)
+            do_image(args, prefs, cell_lines_data, row, index, total_jobs)
 
 def setup_prefs(json_path):
     with open(json_path) as f:

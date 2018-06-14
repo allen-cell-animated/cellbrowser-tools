@@ -7,45 +7,6 @@ except ImportError:
 from . import db_api
 import os
 
-
-# TODO encode this table in db or someplace else?
-proteinToStructure = {
-    'ALPHAACTININ': ['Alpha-actinin', 'Actin bundles'],
-
-    'PAXILLIN': ['Paxillin', 'Cell matrix adhesions'],
-    'PAXILIN': ['Paxillin', 'Cell matrix adhesions'],
-
-    'TOM20': ['Tom20', 'Mitochondria'],
-    'TOMM20': ['Tom20', 'Mitochondria'],
-
-    'ALPHATUBULIN': ['Alpha-tubulin', 'Microtubules'],
-    'TUBA1B': ['Alpha-tubulin', 'Microtubules'],
-
-    'LAMINB1': ['Lamin B1', 'Nuclear envelope'],
-    'LMNB1': ['Lamin B1', 'Nuclear envelope'],
-
-    'DESMOPLAKIN': ['Desmoplakin', 'Desmosomes'],
-    'DSP': ['Desmoplakin', 'Desmosomes'],
-
-    'SEC61BETA': ['Sec61-beta', 'Endoplasmic reticulum'],
-    'SEC61B': ['Sec61-beta', 'Endoplasmic reticulum'],
-
-    'FIBRILLARIN': ['Fibrillarin', 'Nucleolus'],
-    'FBL': ['Fibrillarin', 'Nucleolus'],
-
-    'BETAACTIN': ['Beta-actin', 'Actin'],
-    'ACTB': ['Beta-actin', 'Actin'],
-
-    'ZO1': ['Tight junction ZO1', 'Tight junctions'],
-    'TJP1': ['Tight junction ZO1', 'Tight junctions'],
-
-    'MYOSIN': ['Non-muscle myosin IIB', 'Actomyosin'],
-    'MYOSINIIB': ['Non-muscle myosin IIB', 'Actomyosin'],
-    'MYH10': ['Non-muscle myosin IIB', 'Actomyosin'],
-
-    'ST6GAL1': ['Sialyltransferase 1', 'Golgi'],
-}
-
 # create xml bundle for the bisque database entry pointing to this image.
 # dict should have: source,xmin,xmax,ymin,ymax,zmin,zmax,imageName,imagePath,thumbnailPath
 def oneUp(sessionInfo, dict, outfile):
@@ -58,7 +19,6 @@ def oneUp(sessionInfo, dict, outfile):
     cbrImageLocation = dict['cbrImageLocation']
     cbrThumbnailURL = dict['cbrThumbnailURL']
     cbrCellName = dict['cbrCellName']
-    structureProteinName = dict['structureProteinName']
     cbrDataRoot = dict['cbrDataRoot']
 
     tifext = '.ome.tif'
@@ -76,17 +36,8 @@ def oneUp(sessionInfo, dict, outfile):
     #     for image in ims:
     #         api.deleteImage(image.get("resource_uniq"))
 
-    # strip spaces and hyphens for dictionary lookup.
-    structureProteinKey = structureProteinName.replace('-', '').replace(' ', '').replace(',', '').upper()
-    structureDisplayName = 'Unknown'
-    proteinDisplayName = 'Unknown'
-    structureNamePair = proteinToStructure.get(structureProteinKey)
-    if structureNamePair is not None:
-        structureDisplayName = structureNamePair[1]
-        proteinDisplayName = structureNamePair[0]
-    else:
-        print('Unknown structure protein name: ' + structureProteinName + " for " + cbrCellName)
-        raise ValueError('Unknown structure protein name: ' + structureProteinName + " for " + cbrCellName)
+    proteinDisplayName = dict['structureProteinName']
+    structureDisplayName = dict['structureName']
 
     # Pass permission explicitly for each tag. This is to work around an apparent bug in the bisque back-end.
     # If we upgrade the back end we should check to see if this bug is fixed. The tag permissions should be inherited
