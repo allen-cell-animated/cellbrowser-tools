@@ -117,18 +117,22 @@ class CellJob(object):
                 self.timePoint = 0
                 self.cbrParseError = True
 
-            self.colonyPosition = csvRow.get('colony_position', csvRow.get('colonyPosition', ' '))
+            self.colonyPosition = str(csvRow.get('colony_position', csvRow.get('colonyPosition', ' ')))
 
             # print(self.colonyPosition)
             self.colonyPosition = self.colonyPosition.strip()
-            if self.colonyPosition == 'c':
+            if self.colonyPosition == 'c' or self.colonyPosition == 'center':
                 self.colonyPosition = 'center'
-            elif self.colonyPosition == 'r':
+            elif self.colonyPosition == 'r' or self.colonyPosition == 'ridge':
                 self.colonyPosition = 'ridge'
-            elif self.colonyPosition == 'e':
+            elif self.colonyPosition == 'e' or self.colonyPosition == 'edge':
                 self.colonyPosition = 'edge'
             elif self.colonyPosition == '':
                 self.colonyPosition = ' '
+            else:
+                print('ERROR: Bad value for colony position ('+ self.colonyPosition +'). Assuming none given. ')
+                self.colonyPosition = ' '
+
 
             self.outputSegmentationPath = csvRow.get('outputSegmentationPath')
             self.outputNucSegWholeFilename = csvRow.get('outputNucSegWholeFilename')
