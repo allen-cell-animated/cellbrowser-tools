@@ -49,10 +49,12 @@ def do_image(args, prefs, row, index, total_jobs):
     info = cellJob.CellJob(row)
 
     imageName = info.cbrCellName
-    segs = row["outputCellSegIndex"]
-    segs = segs.split(";")
+    segs = row.outputCellSegIndex
+    segs = str(segs).split(";")
     # get rid of empty strings in segs
     segs = list(filter(None, segs))
+    # convert to ints
+    segs = list(map(int, segs))
 
     names = [imageName]
     for seg in segs:
