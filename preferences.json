@@ -1,5 +1,4 @@
 {
-    "host name": "qmaster",
 	"queue_name": "aics_assay_dev",
 	"njobs": "300",
 	"walltime": "02:00:00",

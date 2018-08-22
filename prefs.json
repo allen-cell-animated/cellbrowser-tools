@@ -10,7 +10,6 @@
   "script_dir": "scripts",
   "data_log_name": "data_jobs_out.csv",
   "job_prefs": {
-    "host name": "hpc_login",
     "queue_name": "allencell",
     "njobs": "64",
     "walltime": "03:00:00",
