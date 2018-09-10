@@ -6,7 +6,7 @@
 import argparse
 import cellJob
 import csv
-import dataHandoffSpreadsheetUtils as utils
+import dataHandoffUtils as lkutils
 import glob
 import jobScheduler
 import json
@@ -55,9 +55,12 @@ def generate_sh_for_row(jobname, info, prefs):
     script_string = ""
     # script_string += "env > /allen/aics/animated-cell/Dan/env.txt\n"
     script_string += "export PATH=/bin:$PATH\n"
+    # set anaconda install path.
+    script_string += "export PATH=/allen/aics/animated-cell/Dan/anaconda3/bin:$PATH\n"
+    # enable locating the source code of these scripts
     script_string += "export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools:/home/danielt/cellbrowserpipeline/cellbrowser-tools/uploader\n"
-    # script_string += "source /home/danielt/.conda/envs/cellbrowser/bin/activate\n"    
-    script_string += "source activate /home/danielt/.conda/envs/cellbrowser\n"
+    # script_string += "source /allen/aics/animated-cell/Dan/venvs/ace/bin/activate\n"
+    script_string += "source activate /allen/aics/animated-cell/Dan/venvs/ace\n"
     script_string += "python " + os.getcwd() + "/processImageWithSegmentation.py "
     script_string += jsonname
 
@@ -206,8 +209,8 @@ def do_main(args, prefs):
 
     cell_lines_data = load_cell_line_info()
 
-    # Read every .csv file and concat them together
-    data = utils.collect_data_rows(prefs['data_files'], db_path=prefs['imageIDs'])
+    # Read every cell image to be processed
+    data = lkutils.collect_data_rows()
 
     total_jobs = len(data)
     print('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')

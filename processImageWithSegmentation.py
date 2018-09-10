@@ -5,17 +5,17 @@
 
 from __future__ import print_function
 
-from aicsimage.io.cziReader import CziReader
-from aicsimage.io.tifReader import TifReader
-from aicsimage.io.omeTifWriter import OmeTifWriter
-from aicsimage.io.pngWriter import PngWriter
-from aicsimage.io.omexml import OMEXML
-from aicsimage.io.omexml import qn
+from aicsimageio.cziReader import CziReader
+from aicsimageio.tifReader import TifReader
+from aicsimageio.omeTifWriter import OmeTifWriter
+from aicsimageio.pngWriter import PngWriter
+from aicsimageio.omexml import OMEXML
+from aicsimageio.omexml import qn
 import cellJob
 import dataHandoffSpreadsheetUtils as utils
-from aicsimage.processing import aicsImage
-from aicsimage.processing import thumbnailGenerator
-from aicsimage.processing import textureAtlas
+from aicsimageio import aicsImage
+from aicsimageprocessing import thumbnailGenerator
+from aicsimageprocessing import textureAtlas
 from uploader import oneUp
 
 import argparse
