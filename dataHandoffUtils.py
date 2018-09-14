@@ -181,6 +181,8 @@ def collect_data_rows():
     df_fovcolonyposition = df_fovcolonyposition.rename(columns={"Value": "Colony position"})[['FOVId', 'Colony position']]
     df_fovlegacyname = grouped_fovannotation.get_group("FOV name")
     df_fovlegacyname = df_fovlegacyname.rename(columns={"Value": "LegacyFOVName"})[['FOVId', 'LegacyFOVName']]
+    # allow for multiple possible legacy names for a fov
+    df_fovlegacyname = df_fovlegacyname.groupby(['FOVId'])['LegacyFOVName'].apply(list).reset_index()
 
     # get mitotic stage and legacy cell name for all cells
     cellannotation_results = labkey.query.select_rows(
@@ -230,7 +232,7 @@ def collect_data_rows():
 
 
 if __name__ == "__main__":
-    print (sys.argv)
+    print(sys.argv)
     collect_data_rows()
     sys.exit(0)
 

@@ -32,6 +32,8 @@ def oneUp(sessionInfo, dict, outfile):
     inputFilename = dict['SourceFilename']
     sourceImageName = dict['cbrSourceImageName']
 
+    legacyFovNames = dict['LegacyFOVName']
+
     tifext = '.ome.tif'
 
     # avoid dups:
@@ -90,6 +92,10 @@ def oneUp(sessionInfo, dict, outfile):
         etree.SubElement(resource, 'tag', name='isCropped', value="true", permission=perm)
     else:
         etree.SubElement(resource, 'tag', name='isCropped', value="false", permission=perm)
+
+    if legacyFovNames is not None:
+        for i in legacyFovNames:
+            etree.SubElement(resource, 'tag', name='legacyFOVname', value=i, permission=perm)
 
     resource_uniq = api.add_image(resource)
 
