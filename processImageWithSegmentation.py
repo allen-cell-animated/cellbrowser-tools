@@ -396,7 +396,7 @@ class ImageProcessor:
         m["structureSegmentationVersion"] = row.StructureSegmentationAlgorithmVersion
         m["structureSegmentationMethod"] = row.StructureSegmentationAlgorithm
         m["inputFilename"] = row.SourceFilename  # czi
-        m["name"] = row.FOV_3dcv_Name
+        m["name"] = row.cbrCellName
 
         return m
 
@@ -415,6 +415,8 @@ class ImageProcessor:
             self.row.cbrBounds = None
             self.row.cbrCellIndex = 0
             self.row.cbrSourceImageName = None
+            self.row.cbrCellName = base
+
             # self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
 
             if self.row.cbrGenerateThumbnail:
@@ -441,7 +443,7 @@ class ImageProcessor:
                 aimage = aicsImage.AICSImage(self.image, dims="CZYX")
                 aimage.metadata = self.omexml
                 print('generating atlas ...')
-                atlas = textureAtlas.generate_texture_atlas(aimage, name=self.file_name, max_edge=2048, pack_order=None)
+                atlas = textureAtlas.generate_texture_atlas(aimage, name=self.row.cbrCellName, max_edge=2048, pack_order=None)
                 # grab metadata for display
                 static_meta = self.generate_meta(aimage, self.row)
             else:
@@ -536,23 +538,23 @@ class ImageProcessor:
                     aimage_cropped = aicsImage.AICSImage(cropped, dims="CZYX")
                     aimage_cropped.metadata = copyxml
                     print('generating atlas ...')
-                    atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.file_name+'_'+str(i), max_edge=2048, pack_order=None)
+                    atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.row.cbrCellName, max_edge=2048, pack_order=None)
 
                     static_meta_cropped = self.generate_meta(aimage_cropped, self.row)
                 else:
                     atlas_cropped = None
                     static_meta_cropped = None
 
-                self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=i, omexml=copyxml, other_data=static_meta_cropped)
+                self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=cellids[idx], omexml=copyxml, other_data=static_meta_cropped)
             print("done")
 
 
-    def _save_and_post(self, image, thumbnail, textureatlas, seg_cell_index=0, omexml=None, other_data=None):
+    def _save_and_post(self, image, thumbnail, textureatlas, seg_cell_index=None, omexml=None, other_data=None):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
         physical_size = [self.row.PixelScaleX, self.row.PixelScaleY, self.row.PixelScaleZ]
         png_dir, ometif_dir, png_url, atlas_dir, meta_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir, self.png_dir
-        if seg_cell_index != 0:
+        if seg_cell_index != None:
             meta_dir += '_' + str(seg_cell_index) + '_meta.json'
             png_dir += '_' + str(seg_cell_index) + '.png'
             ometif_dir += '_' + str(seg_cell_index) + '.ome.tif'
@@ -566,7 +568,7 @@ class ImageProcessor:
         if thumbnail is not None:
             print("saving thumbnail...", end="")
             with PngWriter(file_path=png_dir, overwrite_file=True) as writer:
-                writer.save(thumbnail)
+                writer.save((thumbnail*255.0).astype(np.uint8))
             print("done")
 
         if image is not None:
