@@ -613,10 +613,10 @@ def do_main_image(fname):
     with open(fname) as jobfile:
         jobspec = json.load(jobfile)
         info = cellJob.CellJob(jobspec)
-        if info.cbrParseError:
-            sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
-            pprint.pprint(jobspec, stream=sys.stderr)
-            return
+        # if info.cbrParseError:
+        #     sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
+        #     pprint.pprint(jobspec, stream=sys.stderr)
+        #     return
     return do_main_image_with_celljob(info)
 
 

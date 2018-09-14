@@ -9,7 +9,7 @@ Modify a copy of prefs.json to have the proper parameters inside.
     ```
 
 1. On cluster,  
-create a virtualenv and pip install aicsimageio and aicsimageprocessing into it.  
+create a virtualenv and pip install aicsimageio and aicsimageprocessing and labkey and pandas into it.  
 run:
     ```
     python createJobsFromCSV.py myprefs.json -c -n  
