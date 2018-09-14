@@ -122,13 +122,10 @@ def parse_args():
 
 def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
     # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
-    path_as_list = re.split(r'\\|/', row['source_data'])
-    dataset = path_as_list[-3]
-    # print(dataset)
-    print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + dataset + ' : ' + row['cbrCellName'] + ' in ' + row['inputFilename'])
+    print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + ' : ' + row['FOV_3dcv_Name'])
 
-    aicscelllineid = row['cell_line_ID']
-    celllinename = 'AICS-' + str(aicscelllineid)
+    aicscelllineid = str(row['CellLineName'])
+    celllinename = aicscelllineid  # 'AICS-' + str(aicscelllineid)
     subdir = celllinename
 
     cell_line_data = cell_lines_data[celllinename]
@@ -148,13 +145,13 @@ def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
     # drop texture atlases here
     info.cbrTextureAtlasRoot = prefs['out_atlasroot']
 
-    info.cbrDatasetName = dataset
-
-    info.cbrImageRelPath = os.path.join(info.cbrDatasetName, subdir)
+    info.cbrImageRelPath = subdir
     info.cbrImageLocation = os.path.join(info.cbrDataRoot, info.cbrImageRelPath)
     info.cbrThumbnailLocation = os.path.join(info.cbrThumbnailRoot, info.cbrImageRelPath)
     info.cbrTextureAtlasLocation = os.path.join(info.cbrTextureAtlasRoot, info.cbrImageRelPath)
-    info.cbrThumbnailURL = info.cbrDatasetName + '/' + subdir
+    info.cbrThumbnailURL = subdir
+
+    info.cbrThumbnailSize = 128
 
     info.dbUrl = prefs['out_bisquedb']
 
@@ -197,12 +194,37 @@ def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
     if not os.path.exists(info.cbrThumbnailLocation):
         os.makedirs(info.cbrThumbnailLocation)
 
-    jobname = info.cbrCellName
+    jobname = info.FOV_3dcv_Name
     if args.run:
         do_main_image_with_celljob(info)
     elif args.cluster:
         # TODO: set arg to copy each indiv file to another output
         return generate_sh_for_row(jobname, info, prefs)
+
+
+# conversion adapter to legacy spreadsheet names
+def convert_columns(data):
+    return data.rename(columns={
+        "Colony position": "colony_position",
+        "MembraneChannel": "memChannel",
+        "NucleusChannel": "nucChannel",
+        "StructureChannel": "structureChannel",
+        "FileId": "inputFilename",
+        "FileId/FileReplica/BasePath": "inputFolder",
+        "StructureSegFileId": "structureSegOutputFilename",
+        "StructureSegBasePath": "structureSegOutputFolder",
+        "NucleusSegFileId": "outputNucSegWholeFilename",
+        "NucleusSegBasePath": "outputNucSegmentationPath",
+        "MembraneSegFileId": "outputCellSegWholeFilename",
+        "MembraneSegBasePath": "outputSegmentationPath",
+        "StructureSegmentationAlgorithm": "VersionStructure",
+        "CellSegmentationAlgorithm": "VersionNucMemb",
+        "FileId/CellLineId/Name": "cell_line_ID"
+    })
+
+
+def create_cell_name(row):
+    row['cbrCellName'] = str(row['cell_line_ID'][0]) + '_' + str(row['FOVId'])
 
 
 def do_main(args, prefs):
@@ -211,6 +233,7 @@ def do_main(args, prefs):
 
     # Read every cell image to be processed
     data = lkutils.collect_data_rows()
+    data = data.to_dict(orient='records')
 
     total_jobs = len(data)
     print('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')

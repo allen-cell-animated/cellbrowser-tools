@@ -13,13 +13,24 @@ def oneUp(sessionInfo, dict, outfile):
     api = db_api.DbApi()
     api.setSessionInfo(sessionInfo)
 
-    cbrCellSegmentationVersion = dict['VersionNucMemb']
-    cbrStructureSegmentationVersion = dict['VersionStructure']
-    cbrStructureSegmentationMethod = dict['StructureSegmentationMethod']
+    cbrCellSegmentationVersion = dict['NucMembSegmentationAlgorithmVersion']
+    cbrStructureSegmentationVersion = dict['StructureSegmentationAlgorithmVersion']
+    cbrStructureSegmentationMethod = dict['StructureSegmentationAlgorithm']
     cbrImageLocation = dict['cbrImageLocation']
     cbrThumbnailURL = dict['cbrThumbnailURL']
     cbrCellName = dict['cbrCellName']
     cbrDataRoot = dict['cbrDataRoot']
+
+    cbrColonyPosition = dict['Colony position']
+    cbrChannelNames = dict['channelNames']
+
+    proteinDisplayName = dict['structureProteinName']
+    structureDisplayName = dict['structureName']
+
+    imageRelPath = dict['cbrImageRelPath']
+
+    inputFilename = dict['SourceFilename']
+    sourceImageName = dict['cbrSourceImageName']
 
     tifext = '.ome.tif'
 
@@ -36,15 +47,12 @@ def oneUp(sessionInfo, dict, outfile):
     #     for image in ims:
     #         api.deleteImage(image.get("resource_uniq"))
 
-    proteinDisplayName = dict['structureProteinName']
-    structureDisplayName = dict['structureName']
-
     # Pass permission explicitly for each tag. This is to work around an apparent bug in the bisque back-end.
     # If we upgrade the back end we should check to see if this bug is fixed. The tag permissions should be inherited
     # from the parent.
     perm = 'published'
 
-    relpath = dict['cbrImageRelPath'].replace('\\', '/')
+    relpath = imageRelPath.replace('\\', '/')
     # assume thumbnail to be a png file and servable from thumbnailpath
     thumbnail = cbrThumbnailURL
     relpath_thumbnail = thumbnail
@@ -66,20 +74,19 @@ def oneUp(sessionInfo, dict, outfile):
     etree.SubElement(resource, 'tag', name='isModel', value='false', permission=perm)
     etree.SubElement(resource, 'tag', name='cellSegmentationVersion', value=str(cbrCellSegmentationVersion), permission=perm)
     etree.SubElement(resource, 'tag', name='structureSegmentationVersion', value=str(cbrStructureSegmentationVersion), permission=perm)
-    etree.SubElement(resource, 'tag', name='colony_position', value=str(dict['colonyPosition']), permission=perm)
+    etree.SubElement(resource, 'tag', name='colony_position', value=str(cbrColonyPosition), permission=perm)
     
-    if dict['inputFilename']:
-        etree.SubElement(resource, 'tag', name='inputFilename', value=dict['inputFilename'], permission=perm)
+    if inputFilename:
+        etree.SubElement(resource, 'tag', name='inputFilename', value=inputFilename, permission=perm)
 
     # add a tag for each channel name, by index
-    if dict['channelNames'] is not None:
-        channel_names = dict['channelNames']
-        for i in range(len(channel_names)):
-            etree.SubElement(resource, 'tag', name='channelLabel_'+str(i), value=channel_names[i], permission=perm)
+    if cbrChannelNames is not None:
+        for i in range(len(cbrChannelNames)):
+            etree.SubElement(resource, 'tag', name='channelLabel_'+str(i), value=cbrChannelNames[i], permission=perm)
 
-    if dict['cbrSourceImageName'] is not None:
-        etree.SubElement(resource, 'tag', name='parentometifpath', value=relpath + '/' + dict['cbrSourceImageName'] + tifext, permission=perm)
-        etree.SubElement(resource, 'tag', name='source', value=dict['cbrSourceImageName'], permission=perm)
+    if sourceImageName is not None:
+        etree.SubElement(resource, 'tag', name='parentometifpath', value=relpath + '/' + sourceImageName + tifext, permission=perm)
+        etree.SubElement(resource, 'tag', name='source', value=sourceImageName, permission=perm)
         etree.SubElement(resource, 'tag', name='isCropped', value="true", permission=perm)
     else:
         etree.SubElement(resource, 'tag', name='isCropped', value="false", permission=perm)

@@ -5,12 +5,13 @@
 
 from __future__ import print_function
 
-from aicsimageio.cziReader import CziReader
+from aicsimageio.omeTifReader import OmeTifReader
 from aicsimageio.tifReader import TifReader
 from aicsimageio.omeTifWriter import OmeTifWriter
 from aicsimageio.pngWriter import PngWriter
 from aicsimageio.omexml import OMEXML
 from aicsimageio.omexml import qn
+from aicsimageio.typeChecker import TypeChecker
 import cellJob
 import dataHandoffSpreadsheetUtils as utils
 from aicsimageio import aicsImage
@@ -111,8 +112,8 @@ class ImageProcessor:
         self.row = info
 
         # Setting up directory paths for images
-        self.image_file = utils.normalize_path(os.path.join(self.row.inputFolder, self.row.inputFilename))
-        self.file_name = self.row.cbrCellName  # str(os.path.splitext(self.row.inputFilename)[0])
+        self.image_file = utils.normalize_path(self.row.SourceReadPath)
+        self.file_name = self.row.FOV_3dcv_Name
         self._generate_paths()
 
         # Setting up segmentation channels for full image
@@ -165,27 +166,19 @@ class ImageProcessor:
         self.channels_to_mask = []
 
         print("loading segmentations for " + self.file_name + "...", end="")
-        seg_path = self.row.outputSegmentationPath
-        seg_path = utils.normalize_path(seg_path)
-        con_path = self.row.outputSegmentationContourPath
-        con_path = utils.normalize_path(con_path)
         # print(seg_path)
         file_list = []
 
         # structure segmentation
-        struct_seg_path = self.row.structureSegOutputFolder
-        if struct_seg_path != '' and not struct_seg_path.startswith('N/A') and not self.row.cbrSkipStructureSegmentation:
-            struct_seg_path = utils.normalize_path(struct_seg_path)
-
-            # structure segmentation
-            struct_seg_file = os.path.join(struct_seg_path, self.row.structureSegOutputFilename)
+        if self.row.StructureSegmentationReadPath != '':
+            struct_seg_file = utils.normalize_path(self.row.StructureSegmentationReadPath)
             # print(struct_seg_file)
             file_list.append(struct_seg_file)
             self.channel_names.append("SEG_STRUCT")
             self.channel_colors.append(_rgba255(255, 0, 0, 255))
 
         # cell segmentation
-        cell_seg_file = os.path.join(seg_path, self.row.outputCellSegWholeFilename)
+        cell_seg_file = self.row.MembraneSegmentationReadPath
         # print(cell_seg_file)
         file_list.append(cell_seg_file)
         self.channel_names.append("SEG_Memb")
@@ -193,7 +186,7 @@ class ImageProcessor:
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # nucleus segmentation
-        nuc_seg_file = os.path.join(seg_path, self.row.outputNucSegWholeFilename)
+        nuc_seg_file = self.row.NucleusSegmentationReadPath
         # print(nuc_seg_file)
         file_list.append(nuc_seg_file)
         self.channel_names.append("SEG_DNA")
@@ -201,7 +194,7 @@ class ImageProcessor:
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # cell contour segmentation (good for viz in the volume viewer)
-        cell_con_file = os.path.join(con_path, self.row.outputCellSegContourFilename)
+        cell_con_file = self.row.MembraneContourReadPath
         # print(cell_seg_file)
         file_list.append(cell_con_file)
         self.channel_names.append("CON_Memb")
@@ -209,7 +202,7 @@ class ImageProcessor:
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # nucleus contour segmentation (good for viz in the volume viewer)
-        nuc_con_file = os.path.join(con_path, self.row.outputNucSegContourFilename)
+        nuc_con_file = self.row.NucleusContourReadPath
         # print(nuc_seg_file)
         file_list.append(nuc_con_file)
         self.channel_names.append("CON_DNA")
@@ -243,31 +236,21 @@ class ImageProcessor:
         if self.row.cbrAddToDb:
             return None
 
-        image_file = os.path.join(self.row.inputFolder, self.row.inputFilename)
+        image_file = self.row.SourceReadPath
         image_file = utils.normalize_path(image_file)
         # print(image_file)
 
+        # TODO: COPY FILE TO LOCAL TMP STORAGE BEFORE READING
+
         # 1. obtain OME XML metadata from original microscopy image
-        showinf = 'showinf'
-        if sys.platform.startswith('win'):
-            showinf += '.bat'
-        bfconvert = 'bfconvert'
-        if sys.platform.startswith('win'):
-            bfconvert += '.bat'
+        omexmlstring = TypeChecker(image_file).read_description()
 
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-
-        omexmlstring = subprocess.check_output([os.path.join(dir_path, 'bftools', showinf), '-omexml-only', '-nopix', '-nometa',
-                                                image_file],
-                                               stdin=None, stderr=None, shell=False)
-        # omexml = ET.fromstring(omexmlstring, ET.XMLParser(encoding='ISO-8859-1'))
         self.omexml = OMEXML(xml=omexmlstring)
         # TODO dump this to a file someplace! (use cmd line args in bftools showinf above?)
 
         # 2. obtain relevant channels from original image file
-        cr = CziReader(image_file)
+        cr = OmeTifReader(image_file)
         image = cr.load()
-        # image = CziReader(image_file).load()
         if len(image.shape) == 5 and image.shape[0] == 1:
             image = image[0, :, :, :, :]
         assert len(image.shape) == 4
@@ -277,10 +260,10 @@ class ImageProcessor:
         image = image.transpose(1, 0, 2, 3)
         # assumption: channel indices are one-based.
         self.channel_indices = [
-            self.row.memChannel - 1,
-            self.row.structureChannel - 1,
-            self.row.nucChannel - 1,
-            self.row.lightChannel - 1
+            self.row.ChannelNumber638,
+            self.row.ChannelNumberStruct,
+            self.row.ChannelNumber405,
+            self.row.ChannelNumberBrightfield
         ]
         # image.shape[0] is num of channels.
         assert(image.shape[0] > max(self.channel_indices))
@@ -322,22 +305,19 @@ class ImageProcessor:
         self.seg_indices = []
         i = 0
         for f in file_list:
-            file_ext = os.path.splitext(f)[1]
-            if file_ext == '.tiff' or file_ext == '.tif':
-                seg = TifReader(f).load()
-                # seg is expected to be TZCYX where T and C are 1
-                # image is expected to be CZYX
-                assert seg.shape[1] == image.shape[1], f + ' has shape mismatch ' + str(seg.shape[1]) + ' vs ' + str(image.shape[1])
-                assert seg.shape[3] == image.shape[2], f + ' has shape mismatch ' + str(seg.shape[3]) + ' vs ' + str(image.shape[2])
-                assert seg.shape[4] == image.shape[3], f + ' has shape mismatch ' + str(seg.shape[4]) + ' vs ' + str(image.shape[3])
-                # append channels containing segmentations
-                self.omexml.image().Pixels.append_channel(nch + i, self.channel_names[nch + i])
-                # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
-                image = np.append(image, [seg[0, :, 0, :, :]], axis=0)
-                self.seg_indices.append(image.shape[0] - 1)
-                i += 1
-            else:
-                raise ValueError("Image is not a tiff segmentation file!")
+            # expect TifReader to handle it.
+            seg = TifReader(f).load()
+            # seg is expected to be TZCYX where T and C are 1
+            # image is expected to be CZYX
+            assert seg.shape[1] == image.shape[1], f + ' has shape mismatch ' + str(seg.shape[1]) + ' vs ' + str(image.shape[1])
+            assert seg.shape[3] == image.shape[2], f + ' has shape mismatch ' + str(seg.shape[3]) + ' vs ' + str(image.shape[2])
+            assert seg.shape[4] == image.shape[3], f + ' has shape mismatch ' + str(seg.shape[4]) + ' vs ' + str(image.shape[3])
+            # append channels containing segmentations
+            self.omexml.image().Pixels.append_channel(nch + i, self.channel_names[nch + i])
+            # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
+            image = np.append(image, [seg[0, :, 0, :, :]], axis=0)
+            self.seg_indices.append(image.shape[0] - 1)
+            i += 1
 
         print("done")
         return image
@@ -410,17 +390,18 @@ class ImageProcessor:
             m["isCropped"] = False
         m["isModel"] = False
 
-        m["cell_line"] = row.cellLineId
-        m["cellSegmentationVersion"] = row.VersionNucMemb
-        m["structureSegmentationMethod"] = row.StructureSegmentationMethod
-        m["structureSegmentationVersion"] = row.VersionStructure
-        m["inputFilename"] = row.inputFilename  # czi
-        m["name"] = row.cbrCellName
+        m["cell_line"] = row.CellLineName
+        m["cellSegmentationVersion"] = row.NucMembSegmentationAlgorithmVersion
+        m["cellSegmentationMethod"] = row.NucMembSegmentationAlgorithm
+        m["structureSegmentationVersion"] = row.StructureSegmentationAlgorithmVersion
+        m["structureSegmentationMethod"] = row.StructureSegmentationAlgorithm
+        m["inputFilename"] = row.SourceFilename  # czi
+        m["name"] = row.FOV_3dcv_Name
 
         return m
 
     def generate_and_save(self):
-        base = self.row.cbrCellName
+        base = self.row.FOV_3dcv_Name
 
         # indices of channels in the original image
         # before this, indices have been re-organized in add_segs_to_img (in __init__)
@@ -470,12 +451,8 @@ class ImageProcessor:
             self._save_and_post(image=im_to_save, thumbnail=ffthumb, textureatlas=atlas, omexml=self.omexml, other_data=static_meta)
 
         if self.row.cbrGenerateSegmentedImages:
-            segs = self.row.outputCellSegIndex
-            segs = segs.split(";")
-            # get rid of empty strings in segs
-            segs = list(filter(None, segs))
-            # convert to ints
-            segs = list(map(int, segs))
+            segs = self.row.CellIndex
+            cellids = self.row.CellId
 
             if self.image is not None:
                 # assumption: less than 256 cells segmented in the file.
@@ -486,7 +463,7 @@ class ImageProcessor:
                 h0 = np.unique(cell_segmentation_image)
                 h0 = h0[h0 > 0]
 
-            for i in segs:
+            for idx, i in enumerate(segs):
                 # for each cell segmented from this image:
                 print("generating segmented cells...", end="")
                 if i == 0:
@@ -526,7 +503,7 @@ class ImageProcessor:
 
                 self.row.cbrCellIndex = i
                 self.row.cbrSourceImageName = base
-                self.row.cbrCellName = base + '_' + str(i)
+                self.row.cbrCellName = base + '_' + str(cellids[idx])
 
 
                 # copy self.omexml for output
@@ -573,7 +550,7 @@ class ImageProcessor:
     def _save_and_post(self, image, thumbnail, textureatlas, seg_cell_index=0, omexml=None, other_data=None):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
-        physical_size = [self.row.xyPixelSize, self.row.xyPixelSize, self.row.zPixelSize]
+        physical_size = [self.row.PixelScaleX, self.row.PixelScaleY, self.row.PixelScaleZ]
         png_dir, ometif_dir, png_url, atlas_dir, meta_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir, self.png_dir
         if seg_cell_index != 0:
             meta_dir += '_' + str(seg_cell_index) + '_meta.json'
