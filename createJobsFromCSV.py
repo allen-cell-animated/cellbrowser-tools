@@ -166,6 +166,8 @@ def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
             info.cbrAddToDb = True
             info.cbrGenerateThumbnail = False
             info.cbrGenerateCellImage = False
+            info.cbrGenerateFullFieldImages = False
+            info.cbrGenerateSegmentedImages = False
         elif args.notdb:
             info.cbrAddToDb = False
 
