@@ -416,6 +416,7 @@ class ImageProcessor:
             self.row.cbrCellIndex = 0
             self.row.cbrSourceImageName = None
             self.row.cbrCellName = base
+            self.row.cbrLegacyCellNames = None
 
             # self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
 
