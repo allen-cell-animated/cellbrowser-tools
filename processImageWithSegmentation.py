@@ -506,6 +506,7 @@ class ImageProcessor:
                 self.row.cbrCellIndex = i
                 self.row.cbrSourceImageName = base
                 self.row.cbrCellName = base + '_' + str(cellids[idx])
+                self.row.cbrLegacyCellNames = self.row.LegacyCellName[idx]
 
 
                 # copy self.omexml for output

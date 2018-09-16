@@ -33,6 +33,7 @@ def oneUp(sessionInfo, dict, outfile):
     sourceImageName = dict['cbrSourceImageName']
 
     legacyFovNames = dict['LegacyFOVName']
+    legacyCellNames = dict['cbrLegacyCellNames']
 
     tifext = '.ome.tif'
 
@@ -96,6 +97,9 @@ def oneUp(sessionInfo, dict, outfile):
     if legacyFovNames is not None:
         for i in legacyFovNames:
             etree.SubElement(resource, 'tag', name='legacyFOVname', value=i, permission=perm)
+    if legacyCellNames is not None:
+        for i in legacyCellNames:
+            etree.SubElement(resource, 'tag', name='legacyCellname', value=i, permission=perm)
 
     resource_uniq = api.add_image(resource)
 

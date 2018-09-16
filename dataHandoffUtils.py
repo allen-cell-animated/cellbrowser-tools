@@ -199,6 +199,18 @@ def collect_data_rows():
     grouped_cellannotation = df_cellannotation.groupby("AnnotationTypeId/Name")
     df_legacycellname = grouped_cellannotation.get_group("Cell name")
     df_legacycellname = df_legacycellname.rename(columns={"Value": "LegacyCellName"})[['CellId', 'LegacyCellName']]
+    # need to gather these into lists alongside the per-fov cell lists.
+    def find_legacy_cell_names(x):
+        ret = []
+        for cid in x:
+            cellnames = df_legacycellname.loc[df_legacycellname['CellId'] == cid]['LegacyCellName']
+            if cellnames.size > 0:
+                ret.append(cellnames.tolist())
+            else:
+                ret.append(None)
+        return ret
+
+    df_data_handoff['LegacyCellName'] = df_data_handoff['CellId'].apply(lambda x: find_legacy_cell_names(x))
 
     cell_line_protein_results = labkey.query.select_rows(
         server_context=server_context,
