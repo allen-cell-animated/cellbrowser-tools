@@ -13,7 +13,7 @@ def main():
         # 'root': 'http://test-aics-01',
         # 'root': 'http://bisque-00.corp.alleninstitute.org:8080',
         # 'root': 'http://10.128.62.104:8080',
-        'root': 'http://10.128.62.104',
+        'root': 'http://dev-aics-dtp-001:81',
         'user': 'admin',
         'password': 'admin'
     }

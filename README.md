@@ -22,7 +22,22 @@ When cluster jobs are all done:
 If not already, copy or move ome.tif image files to final destination: /allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_VERSION/Cell-Viewer_Data
 If not already, copy or move png thumbnails to final destination: /allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_VERSION/Cell-Viewer_Thumbnails
 
-2. add images to bisque db  
+2. add images to bisque db
+docker exec in to the bisque psql container, and go into psql and run
+UPDATE tg_user SET password='admin' WHERE user_name='admin'
+on the bisque db. 
+ 
+Example:
+docker exec -it bisque_pg_1 bash
+su - postgres
+psql
+\c bisque
+UPDATE tg_user SET password='admin' WHERE user_name='admin';
+\q
+exit
+exit
+
+ Then:
     ```
     python createJobsFromCSV.py myprefs.json -c -p
     ```
