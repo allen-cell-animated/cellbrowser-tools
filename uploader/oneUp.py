@@ -5,8 +5,13 @@ try:
 except ImportError:
     import xml.etree.ElementTree as etree
 from . import db_api
-import math
+import numpy as np
 import os
+
+
+def is_nan(x):
+    return x is np.nan or x != x
+
 
 # create xml bundle for the bisque database entry pointing to this image.
 # dict should have: source,xmin,xmax,ymin,ymax,zmin,zmax,imageName,imagePath,thumbnailPath
@@ -95,7 +100,7 @@ def oneUp(sessionInfo, dict, outfile):
     else:
         etree.SubElement(resource, 'tag', name='isCropped', value="false", permission=perm)
 
-    if legacyFovNames is not None and not math.isnan(legacyFovNames):
+    if legacyFovNames is not None and not is_nan(legacyFovNames):
         for i in legacyFovNames:
             etree.SubElement(resource, 'tag', name='legacyFOVname', value=i, permission=perm)
     if legacyCellNames is not None:
