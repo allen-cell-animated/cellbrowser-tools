@@ -230,6 +230,7 @@ def collect_data_rows():
     ################## FIX THIS ################################
     check_dups(df_data_handoff, "FOVId")
     df_data_handoff = pd.merge(df_data_handoff, df_fovlegacyname, on='FOVId', how='left')
+    df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
     ##########################
 
     check_dups(df_data_handoff, "FOVId")
