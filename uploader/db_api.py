@@ -95,7 +95,7 @@ class DbApi(object):
     # AICS-12_10 will return AICS-12_10, AICS-12_10_1, AICS-12_10_3, etc.
     @staticmethod
     def getImagesByNameRoot(name, max_to_get=0):
-        results = ElementTree.Element('results')
+        results = DbApi.getImagesByName(name, max_to_get)
         nlimit = 700
         if max_to_get > 0 and max_to_get < nlimit:
             nlimit = max_to_get
@@ -109,8 +109,14 @@ class DbApi(object):
                 print(e)
             tree = ElementTree.fromstring(response.content)
             if tree is not None:
-                results.extend(tree.getchildren())
-                count = len(tree.getchildren())
+                count = 0
+                for x in tree.getchildren():
+                    xname = x.get("name")
+                    # the dot is for the .ome.tif extension in the xnames
+                    if xname.startswith(name+'_'):
+                        results.append(x)
+                        count = count + 1
+                # results.extend(tree.getchildren())
                 # if more than 700 returned, loop around and get 700 more until we have all query results
                 if count < nlimit:
                     more = False

@@ -5,6 +5,7 @@ try:
 except ImportError:
     import xml.etree.ElementTree as etree
 from . import db_api
+import math
 import os
 
 # create xml bundle for the bisque database entry pointing to this image.
@@ -94,7 +95,7 @@ def oneUp(sessionInfo, dict, outfile):
     else:
         etree.SubElement(resource, 'tag', name='isCropped', value="false", permission=perm)
 
-    if legacyFovNames is not None:
+    if legacyFovNames is not None and not math.isnan(legacyFovNames):
         for i in legacyFovNames:
             etree.SubElement(resource, 'tag', name='legacyFOVname', value=i, permission=perm)
     if legacyCellNames is not None:
