@@ -2,6 +2,7 @@ import subprocess
 import os
 import time
 
+
 def submit_job(files, json_obj, tmp_file_name='tmp_script.sh', files_deps=[]):
 
     if type(files) is not list:
@@ -9,13 +10,10 @@ def submit_job(files, json_obj, tmp_file_name='tmp_script.sh', files_deps=[]):
 
     str_list = list()
 
-
-
     for i, file in enumerate(files):
         queuename = " -q " + json_obj["queue_name"]
         walltime = " -l walltime=" + json_obj["walltime"]
         memory = " -l mem=" + json_obj["memory"]
-
 
         if len(files_deps) >= len(files):
             # one dep in json_obj['deps'] per file in files list.
@@ -53,7 +51,6 @@ def submit_job(files, json_obj, tmp_file_name='tmp_script.sh', files_deps=[]):
     big_str = ''.join(str_list)
     # big_str = 'export MALLOC_CHECK_=0\n' + ''.join(str_list)
 
-
     tmp_file = json_obj['script_dir'] + os.sep + tmp_file_name
     target = open(tmp_file, 'w')
     target.write(big_str)
@@ -66,11 +63,13 @@ def submit_job(files, json_obj, tmp_file_name='tmp_script.sh', files_deps=[]):
 
     return job_ids
 
+
 def touch(fname):
     if os.path.exists(fname):
         os.utime(fname, None)
     else:
         open(fname, 'w').close()
+
 
 def submit_job_deps(files, json_obj, tmp_file_name='tmp_script.sh'):
     #this is a workaround function to get over the fact that we can have only a limited number of dependencies for a job
