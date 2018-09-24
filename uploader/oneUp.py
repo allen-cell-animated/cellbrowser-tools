@@ -90,8 +90,8 @@ def oneUp(sessionInfo, dict, outfile):
 
     # add a tag for each channel name, by index
     if cbrChannelNames is not None:
-        for i in range(len(cbrChannelNames)):
-            etree.SubElement(resource, 'tag', name='channelLabel_'+str(i), value=cbrChannelNames[i], permission=perm)
+        for i, channel_name in enumerate(cbrChannelNames):
+            etree.SubElement(resource, 'tag', name='channelLabel_'+str(i), value=channel_name, permission=perm)
 
     if sourceImageName is not None:
         etree.SubElement(resource, 'tag', name='parentometifpath', value=relpath + '/' + sourceImageName + tifext, permission=perm)

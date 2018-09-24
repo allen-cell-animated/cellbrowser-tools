@@ -237,7 +237,7 @@ def do_main(args, prefs):
     cell_lines_data = load_cell_line_info()
 
     # Read every cell image to be processed
-    data = lkutils.collect_data_rows()
+    data = lkutils.collect_data_rows(prefs['data_query'])
     data = data.to_dict(orient='records')
 
     total_jobs = len(data)

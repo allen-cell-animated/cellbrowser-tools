@@ -71,7 +71,7 @@ def normalize_path(path):
 
 def trim_labkeyurl(rows):
     df = pd.DataFrame(rows)
-    cols = [c for c in df.columns if c.lower()[:11] != '_labkeyurl_']
+    cols = [c for c in df.columns if not c.startswith('_labkeyurl_')]
     df = df[cols]
     return df
 
@@ -82,29 +82,22 @@ def get_read_path(fileid, basepath):
 
 # cellline must be 'AICS-#'
 def get_cell_name(fovid, cellline, cellid):
-    return str(cellline) + "_" + str(fovid) + "_" + str(cellid)
+    return f"{cellline}_{fovid}_{cellid}"
 
 
 def get_cellline_name_from_row(row, df_celllines):
     return str(df_celllines.loc[row["CellLineId"]]["CellLineId/Name"])
 
 
-def get_fov_name_from_row(row, df_celllines):
-    celllinename = df_celllines.loc[row["CellLineId"]]["CellLineId/Name"]
-    return str(celllinename) + "_" + str(row["FOVId"])
-
-
 # cellline must be 'AICS-#'
 def get_fov_name(fovid, cellline):
-    return str(cellline) + "_" + str(fovid)
+    return f"{cellline}_{fovid}"
 
 
-def get_name_id_and_readpath(content_file_row, df_filefov):
-    fileid = content_file_row['FileId'].iloc[0]
-    filefovrow = df_filefov[df_filefov["FileId"] == fileid]
-    filename = filefovrow['FileId/Filename'].iloc[0]
-    filereadpath = get_read_path(fileid, (filefovrow['FileId/FileReplica/BasePath'].iloc[0])[0])
-    return filename, fileid, filereadpath
+def get_fov_name_from_row(row, df_celllines):
+    celllinename = get_cellline_name_from_row(row, df_celllines)
+    fovid = row["FOVId"]
+    return get_fov_name(fovid, celllinename)
 
 
 def check_dups(dfr, column, remove=True):
@@ -118,13 +111,14 @@ def check_dups(dfr, column, remove=True):
         dfr.drop_duplicates(subset=column, keep="first", inplace=True)
 
 
-def collect_data_rows():
+# big assumption: any query_name passed in must return data of the same format!
+def collect_data_rows(query_name):
     server_context = labkey.utils.create_server_context('aics.corp.alleninstitute.org', 'AICS', 'labkey', use_ssl=False)
 
     data_handoff_results = labkey.query.select_rows(
         server_context=server_context,
         schema_name='processing',
-        query_name='Pipeline 4 Handoff 1',
+        query_name=query_name,
         max_rows=-1
     )
     df_data_handoff = trim_labkeyurl(data_handoff_results['rows'])
@@ -191,14 +185,6 @@ def collect_data_rows():
         return ret
     df_data_handoff['LegacyCellName'] = df_data_handoff['CellId'].apply(lambda x: find_legacy_cell_names(x))
 
-    cell_line_protein_results = labkey.query.select_rows(
-        server_context=server_context,
-        schema_name='celllines',
-        query_name='CellLineDefinition',
-        columns='CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name',
-        max_rows=-1
-    )
-    df_cell_line_protein = trim_labkeyurl(cell_line_protein_results['rows'])
 
     df_data_handoff = pd.merge(df_data_handoff, df_fovcolonyposition, on='FOVId', how='left')
 
@@ -209,8 +195,16 @@ def collect_data_rows():
 
     check_dups(df_data_handoff, "FOVId")
 
-    # put cell fov name in a new column:
+    cell_line_protein_results = labkey.query.select_rows(
+        server_context=server_context,
+        schema_name='celllines',
+        query_name='CellLineDefinition',
+        columns='CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name',
+        max_rows=-1
+    )
+    df_cell_line_protein = trim_labkeyurl(cell_line_protein_results['rows'])
     df_cell_lines = df_cell_line_protein.set_index('CellLineId')
+    # put cell fov name in a new column:
     df_data_handoff['FOV_3dcv_Name'] = df_data_handoff.apply(lambda row: get_fov_name_from_row(row, df_cell_lines), axis=1)
     df_data_handoff['CellLineName'] = df_data_handoff.apply(lambda row: get_cellline_name_from_row(row, df_cell_lines), axis=1)
     print("DONE BUILDING TABLES")
@@ -220,7 +214,7 @@ def collect_data_rows():
 
 if __name__ == "__main__":
     print(sys.argv)
-    collect_data_rows()
+    collect_data_rows("Pipeline 4 Handoff 1")
     sys.exit(0)
 
 

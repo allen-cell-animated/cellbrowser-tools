@@ -163,7 +163,7 @@ def report_db_stats():
 
 def do_main(args, prefs):
     # Read every .csv file and concat them together
-    data = utils.collect_data_rows()
+    data = utils.collect_data_rows(prefs['data_query'])
     data = data.to_dict(orient='records')
 
     total_jobs = len(data)
