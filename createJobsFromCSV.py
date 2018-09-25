@@ -240,16 +240,10 @@ def do_main(args, prefs):
     cell_lines_data = load_cell_line_info()
 
     # Read every cell image to be processed
-    data = lkutils.collect_data_rows(prefs['data_query'])
+    data = lkutils.collect_data_rows(prefs['data_query'], prefs.get('fovs'))
     data = data.to_dict(orient='records')
 
     total_jobs = len(data)
-
-    fovids_to_process = prefs.get('fovs')
-    if fovids_to_process is not None and len(fovids_to_process) > 0:
-        total_jobs = min(total_jobs, len(fovids_to_process))
-    else:
-        fovids_to_process = None
 
     print('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
 
@@ -258,9 +252,8 @@ def do_main(args, prefs):
         # gather cluster commands and submit in batch
         cmdlist = list()
         for index, row in enumerate(data):
-            if fovids_to_process is None or row["FOVId"] in fovids_to_process:
-                shcmd = do_image(args, prefs, cell_lines_data, row, index, total_jobs)
-                cmdlist.append(shcmd)
+            shcmd = do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+            cmdlist.append(shcmd)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
         jobprefs = prefs['job_prefs']
@@ -269,8 +262,7 @@ def do_main(args, prefs):
     else:
         # run serially
         for index, row in enumerate(data):
-            if fovids_to_process is None or row["FOVId"] in fovids_to_process:
-                do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+            do_image(args, prefs, cell_lines_data, row, index, total_jobs)
 
 
 def setup_prefs(json_path):
