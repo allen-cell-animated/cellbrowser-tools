@@ -44,59 +44,71 @@ def parse_args():
 
 
 def do_image(args, prefs, row, index, total_jobs):
-    batchname = row['source_data']
-    jobname = row['inputFilename']
     info = cellJob.CellJob(row)
+    jobname = info.SourceFilename
 
-    imageName = info.cbrCellName
-    segs = row.outputCellSegIndex
-    segs = str(segs).split(";")
-    # get rid of empty strings in segs
-    segs = list(filter(None, segs))
-    # convert to ints
-    segs = list(map(int, segs))
+    imageName = info.FOV_3dcv_Name
+    segs = info.CellId
+
+    data_dir = prefs['out_ometifroot']
+    thumbs_dir = prefs['out_thumbnailroot']
+    cell_line = info.CellLineName
 
     names = [imageName]
     for seg in segs:
+        n = imageName + "_" + str(int(seg))
         # str(int(seg)) removes leading zeros
-        names.append(imageName + "_" + str(int(seg)))
+        names.append(n)
 
     exts = ['.ome.tif', '.png']
     # check existence of ome.tif and png.
 
-    data_dir = prefs['out_ometifroot']
-    thumbs_dir = prefs['out_thumbnailroot']
-    # assume that the file location has same name as this subdir name of where the spreadsheet lives:
-    path_as_list = re.split(r'\\|/', row['source_data'])
-    data_subdir = path_as_list[-3]
-    # data_subdir = '2017_03_08_Struct_First_Pass_Seg'
-    cell_line = 'AICS-' + str(row["cell_line_ID"])
     for f in names:
         # check for thumbnail
-        fullf = os.path.join(thumbs_dir, data_subdir, cell_line, f + '.png')
+        fullf = os.path.join(thumbs_dir, cell_line, f + '.png')
         if not os.path.isfile(fullf):
-            print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullf)
+            print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
         # check for atlas meta
-        fullaj = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_atlas.json')
+        fullaj = os.path.join(thumbs_dir, cell_line, f + '_atlas.json')
         if not os.path.isfile(fullaj):
-            print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullaj)
+            print("ERROR: " + jobname + ": Could not find file: " + fullaj)
 
         # expect 3 atlas png files
         for i in ['0', '1', '2']:
-            fullat = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_atlas_'+i+'.png')
+            fullat = os.path.join(thumbs_dir, cell_line, f + '_atlas_'+i+'.png')
             if not os.path.isfile(fullat):
-                print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullat)
+                print("ERROR: " + jobname + ": Could not find file: " + fullat)
 
         # check for image meta
-        fullmj = os.path.join(thumbs_dir, data_subdir, cell_line, f + '_meta.json')
+        fullmj = os.path.join(thumbs_dir, cell_line, f + '_meta.json')
         if not os.path.isfile(fullmj):
-            print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullmj)
+            print("ERROR: " + jobname + ": Could not find file: " + fullmj)
 
         # check for image
-        fullf = os.path.join(data_dir, data_subdir, cell_line, f + '.ome.tif')
+        fullf = os.path.join(data_dir, cell_line, f + '.ome.tif')
         if not os.path.isfile(fullf):
-            print("ERROR: " + batchname + ": " + jobname + ": Could not find file: " + fullf)
+            print("ERROR: " + jobname + ": Could not find file: " + fullf)
+
+
+    outrows = []
+    outrows.append({
+        "file_id": imageName,
+        "file_name": imageName + '.ome.tif',
+        "read_path": os.path.join(data_dir, cell_line, imageName + '.ome.tif'),
+        "file_size": os.path.getsize(os.path.join(data_dir, cell_line, imageName + '.ome.tif')),
+        "CellLineName": cell_line
+    })
+    for seg in segs:
+        n = imageName + "_" + str(int(seg))
+        outrows.append({
+            "file_id": n,
+            "file_name": n + '.ome.tif',
+            "read_path": os.path.join(data_dir, cell_line, n + '.ome.tif'),
+            "file_size": os.path.getsize(os.path.join(data_dir, cell_line, n + '.ome.tif')),
+            "CellLineName": cell_line
+        })
+    return outrows
 
 
 def do_main(args, prefs):
@@ -107,11 +119,18 @@ def do_main(args, prefs):
     total_jobs = len(data)
     print('VALIDATING ' + str(total_jobs) + ' JOBS')
 
+    allfiles = []
     # process each file
     # run serially
     for index, row in enumerate(data):
-        do_image(args, prefs, row, index, total_jobs)
+        filerows = do_image(args, prefs, row, index, total_jobs)
+        allfiles.extend(filerows)
 
+    keys = allfiles[0].keys()
+    with open('cellviewer-files-1.3.0.csv', 'wb') as output_file:
+        dict_writer = csv.DictWriter(output_file, keys)
+        dict_writer.writeheader()
+        dict_writer.writerows(allfiles)
 
 def main():
     args = parse_args()

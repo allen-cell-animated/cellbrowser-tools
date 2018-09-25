@@ -98,16 +98,19 @@ def parse_args():
 
     # control what data to process.
 
+    parser.add_argument('--fovid', '-f', help='select one specific fov id', type=int, default=-1)
+
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--notdb', '-n', help='write to the server dirs but do not add to db', action='store_true')
     group.add_argument('--dbonly', '-p', help='only post to db', action='store_true')
+
 
     generation = parser.add_mutually_exclusive_group()
     generation.add_argument('--thumbnailsonly', '-t', help='only generate thumbnail', action='store_true')
     generation.add_argument('--imagesonly', '-i', help='only generate images', action='store_true')
 
     cell_images = parser.add_mutually_exclusive_group()
-    cell_images.add_argument('--fullfieldonly', '-f', help='only generate fullfield images', action='store_true')
+    cell_images.add_argument('--fullfieldonly', '-d', help='only generate fullfield images', action='store_true')
     cell_images.add_argument('--segmentedonly', '-s', help='only generate segmented cell images', action='store_true')
 
     parser.add_argument('--all', '-a', action='store_true')
@@ -241,6 +244,13 @@ def do_main(args, prefs):
     data = data.to_dict(orient='records')
 
     total_jobs = len(data)
+
+    fovids_to_process = prefs.get('fovs')
+    if fovids_to_process is not None and len(fovids_to_process) > 0:
+        total_jobs = min(total_jobs, len(fovids_to_process))
+    else:
+        fovids_to_process = None
+
     print('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
 
     # process each file
@@ -248,8 +258,9 @@ def do_main(args, prefs):
         # gather cluster commands and submit in batch
         cmdlist = list()
         for index, row in enumerate(data):
-            shcmd = do_image(args, prefs, cell_lines_data, row, index, total_jobs)
-            cmdlist.append(shcmd)
+            if fovids_to_process is None or row["FOVId"] in fovids_to_process:
+                shcmd = do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+                cmdlist.append(shcmd)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
         jobprefs = prefs['job_prefs']
@@ -258,7 +269,9 @@ def do_main(args, prefs):
     else:
         # run serially
         for index, row in enumerate(data):
-            do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+            if fovids_to_process is None or row["FOVId"] in fovids_to_process:
+                do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+
 
 def setup_prefs(json_path):
     with open(json_path) as f:

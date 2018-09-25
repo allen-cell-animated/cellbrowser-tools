@@ -12,6 +12,7 @@ import re
 import sys
 import uploader.db_api as db_api
 
+
 def verify_files(thumbs_dir, data_dir, cell_line, f, jobname):
     # check for thumbnail
     fullf = os.path.join(thumbs_dir, cell_line, f + '.png')
