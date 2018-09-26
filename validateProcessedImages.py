@@ -43,6 +43,11 @@ def parse_args():
     return args
 
 
+def make_path(dir0, dir1, filename):
+    # return os.path.join(dir0, dir1, filename)
+    return dir0 + '/' + dir1 + '/' + filename
+
+
 def do_image(args, prefs, row, index, total_jobs):
     info = cellJob.CellJob(row)
     jobname = info.SourceFilename
@@ -65,28 +70,28 @@ def do_image(args, prefs, row, index, total_jobs):
 
     for f in names:
         # check for thumbnail
-        fullf = os.path.join(thumbs_dir, cell_line, f + '.png')
+        fullf = make_path(thumbs_dir, cell_line, f + '.png')
         if not os.path.isfile(fullf):
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
         # check for atlas meta
-        fullaj = os.path.join(thumbs_dir, cell_line, f + '_atlas.json')
+        fullaj = make_path(thumbs_dir, cell_line, f + '_atlas.json')
         if not os.path.isfile(fullaj):
             print("ERROR: " + jobname + ": Could not find file: " + fullaj)
 
         # expect 3 atlas png files
         for i in ['0', '1', '2']:
-            fullat = os.path.join(thumbs_dir, cell_line, f + '_atlas_'+i+'.png')
+            fullat = make_path(thumbs_dir, cell_line, f + '_atlas_'+i+'.png')
             if not os.path.isfile(fullat):
                 print("ERROR: " + jobname + ": Could not find file: " + fullat)
 
         # check for image meta
-        fullmj = os.path.join(thumbs_dir, cell_line, f + '_meta.json')
+        fullmj = make_path(thumbs_dir, cell_line, f + '_meta.json')
         if not os.path.isfile(fullmj):
             print("ERROR: " + jobname + ": Could not find file: " + fullmj)
 
         # check for image
-        fullf = os.path.join(data_dir, cell_line, f + '.ome.tif')
+        fullf = make_path(data_dir, cell_line, f + '.ome.tif')
         if not os.path.isfile(fullf):
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
@@ -95,8 +100,8 @@ def do_image(args, prefs, row, index, total_jobs):
     outrows.append({
         "file_id": imageName,
         "file_name": imageName + '.ome.tif',
-        "read_path": os.path.join(data_dir, cell_line, imageName + '.ome.tif'),
-        "file_size": os.path.getsize(os.path.join(data_dir, cell_line, imageName + '.ome.tif')),
+        "read_path": make_path(data_dir, cell_line, imageName + '.ome.tif'),
+        "file_size": os.path.getsize(make_path(data_dir, cell_line, imageName + '.ome.tif')),
         "CellLineName": cell_line
     })
     for seg in segs:
@@ -104,8 +109,8 @@ def do_image(args, prefs, row, index, total_jobs):
         outrows.append({
             "file_id": n,
             "file_name": n + '.ome.tif',
-            "read_path": os.path.join(data_dir, cell_line, n + '.ome.tif'),
-            "file_size": os.path.getsize(os.path.join(data_dir, cell_line, n + '.ome.tif')),
+            "read_path": make_path(data_dir, cell_line, n + '.ome.tif'),
+            "file_size": os.path.getsize(make_path(data_dir, cell_line, n + '.ome.tif')),
             "CellLineName": cell_line
         })
     return outrows
@@ -113,7 +118,7 @@ def do_image(args, prefs, row, index, total_jobs):
 
 def do_main(args, prefs):
     # Read every .csv file and concat them together
-    data = utils.collect_data_rows(prefs['data_query'])
+    data = utils.collect_data_rows(prefs['data_query'], prefs.get("fovs"))
     data = data.to_dict(orient='records')
 
     total_jobs = len(data)
@@ -127,7 +132,7 @@ def do_main(args, prefs):
         allfiles.extend(filerows)
 
     keys = allfiles[0].keys()
-    with open('cellviewer-files-1.3.0.csv', 'wb') as output_file:
+    with open('cellviewer-files-1.3.0.csv', 'w', newline="") as output_file:
         dict_writer = csv.DictWriter(output_file, keys)
         dict_writer.writeheader()
         dict_writer.writerows(allfiles)
