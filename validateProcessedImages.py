@@ -6,7 +6,7 @@
 import argparse
 import cellJob
 import csv
-import dataHandoffSpreadsheetUtils as utils
+import dataHandoffUtils as utils
 import glob
 import jobScheduler
 import json
@@ -101,7 +101,8 @@ def do_image(args, prefs, row, index, total_jobs):
 
 def do_main(args, prefs):
     # Read every .csv file and concat them together
-    data = utils.collect_data_rows(prefs['data_files'], db_path=prefs['imageIDs'])
+    data = utils.collect_data_rows(prefs['data_query'])
+    data = data.to_dict(orient='records')
 
     total_jobs = len(data)
     print('VALIDATING ' + str(total_jobs) + ' JOBS')

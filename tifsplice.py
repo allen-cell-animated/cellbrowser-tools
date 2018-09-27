@@ -4,8 +4,8 @@
 
 from __future__ import print_function
 
-from aicsimage.io.tifReader import TifReader
-from aicsimage.io.omeTifWriter import OmeTifWriter
+from aicsimageio.tifReader import TifReader
+from aicsimageio.omeTifWriter import OmeTifWriter
 
 import numpy as np
 import os

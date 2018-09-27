@@ -9,6 +9,7 @@ from aics.image.io.pngWriter import PngWriter
 from aics.image.io.omeTifReader import OmeTifReader
 from aics.image.processing import thumbnailGenerator
 
+import dataHandoffUtils as lkutils
 from uploader import oneUp
 
 import argparse
@@ -140,26 +141,28 @@ def splitAndCrop(row):
 
     structureName = row.structureProteinName
 
+    nucSegPath = row.outputNucSegmentationPath
+    nucSegPath = normalizePath(nucSegPath)
     segPath = row.outputSegmentationPath
     segPath = normalizePath(segPath)
     print(segPath)
 
     # nucleus segmentation
-    nucSegFile = os.path.join(segPath, row.outputNucSegWholeFilename)
+    nucSegFile = lkutils.get_read_path(row.outputNucSegWholeFilename, nucSegPath)
     print(nucSegFile)
 
     # cell segmentation
-    cellSegFile = os.path.join(segPath, row.outputCellSegWholeFilename)
+    cellSegFile = lkutils.get_read_path(row.outputCellSegWholeFilename, segPath)
     print(cellSegFile)
 
     structSegPath = row.structureSegOutputFolder
     structSegPath = normalizePath(structSegPath)
 
     # structure segmentation
-    structSegFile = os.path.join(structSegPath, row.structureSegOutputFilename)
+    structSegFile = lkutils.get_read_path(row.structureSegOutputFilename, structSegPath)
     print(structSegFile)
 
-    imageFile = os.path.join(row.inputFolder, row.inputFilename)
+    imageFile = lkutils.get_read_path(row.inputFilename, row.inputFolder)
     imageFile = normalizePath(imageFile)
     print(imageFile)
 
