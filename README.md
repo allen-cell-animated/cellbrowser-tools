@@ -14,6 +14,7 @@ When cluster jobs are all done:
     ```
     python validateProcessedImages.py myprefs.json
     ```
+*This validateProcessedImages step generates an output csv file that lists all files.  This file must be handed off to Gabe for downloader use.*
 
 3. add images to bisque db:
 
@@ -47,5 +48,7 @@ structureProteinName,Cell ID,Nuclear volume (fL),Cellular volume (fL),Nuclear su
 Save output as cell-feature-analysis.json in bisque bqcore/bq/core/public/js/AICS/cell-feature-analysis.json
 Then run updateFeatures.py in this directory to add some fields.  Output will be in cell-feature-analysis2.json for checking before replacing. 
 When satisfied, replace the file.
+
+8. run generateCellLineDef.py and deposit the output file in the appropriate place (TBD)
  
 
