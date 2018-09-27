@@ -112,7 +112,7 @@ def check_dups(dfr, column, remove=True):
 
 
 # big assumption: any query_name passed in must return data of the same format!
-def collect_data_rows(query_name):
+def collect_data_rows(query_name, fovids=None):
     server_context = labkey.utils.create_server_context('aics.corp.alleninstitute.org', 'AICS', 'labkey', use_ssl=False)
 
     data_handoff_results = labkey.query.select_rows(
@@ -122,6 +122,9 @@ def collect_data_rows(query_name):
         max_rows=-1
     )
     df_data_handoff = trim_labkeyurl(data_handoff_results['rows'])
+
+    if fovids is not None and len(fovids) > 0:
+        df_data_handoff = df_data_handoff[df_data_handoff['FOVId'].isin(fovids)]
 
     print("GOT DATA HANDOFF")
 

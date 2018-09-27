@@ -98,16 +98,19 @@ def parse_args():
 
     # control what data to process.
 
+    parser.add_argument('--fovid', '-f', help='select one specific fov id', type=int, default=-1)
+
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--notdb', '-n', help='write to the server dirs but do not add to db', action='store_true')
     group.add_argument('--dbonly', '-p', help='only post to db', action='store_true')
+
 
     generation = parser.add_mutually_exclusive_group()
     generation.add_argument('--thumbnailsonly', '-t', help='only generate thumbnail', action='store_true')
     generation.add_argument('--imagesonly', '-i', help='only generate images', action='store_true')
 
     cell_images = parser.add_mutually_exclusive_group()
-    cell_images.add_argument('--fullfieldonly', '-f', help='only generate fullfield images', action='store_true')
+    cell_images.add_argument('--fullfieldonly', '-d', help='only generate fullfield images', action='store_true')
     cell_images.add_argument('--segmentedonly', '-s', help='only generate segmented cell images', action='store_true')
 
     parser.add_argument('--all', '-a', action='store_true')
@@ -237,10 +240,11 @@ def do_main(args, prefs):
     cell_lines_data = load_cell_line_info()
 
     # Read every cell image to be processed
-    data = lkutils.collect_data_rows(prefs['data_query'])
+    data = lkutils.collect_data_rows(prefs['data_query'], prefs.get('fovs'))
     data = data.to_dict(orient='records')
 
     total_jobs = len(data)
+
     print('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
 
     # process each file
@@ -259,6 +263,7 @@ def do_main(args, prefs):
         # run serially
         for index, row in enumerate(data):
             do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+
 
 def setup_prefs(json_path):
     with open(json_path) as f:
