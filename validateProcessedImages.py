@@ -68,51 +68,58 @@ def do_image(args, prefs, row, index, total_jobs):
     exts = ['.ome.tif', '.png']
     # check existence of ome.tif and png.
 
+    err = False
     for f in names:
         # check for thumbnail
         fullf = make_path(thumbs_dir, cell_line, f + '.png')
         if not os.path.isfile(fullf):
+            err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
         # check for atlas meta
         fullaj = make_path(thumbs_dir, cell_line, f + '_atlas.json')
         if not os.path.isfile(fullaj):
+            err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullaj)
 
         # expect 3 atlas png files
         for i in ['0', '1', '2']:
             fullat = make_path(thumbs_dir, cell_line, f + '_atlas_'+i+'.png')
             if not os.path.isfile(fullat):
+                err = True
                 print("ERROR: " + jobname + ": Could not find file: " + fullat)
 
         # check for image meta
         fullmj = make_path(thumbs_dir, cell_line, f + '_meta.json')
         if not os.path.isfile(fullmj):
+            err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullmj)
 
         # check for image
         fullf = make_path(data_dir, cell_line, f + '.ome.tif')
         if not os.path.isfile(fullf):
+            err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
 
-    outrows = []
-    outrows.append({
-        "file_id": imageName,
-        "file_name": imageName + '.ome.tif',
-        "read_path": make_path(data_dir, cell_line, imageName + '.ome.tif'),
-        "file_size": os.path.getsize(make_path(data_dir, cell_line, imageName + '.ome.tif')),
-        "CellLineName": cell_line
-    })
-    for seg in segs:
-        n = imageName + "_" + str(int(seg))
+    if err is not True:
+        outrows = []
         outrows.append({
-            "file_id": n,
-            "file_name": n + '.ome.tif',
-            "read_path": make_path(data_dir, cell_line, n + '.ome.tif'),
-            "file_size": os.path.getsize(make_path(data_dir, cell_line, n + '.ome.tif')),
+            "file_id": imageName,
+            "file_name": imageName + '.ome.tif',
+            "read_path": make_path(data_dir, cell_line, imageName + '.ome.tif'),
+            "file_size": os.path.getsize(make_path(data_dir, cell_line, imageName + '.ome.tif')),
             "CellLineName": cell_line
         })
+        for seg in segs:
+            n = imageName + "_" + str(int(seg))
+            outrows.append({
+                "file_id": n,
+                "file_name": n + '.ome.tif',
+                "read_path": make_path(data_dir, cell_line, n + '.ome.tif'),
+                "file_size": os.path.getsize(make_path(data_dir, cell_line, n + '.ome.tif')),
+                "CellLineName": cell_line
+            })
     return outrows
 
 
