@@ -1,5 +1,5 @@
 {
-  "data_query": "Pipeline 4 Handoff 1",
+  "data_query": "Pipeline 4 Production Data Passing QC",
   "out_status": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing",
   "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Data",
   "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Thumbnails",
