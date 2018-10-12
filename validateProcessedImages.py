@@ -50,7 +50,7 @@ def make_path(dir0, dir1, filename):
 
 def do_image(args, prefs, row, index, total_jobs):
     info = cellJob.CellJob(row)
-    jobname = info.SourceFilename
+    jobname = info.FOV_3dcv_Name
 
     imageName = info.FOV_3dcv_Name
     segs = info.CellId
@@ -102,8 +102,8 @@ def do_image(args, prefs, row, index, total_jobs):
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
 
+    outrows = []
     if err is not True:
-        outrows = []
         outrows.append({
             "file_id": imageName,
             "file_name": imageName + '.ome.tif',
@@ -120,7 +120,7 @@ def do_image(args, prefs, row, index, total_jobs):
                 "file_size": os.path.getsize(make_path(data_dir, cell_line, n + '.ome.tif')),
                 "CellLineName": cell_line
             })
-    return outrows
+    return outrows, err
 
 
 def do_main(args, prefs):
@@ -131,18 +131,27 @@ def do_main(args, prefs):
     total_jobs = len(data)
     print('VALIDATING ' + str(total_jobs) + ' JOBS')
 
+    errorFovs = []
     allfiles = []
     # process each file
     # run serially
     for index, row in enumerate(data):
-        filerows = do_image(args, prefs, row, index, total_jobs)
-        allfiles.extend(filerows)
+        filerows, err = do_image(args, prefs, row, index, total_jobs)
+        if err is True:
+            errorFovs.append(row['FOV_3dcv_Name'])
+        else:
+            allfiles.extend(filerows)
 
-    keys = allfiles[0].keys()
-    with open('cellviewer-files-1.3.0.csv', 'w', newline="") as output_file:
-        dict_writer = csv.DictWriter(output_file, keys)
-        dict_writer.writeheader()
-        dict_writer.writerows(allfiles)
+    if len(errorFovs) > 0:
+        with open('errorFovs.txt', 'w', newline="") as error_file:
+            error_file.write('\n'.join(errorFovs))
+
+    if len(allfiles) > 0:
+        keys = allfiles[0].keys()
+        with open('cellviewer-files-1.3.0.csv', 'w', newline="") as output_file:
+            dict_writer = csv.DictWriter(output_file, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(allfiles)
 
 def main():
     args = parse_args()
