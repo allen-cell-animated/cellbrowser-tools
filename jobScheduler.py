@@ -103,7 +103,7 @@ def batch(iterable, n=1):
         yield iterable[ndx:min(ndx + n, l)]
 
 
-def submit_jobs_batches(files, json_obj, batch_size=40, tmp_file_name='tmp_script'):
+def submit_jobs_batches(files, json_obj, batch_size=128, tmp_file_name='tmp_script'):
     i = 0
     last_deps = []
     for x in batch(files, batch_size):
