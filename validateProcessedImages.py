@@ -18,6 +18,8 @@ import re
 import sys
 import uploader.db_api as db_api
 
+import featurehandoff as fh
+
 from cellNameDb import CellNameDatabase
 from processImageWithSegmentation import do_main_image
 
@@ -103,7 +105,6 @@ def do_image(args, prefs, row, index, total_jobs):
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
 
-    features = []
     outrows = []
     if err is not True:
         outrows.append({
@@ -114,19 +115,6 @@ def do_image(args, prefs, row, index, total_jobs):
             "CellLineName": cell_line
         })
         for seg in segs:
-            features.append({
-                "file_info": {
-                    "Cell ID": seg,
-                    "CellLineName": cell_line,
-                    "FOV ID": info.FOVId
-                },
-                "Nuclear volume (fL)": random.uniform(400, 1000),
-                "Cellular volume (fL)": random.uniform(1000, 3000),
-                "Nuclear surface area (&micro;m&sup2;)": random.uniform(200, 1000),
-                "Cellular surface area (&micro;m&sup2;)": random.uniform(1000, 4000),
-                "Radial proximity (unitless)": random.uniform(-0.99999, 0.99999),
-                "Apical proximity (unitless)": random.uniform(-0.99999, 0.99999),
-            })
             n = imageName + "_" + str(int(seg))
             outrows.append({
                 "file_id": n,
@@ -135,7 +123,7 @@ def do_image(args, prefs, row, index, total_jobs):
                 "file_size": os.path.getsize(make_path(data_dir, cell_line, n + '.ome.tif')),
                 "CellLineName": cell_line
             })
-    return outrows, err, features
+    return outrows, err
 
 
 def do_main(args, prefs):
@@ -148,16 +136,14 @@ def do_main(args, prefs):
 
     errorFovs = []
     allfiles = []
-    allfeatures = []
     # process each file
     # run serially
     for index, row in enumerate(data):
-        filerows, err, features = do_image(args, prefs, row, index, total_jobs)
+        filerows, err = do_image(args, prefs, row, index, total_jobs)
         if err is True:
             errorFovs.append(row['FOV_3dcv_Name'])
         else:
             allfiles.extend(filerows)
-            allfeatures.extend(features)
 
     if len(errorFovs) > 0:
         with open('errorFovs.txt', 'w', newline="") as error_file:
@@ -169,8 +155,10 @@ def do_main(args, prefs):
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
-        with open('cell-feature-analysis.json', 'w', newline="") as output_file:
-            output_file.write(json.dumps(allfeatures))
+
+    featuredata = fh.get_json_handoff(algorithm_name="aics-feature", algorithm_version="1.0.0", config="prod.json")
+    with open('cell-feature-analysis.json', 'w', newline="") as output_file:
+        output_file.write(json.dumps(featuredata))
 
 def main():
     args = parse_args()
