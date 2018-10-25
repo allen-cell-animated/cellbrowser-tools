@@ -145,7 +145,7 @@ def do_main(args, prefs):
 
     if len(allfiles) > 0:
         keys = allfiles[0].keys()
-        with open(os.path.join(prefs.get("out_status"), 'cellviewer-files-1.3.0.csv'), 'w', newline="") as output_file:
+        with open(os.path.join(prefs.get("out_status"), 'cellviewer-files.csv'), 'w', newline="") as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
