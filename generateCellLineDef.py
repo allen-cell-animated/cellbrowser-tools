@@ -59,6 +59,7 @@ class Args(object):
     def __parse(self):
         p = argparse.ArgumentParser()
         # Add arguments
+        p.add_argument('prefs', nargs='?', default='prefs.json', help='prefs file')
         p.add_argument('-c', '--cell_line', action='store', dest='cell_line')
         p.add_argument('-d', '--debug', action='store_true', dest='debug',
                        help='If set debug log output is enabled')
@@ -108,7 +109,7 @@ class LabkeyServer(object):
 
 ###############################################################################
 
-def use_select_rows_cellline_name_to_protein_name(server):
+def use_select_rows_cellline_name_to_protein_name(server, prefs):
     import json
     results = lk.select_rows(server.context, server.SCHEMA_CELLLINES, 'CellLineDefinition',
                              filter_array=[
@@ -121,7 +122,7 @@ def use_select_rows_cellline_name_to_protein_name(server):
     log.debug(PP.pformat(rows))
     log.debug("Row Count {}: ".format(len(rows)))
     import json
-    with open('cellLineDef.json', 'w') as outfile:
+    with open(os.path.join(prefs.get("out_status"), 'cellLineDef.json'), 'w') as outfile:
         json.dump(rows, outfile, indent=4)
 
 def use_execute_sql_cellline_name_to_protein_name(server):
@@ -138,8 +139,8 @@ WHERE NOT LOWER(CellLine.Name) LIKE 'drubin%'
     log.debug("Row Count {}: ".format(len(rows)))
 
 
-def query_cellline_to_protein(server):
-    use_select_rows_cellline_name_to_protein_name(server)
+def query_cellline_to_protein(server, prefs):
+    use_select_rows_cellline_name_to_protein_name(server, prefs)
     # use_execute_sql_cellline_name_to_protein_name(server)
 
 ###############################################################################
@@ -149,9 +150,11 @@ if __name__ == "__main__":
     try:
         args = Args()
         dbg = args.debug
+        with open(args.prefs) as f:
+            prefs = json.load(f)
 
         server = LabkeyServer('aics')
-        query_cellline_to_protein(server)
+        query_cellline_to_protein(server, prefs)
 
     except Exception as e:
         log.error("=============================================")
