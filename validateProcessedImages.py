@@ -28,16 +28,10 @@ from processImageWithSegmentation import do_main_image
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
-                                                 'and set up a job script for each row.'
-                                                 'Example: python createJobsFromCSV.py -c -n --dataset 2017_03_08_Struct_First_Pass_Seg')
-
-    # python validateDataHandoff --sheets D:\src\aics\dataset_cellnuc_seg_curated\2017_05_15_tubulin\spreasheets_contourXY
+    parser = argparse.ArgumentParser(description='Validate data files and dump aggregate data to json.'
+                                                 'Example: python validateProcessedImages.py')
 
     parser.add_argument('prefs', nargs='?', default='prefs.json', help='prefs file')
-
-    # sheets replaces input...
-    parser.add_argument('--sheets', help='directory containing *.xlsx', default='')
 
     args = parser.parse_args()
 
