@@ -140,18 +140,18 @@ def do_main(args, prefs):
             allfiles.extend(filerows)
 
     if len(errorFovs) > 0:
-        with open('errorFovs.txt', 'w', newline="") as error_file:
+        with open(os.path.join(prefs.get("out_status"), 'errorFovs.txt'), 'w', newline="") as error_file:
             error_file.write('\n'.join(errorFovs))
 
     if len(allfiles) > 0:
         keys = allfiles[0].keys()
-        with open('cellviewer-files-1.3.0.csv', 'w', newline="") as output_file:
+        with open(os.path.join(prefs.get("out_status"), 'cellviewer-files-1.3.0.csv'), 'w', newline="") as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
 
     featuredata = fh.get_json_handoff(algorithm_name="aics-feature", algorithm_version="1.0.0", config="prod.json")
-    with open('cell-feature-analysis.json', 'w', newline="") as output_file:
+    with open(os.path.join(prefs.get("out_status"), 'cell-feature-analysis.json'), 'w', newline="") as output_file:
         output_file.write(json.dumps(featuredata))
 
 def main():
