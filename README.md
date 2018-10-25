@@ -5,7 +5,7 @@ LET VERSION = 1.3.0
 1. On data handoff, modify a copy of prefs.json to have the proper parameters inside.  You can omit prefs.json and it will use the existing prefs.json file or modify in-place but then you have to remember if you changed anything.
 
 2. Generate image data: 
-On cluster, create a virtualenv and pip install aicsimageio and aicsimageprocessing and labkey and pandas into it.  
+On cluster, create a virtualenv and pip install aicsimageio and aicsimageprocessing and featurehandoff==0.1.1 and labkey and pandas into it.  
 run:
     ```
     python createJobsFromCSV.py myprefs.json -c -n  
