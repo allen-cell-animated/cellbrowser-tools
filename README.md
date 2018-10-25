@@ -15,9 +15,17 @@ run:
     ```
     python validateProcessedImages.py myprefs.json
     ```
-*This validateProcessedImages step generates a few important output files: cell-feature-analysis.json, cellLineDef.json, and   This file must be handed off to Gabe for downloader use.*
+*This validateProcessedImages step generates a few important output files: cell-feature-analysis.json, errorFovs.txt, and cellviewer-files.csv.  These files are placed in prefs.out_status directory. The csv file must be handed off to Gabe for downloader use.*
 
-3. Count files, count db entries, and do final qa. 
+4. Generate cell line defs file:
+    ```
+    python generateCellLineDef.py myprefs.json
+    ```
+*This generates cell-line-def.json in the prefs.out_status directory.*
+
+5. If no errors, put the results of steps in cell-feature-explorer/src/data directory.
+
+6. Count files, do final qa. 
 
  
 
