@@ -6,14 +6,14 @@
   "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Thumbnails",
   "out_bisquedb": "http://dev-aics-dtp-001.corp.alleninstitute.org:81",
 
-  "script_dir": "scripts",
+  "script_dir": "scripts_slurm",
   "data_log_name": "data_jobs_out.csv",
   "job_prefs": {
     "max_simultaneous_jobs": 100,
     "partition": "aics_cpu_general",
     "time": "03:00:00",
     "cpus-per-task": 1,
-    "output": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts/FOV-%A_%a.out",
-    "error": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts/FOV-%A_%a.err"
+    "output": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/FOV-%A_%a.out",
+    "error": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/FOV-%A_%a.err"
   }
 }
