@@ -302,10 +302,6 @@ def setup_prefs(json_path):
     prefs['my_path'] = json_path_local
     #record the location of the data object
     prefs['save_log_path'] = prefs['out_status'] + os.sep + prefs['data_log_name']
-    prefs['job_prefs']['script_dir'] = prefs['out_status'] + os.sep + prefs['script_dir']
-
-    if not os.path.exists(prefs['job_prefs']['script_dir']):
-        os.makedirs(prefs['job_prefs']['script_dir'])
 
     return prefs
 
