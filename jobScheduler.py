@@ -1,6 +1,8 @@
 import subprocess
 import os
 import time
+from pathlib import Path
+import jinja2
 
 
 def submit_job(files, json_obj, tmp_file_name='tmp_script.sh', files_deps=[]):
@@ -109,3 +111,45 @@ def submit_jobs_batches(files, json_obj, batch_size=128, tmp_file_name='tmp_scri
     for x in batch(files, batch_size):
         last_deps = submit_job(x, json_obj, tmp_file_name + '_' +str(i)+'.sh', last_deps)
         i = i + 1
+
+
+def slurp(json_list, prefs):
+    job_prefs = prefs['job_prefs'].copy()
+    max_simultaneous_jobs = job_prefs.pop('max_simultaneous_jobs')
+
+    slurm_args = []
+    for keyword, value in job_prefs.items():
+        slurm_args.append(f'--{keyword} {value}')
+
+    config = {
+        "directives": slurm_args,
+        "jsons": json_list,
+        "max_simultaneous_jobs": max_simultaneous_jobs,
+        "cwd": os.getcwd()
+    }
+
+    script = Path(prefs['out_status']) / 'CellBrowserRunner.sh'
+
+    template_path = str(Path(__file__).parent)
+    j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+
+    with open(script, 'w') as f:
+        script_text = j2env.get_template('fov_job.j2').render(config)
+        f.write(script_text)
+
+    proc = subprocess.Popen(
+        ['sbatch', script],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    print(f"{script.name} output:")
+    output = []
+    for line in iter(proc.stdout.readline, b''):
+        line = line.decode('utf-8').rstrip()
+        output.append(line)
+        print(line)
+    proc.wait()
+    code = proc.returncode
+    if code != 0:
+        print(f"Error occurred in {script.name} processing")
+        raise subprocess.CalledProcessError(code, script.name)

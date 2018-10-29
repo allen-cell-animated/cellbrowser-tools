@@ -9,10 +9,11 @@
   "script_dir": "scripts",
   "data_log_name": "data_jobs_out.csv",
   "job_prefs": {
-    "queue_name": "allencell",
-    "njobs": "64",
-    "walltime": "03:00:00",
-    "memory": "6gb",
-    "debug": "false"
+    "max_simultaneous_jobs": 100,
+    "partition": "aics_cpu_general",
+    "time": "03:00:00",
+    "cpus-per-task": 1,
+    "output": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts/FOV-%A_%a.out",
+    "error": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts/FOV-%A_%a.err"
   }
 }

@@ -124,6 +124,15 @@ def parse_args():
     return args
 
 
+def make_json(jobname, info, prefs):
+    cell_job_postfix = jobname
+    current_dir = os.path.join(prefs['out_status'], prefs['script_dir']) # os.path.join(os.getcwd(), outdir)
+    jsonname = os.path.join(current_dir, f'FOV_{cell_job_postfix}.json')
+    with open(jsonname, 'w') as fp:
+        json.dump(info.__dict__, fp)
+    return jsonname
+
+
 def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
     # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
     print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + ' : ' + row['FOV_3dcv_Name'])
@@ -207,7 +216,7 @@ def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
         do_main_image_with_celljob(info)
     elif args.cluster:
         # TODO: set arg to copy each indiv file to another output
-        return generate_sh_for_row(jobname, info, prefs)
+        return make_json(jobname, info, prefs)
 
 
 # conversion adapter to legacy spreadsheet names
@@ -250,14 +259,13 @@ def do_main(args, prefs):
     # process each file
     if args.cluster:
         # gather cluster commands and submit in batch
-        cmdlist = list()
+        json_list = []
         for index, row in enumerate(data):
-            shcmd = do_image(args, prefs, cell_lines_data, row, index, total_jobs)
-            cmdlist.append(shcmd)
+            json_file = do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+            json_list.append(json_file)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
-        jobprefs = prefs['job_prefs']
-        jobScheduler.submit_jobs_batches(cmdlist, jobprefs, batch_size=196)
+        jobScheduler.slurp(json_list, prefs)
 
     else:
         # run serially
