@@ -1,0 +1,8 @@
+{
+   "driver": "postgres",
+   "host": "pg-aics-microscopy-01.corp.alleninstitute.org",
+   "port": "5432",
+   "database": "pg_microscopy",
+   "user": "rw",
+   "password": "BaEoKO8c"
+}
