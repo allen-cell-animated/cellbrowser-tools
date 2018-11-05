@@ -120,6 +120,16 @@ def do_image(args, prefs, row, index, total_jobs):
     return outrows, err
 
 
+def build_feature_data(prefs):
+    featuredata0 = fh.get_full_handoff(algorithm_name="aics-feature", algorithm_version="1.0.0", config="prod.json")
+    featuredata1 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier", algorithm_version="1.0.0", config="prod.json")
+    allfeaturedata = pd.merge(featuredata0, featuredata1, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
+    allfeaturedata.dropna(inplace=True)
+    jsondictlist = fh.df_to_json(allfeaturedata)
+    with open(os.path.join(prefs.get("out_status"), 'cell-feature-analysis.json'), 'w', newline="") as output_file:
+        output_file.write(json.dumps(jsondictlist))
+
+
 def do_main(args, prefs):
     # Read every .csv file and concat them together
     data = utils.collect_data_rows(prefs['data_query'], prefs.get("fovs"))
@@ -150,9 +160,8 @@ def do_main(args, prefs):
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
 
-    featuredata = fh.get_json_handoff(algorithm_name="aics-feature", algorithm_version="1.0.0", config="prod.json")
-    with open(os.path.join(prefs.get("out_status"), 'cell-feature-analysis.json'), 'w', newline="") as output_file:
-        output_file.write(json.dumps(featuredata))
+    build_feature_data(prefs)
+
 
 def main():
     args = parse_args()
