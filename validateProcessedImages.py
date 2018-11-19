@@ -10,12 +10,15 @@ import dataHandoffUtils as utils
 import glob
 import jobScheduler
 import json
+import numpy as np
 import os
 import pandas as pd
 import platform
 import random
 import re
+from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 import sys
+from typing import Union, Dict, List
 import uploader.db_api as db_api
 
 import featurehandoff as fh
@@ -28,6 +31,16 @@ from processImageWithSegmentation import do_main_image
 # cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
+# clustering algorithm defaults
+DEFAULT_MIN_CLUSTERS = 2
+DEFAULT_MAX_CLUSTERS = 8
+DEFAULT_CLUSTER_STEP = 1
+DEFAULT_MIN_EPSILON = 60
+DEFAULT_MAX_EPSILON = 97
+DEFAULT_EPSILON_STEPS = 7
+
+# type def
+JSONList = List[Dict[str, Union[int, str, float]]]
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Validate data files and dump aggregate data to json.'
@@ -119,6 +132,187 @@ def do_image(args, prefs, row, index, total_jobs):
             })
     return outrows, err
 
+def compute_clusters_on_json_handoff(
+    handoff: JSONList,
+    min_clusters: int = DEFAULT_MIN_CLUSTERS,
+    max_clusters: int = DEFAULT_MAX_CLUSTERS,
+    cluster_step: int = DEFAULT_CLUSTER_STEP,
+    min_epsilon: Union[int, float] = DEFAULT_MIN_EPSILON,
+    max_epsilon: Union[int, float] = DEFAULT_MAX_EPSILON,
+    epsilon_steps: Union[int, float] = DEFAULT_EPSILON_STEPS
+) -> JSONList:
+    """
+    Generate clustering analysis on a json feature handoff blob.
+
+    This adds a clusters blob to the json feature handoff blob that contains
+    keys to each clustering algorithm used per cell. For each cluster algorithm,
+    there will be a dictionary with keys as the parameter used to generate the
+    cluster analysis, and values as which cluster the cell belongs to.
+
+    #### Example
+    ```
+    >>> import featurehandoff as fh
+    >>> handoff = fh.get_full_handoff("prod.json", "aics-feature", "1.0.1")
+    >>> json_handoff = fh.df_to_json(handoff)
+    >>> compute_clusters_on_json_handoff(json_handoff)
+    [
+        {
+            "file_info": {
+                "CellId": 2,
+                "FOVId": 1,
+                "CellLineName": "AICS-13"
+            },
+            "measured_features": {
+                "Apical Proximity (unitless)": 2.1123541,
+                ...
+            },
+            "clusters": {
+                "KMeans": {
+                    "2": 0,
+                    "3": 0,
+                    "4": 2,
+                    "5": 2,
+                    "6": 1,
+                    "7": 5,
+                    "8": 2
+                },
+                "Agglomerative": {
+                    "2": 0,
+                    "3": 1,
+                    "4": 1,
+                    "5": 1,
+                    "6": 3,
+                    "7": 4,
+                    "8": 7
+                },
+                "DBSCAN": {
+                    "74.0": -1,
+                    "82.8": -1,
+                    "91.6": 7,
+                    "100.4": 4,
+                    "109.2": 3,
+                    "118.0": 2
+                }
+            }
+        }
+        ...
+    ]
+    ```
+
+
+    #### Parameters
+    ##### handoff: List[Dict[str, Union[int, str, float]]]
+    The output from a:
+    `featurehandoff.df_to_json(featurehandoff.get_full_handoff(*args))`
+    call. This is a list of dictionarys where each dictionary has a "file_info",
+    and, "measured_features" blob.
+
+    ##### min_clusters: int = 2
+    For algorithms whose primary parameter is `n_clusters` based, what is the
+    minimum amount of clusters to generate.
+
+    ##### max_clusters: int = 8
+    For algorithms whose primary parameter is `n_clusters` based, what is the
+    maximum amount of clusters to generate.
+
+    ##### cluster_step: int = 1
+    For algorithms whose primary parameter is `n_clusters` based, what is the
+    stepping distance to increase `n_clusters` by after each generation.
+
+    ##### min_epsilon: Union[int, float] = 60
+    For algorithms whose primary parameter is `epsilon` based (distance between
+    two point to determine if they are "in cluster"), what is the minimum
+    distance to generate with.
+
+    ##### max_epsilon: Union[int, float] = 97
+    For algorithms whose primary parameter is `epsilon` based (distance between
+    two point to determine if they are "in cluster"), what is the maximum
+    distance to generate with.
+
+    ##### epsilon_steps: Union[int, float] = 7
+    For algorithms whose primary parameter is `epsilon` based (distance between
+    two point to determine if they are "in cluster"), how many steps should be
+    run for cluster generation.
+
+
+    #### Returns
+    ##### handoff: List[Dict[str, Union[int, str, float]]]
+    A list of dictionaries similar to that produced by
+    `featurehandoff.df_to_json`, with an additional "clusters" key for each row.
+    Each key in the clusters blob is the name of which clustering algorithm was
+    used to generate that portion of the data. Inside that dictionary are
+    key-value pairings that correspond to the parameter used to generate that
+    cluster analysis and the resulting group.
+
+
+    #### Errors
+
+    """
+
+    # This function accepts the json handoff instead of the dataframe handoff
+    # as the json handoff is a more "complete" version of any handoff.
+    # I claim it is more "complete" but what I truly mean by that is that the
+    # features are explicitly stated due to them being all in the same block.
+    # Why does this not pull and push directly to the database? Clustering
+    # should be done as the last step after all feature handoffs have been
+    # collected and merged. So while the clustering algorithm stays the same,
+    # it is primarily the data used that changed.
+    # Additionally, it makes more sense in my opinion to interact with a json
+    # blob on ingest because this function spits out the same json but with
+    # an additional child dictionary for each dictionary.
+
+    # split the data into its parts
+    meta = pd.DataFrame([row["file_info"] for row in handoff])
+    features = pd.DataFrame([row["measured_features"]for row in handoff])
+
+    # generate kmeans
+    kmeans = pd.DataFrame()
+    for i in range(min_clusters, max_clusters + cluster_step, cluster_step):
+        fitted = KMeans(n_clusters=i).fit(features)
+        kmeans["{}".format(i)] = fitted.labels_
+
+    # generate agglomerative
+    agglo = pd.DataFrame()
+    for i in range(min_clusters, max_clusters + cluster_step, cluster_step):
+        fitted = AgglomerativeClustering(n_clusters=i).fit(features)
+        agglo["{}".format(i)] = fitted.labels_
+
+    # generate dbscan
+    dbscan = pd.DataFrame()
+    for i in np.linspace(min_epsilon, max_epsilon, epsilon_steps):
+        fitted = DBSCAN(eps=i).fit(features)
+        dbscan["{}".format(i)] = fitted.labels_
+
+    # cast all clusters to list of dict
+    meta = meta.to_dict("records")
+    features = features.to_dict("records")
+    kmeans = kmeans.to_dict("records")
+    agglo = agglo.to_dict("records")
+    dbscan = dbscan.to_dict("records")
+
+    # pandas stores the integer values as numpy.int64 which sometimes have
+    # issues with being json serializable depending on OS and python install.
+    # As a measure to ensure these clusters will be json seriablizable I
+    # convert all key-value pairings for every row to base python int.
+    kmeans = [{k: int(v) for k, v in r.items()} for r in kmeans]
+    agglo = [{k: int(v) for k, v in r.items()} for r in agglo]
+    dbscan = [{k: int(v) for k, v in r.items()} for r in dbscan]
+
+    # format
+    handoff = []
+    for i, row in enumerate(meta):
+        handoff.append({
+            "file_info": row,
+            "measured_features": features[i],
+            "clusters": {
+                "KMeans": kmeans[i],
+                "Agglomerative": agglo[i],
+                "DBSCAN": dbscan[i]
+            }
+        })
+
+    return handoff
+
 
 def build_feature_data(prefs):
     featuredata0 = fh.get_full_handoff(algorithm_name="aics-feature", algorithm_version="1.0.0", config="prod.json")
@@ -126,6 +320,7 @@ def build_feature_data(prefs):
     allfeaturedata = pd.merge(featuredata0, featuredata1, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
     allfeaturedata.dropna(inplace=True)
     jsondictlist = fh.df_to_json(allfeaturedata)
+    jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
     with open(os.path.join(prefs.get("out_status"), 'cell-feature-analysis.json'), 'w', newline="") as output_file:
         output_file.write(json.dumps(jsondictlist))
 
