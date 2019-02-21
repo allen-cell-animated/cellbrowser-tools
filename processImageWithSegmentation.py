@@ -324,52 +324,8 @@ class ImageProcessor:
 
     def generate_meta(self, a_im, row):
         m = {}
-        names = a_im.get_channel_names()
-        for i, n in enumerate(names):
-            m["channel_"+str(i)+"_name"] = n
-
-        pix = a_im.metadata.image().Pixels
-        m["image_num_x"] = pix.get_SizeX()
-        m["image_num_y"] = pix.get_SizeY()
-        m["image_num_z"] = pix.get_SizeZ()
-        m["image_num_c"] = pix.get_SizeC()
-        m["image_num_t"] = pix.get_SizeT()
-
-        m["format"] = "OME-TIFF"
 
         m['date_time'] = a_im.metadata.image().get_AcquisitionDate()
-
-        phys = a_im.get_physical_pixel_size()
-        m["pixel_resolution_x"] = phys[0]
-        m["pixel_resolution_y"] = phys[1]
-        m["pixel_resolution_z"] = phys[2]
-        m["pixel_resolution_t"] = 0
-        # fix this (get from metadata)
-        m["pixel_resolution_unit_x"] = "micrometers"
-        m["pixel_resolution_unit_y"] = "micrometers"
-        m["pixel_resolution_unit_z"] = "micrometers"
-        m["pixel_resolution_unit_t"] = "seconds"
-
-        m["image_dimensions"] = a_im.metadata.image().Pixels.get_DimensionOrder()
-
-        pixeltypes = {
-            'uint8':  ('unsigned integer', 8),
-            'uint16': ('unsigned integer', 16),
-            'uint32': ('unsigned integer', 32),
-            'uint64': ('unsigned integer', 64),
-            'int8':   ('signed integer', 8),
-            'int16':  ('signed integer', 16),
-            'int32':  ('signed integer', 32),
-            'int64':  ('signed integer', 64),
-            'float':  ('floating point', 32),
-            'double': ('floating point', 64),
-        }
-        try:
-            t = pixeltypes[a_im.metadata.image().Pixels.get_PixelType().lower()]
-            m['image_pixel_format'] = t[0]
-            m['image_pixel_depth'] = t[1]
-        except KeyError:
-            pass
 
         instrument = omexmlfind(a_im.metadata, a_im.metadata.root_node, "Instrument")
         if len(instrument) > 0:
@@ -396,8 +352,11 @@ class ImageProcessor:
         m["structureSegmentationVersion"] = row.StructureSegmentationAlgorithmVersion
         m["structureSegmentationMethod"] = row.StructureSegmentationAlgorithm
         m["inputFilename"] = row.SourceFilename  # czi
-        m["name"] = row.cbrCellName
 
+        m["alignedTransform"] = {
+            'translation': [0, 0, 0],
+            'rotation': [0, 0, 0]
+        }
         return m
 
     def generate_and_save(self):
@@ -555,14 +514,12 @@ class ImageProcessor:
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
         physical_size = [self.row.PixelScaleX, self.row.PixelScaleY, self.row.PixelScaleZ]
-        png_dir, ometif_dir, png_url, atlas_dir, meta_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir, self.png_dir
+        png_dir, ometif_dir, png_url, atlas_dir, self.ometif_dir, self.png_url, self.atlas_dir, self.png_dir
         if seg_cell_index != None:
-            meta_dir += '_' + str(seg_cell_index) + '_meta.json'
             png_dir += '_' + str(seg_cell_index) + '.png'
             ometif_dir += '_' + str(seg_cell_index) + '.ome.tif'
             png_url += '_' + str(seg_cell_index) + '.png'
         else:
-            meta_dir += '_meta.json'
             png_dir += '.png'
             ometif_dir += '.ome.tif'
             png_url += '.png'
@@ -584,13 +541,7 @@ class ImageProcessor:
 
         if textureatlas is not None:
             print("saving texture atlas...", end="")
-            textureatlas.save(self.atlas_dir)
-            print("done")
-
-        if other_data is not None:
-            print("saving metadata json...", end="")
-            with open(meta_dir, 'w') as fp:
-                json.dump(other_data, fp)
+            textureatlas.save(self.atlas_dir, app_data=other_data)
             print("done")
 
         if self.row.cbrAddToDb:
