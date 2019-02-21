@@ -111,11 +111,10 @@ def do_image(args, prefs, row, index, total_jobs):
             err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
-
     outrows = []
     if err is not True:
         outrows.append({
-            "file_id": imageName,
+            "file_id": "F" + str(int(info.FOVId)),
             "file_name": imageName + '.ome.tif',
             "read_path": make_path(data_dir, cell_line, imageName + '.ome.tif'),
             "file_size": os.path.getsize(make_path(data_dir, cell_line, imageName + '.ome.tif')),
@@ -124,7 +123,7 @@ def do_image(args, prefs, row, index, total_jobs):
         for seg in segs:
             n = imageName + "_" + str(int(seg))
             outrows.append({
-                "file_id": n,
+                "file_id": "C" + str(int(seg)),
                 "file_name": n + '.ome.tif',
                 "read_path": make_path(data_dir, cell_line, n + '.ome.tif'),
                 "file_size": os.path.getsize(make_path(data_dir, cell_line, n + '.ome.tif')),
