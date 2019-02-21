@@ -357,6 +357,10 @@ class ImageProcessor:
             'translation': [0, 0, 0],
             'rotation': [0, 0, 0]
         }
+
+        # convert contrast presets from min,max to normalized min,max or window/level
+        # any preset viewing / slider values go here
+
         return m
 
     def generate_and_save(self):
