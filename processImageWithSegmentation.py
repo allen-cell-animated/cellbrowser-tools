@@ -358,8 +358,7 @@ class ImageProcessor:
             'rotation': [0, 0, 0]
         }
 
-        # convert contrast presets from min,max to normalized min,max or window/level
-        # any preset viewing / slider values go here
+        # TODO: any preset viewing / slider values go here, including contrast presets
 
         return m
 
