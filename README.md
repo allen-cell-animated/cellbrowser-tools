@@ -7,7 +7,7 @@ LET VERSION = 1.4.0
 2. Generate image data: 
 On cluster, create a virtualenv and pip install 
 aicsimageio
-aicsimageprocessing
+aicsimageprocessing>=0.6.1.dev3
 featurehandoff==0.1.1
 labkey
 lkaccess
