@@ -545,7 +545,7 @@ class ImageProcessor:
 
         if textureatlas is not None:
             print("saving texture atlas...", end="")
-            textureatlas.save(self.atlas_dir, app_data=other_data)
+            textureatlas.save(self.atlas_dir, user_data=other_data)
             print("done")
 
         if self.row.cbrAddToDb:
