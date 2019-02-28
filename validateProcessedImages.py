@@ -39,8 +39,17 @@ DEFAULT_MIN_EPSILON = 60
 DEFAULT_MAX_EPSILON = 97
 DEFAULT_EPSILON_STEPS = 7
 
+# ignore columns for clustering
+# this is temporary as this is not future proof a better system for determining which
+# features should actually be used in cluster calculation should be adopted at a later point
+IGNORE_FEATURES_COLUMNS_DURING_CLUSTERING = [
+    "Cell Cycle State (unitless)",
+    "Cell Cycle State (curated)"
+]
+
 # type def
 JSONList = List[Dict[str, Union[int, str, float]]]
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Validate data files and dump aggregate data to json.'
@@ -131,6 +140,7 @@ def do_image(args, prefs, row, index, total_jobs):
                 "CellLineName": cell_line
             })
     return outrows, err
+
 
 def compute_clusters_on_json_handoff(
     handoff: JSONList,
@@ -248,7 +258,6 @@ def compute_clusters_on_json_handoff(
     #### Errors
 
     """
-
     # This function accepts the json handoff instead of the dataframe handoff
     # as the json handoff is a more "complete" version of any handoff.
     # I claim it is more "complete" but what I truly mean by that is that the
@@ -265,22 +274,30 @@ def compute_clusters_on_json_handoff(
     meta = pd.DataFrame([row["file_info"] for row in handoff])
     features = pd.DataFrame([row["measured_features"]for row in handoff])
 
+    # use only specific clustering features
+    # this will return a dataframe that uses features as its base but with the ignore columns dropped
+    clustering_data = features.drop(IGNORE_FEATURES_COLUMNS_DURING_CLUSTERING, axis=1)
+
+    # normalize the features by zscoring every column
+    for col in clustering_data:
+        clustering_data[col] = (clustering_data[col] - clustering_data[col].mean()) / clustering_data[col].std(ddof=0)
+
     # generate kmeans
     kmeans = pd.DataFrame()
     for i in range(min_clusters, max_clusters + cluster_step, cluster_step):
-        fitted = KMeans(n_clusters=i).fit(features)
+        fitted = KMeans(n_clusters=i).fit(clustering_data)
         kmeans["{}".format(i)] = fitted.labels_
 
     # generate agglomerative
     agglo = pd.DataFrame()
     for i in range(min_clusters, max_clusters + cluster_step, cluster_step):
-        fitted = AgglomerativeClustering(n_clusters=i).fit(features)
+        fitted = AgglomerativeClustering(n_clusters=i).fit(clustering_data)
         agglo["{}".format(i)] = fitted.labels_
 
     # generate dbscan
     dbscan = pd.DataFrame()
     for i in np.linspace(min_epsilon, max_epsilon, epsilon_steps):
-        fitted = DBSCAN(eps=i).fit(features)
+        fitted = DBSCAN(eps=i).fit(clustering_data)
         dbscan["{}".format(i)] = fitted.labels_
 
     # cast all clusters to list of dict
@@ -368,6 +385,6 @@ def main():
 
 
 if __name__ == "__main__":
-    print (sys.argv)
+    print(sys.argv)
     main()
     sys.exit(0)
