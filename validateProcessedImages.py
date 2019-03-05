@@ -16,7 +16,7 @@ import pandas as pd
 import platform
 import random
 import re
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 import sys
 from typing import Union, Dict, List
 import uploader.db_api as db_api
@@ -35,9 +35,6 @@ from processImageWithSegmentation import do_main_image
 DEFAULT_MIN_CLUSTERS = 2
 DEFAULT_MAX_CLUSTERS = 8
 DEFAULT_CLUSTER_STEP = 1
-DEFAULT_MIN_EPSILON = 60
-DEFAULT_MAX_EPSILON = 97
-DEFAULT_EPSILON_STEPS = 7
 
 # ignore columns for clustering
 # this is temporary as this is not future proof a better system for determining which
@@ -146,10 +143,7 @@ def compute_clusters_on_json_handoff(
     handoff: JSONList,
     min_clusters: int = DEFAULT_MIN_CLUSTERS,
     max_clusters: int = DEFAULT_MAX_CLUSTERS,
-    cluster_step: int = DEFAULT_CLUSTER_STEP,
-    min_epsilon: Union[int, float] = DEFAULT_MIN_EPSILON,
-    max_epsilon: Union[int, float] = DEFAULT_MAX_EPSILON,
-    epsilon_steps: Union[int, float] = DEFAULT_EPSILON_STEPS
+    cluster_step: int = DEFAULT_CLUSTER_STEP
 ) -> JSONList:
     """
     Generate clustering analysis on a json feature handoff blob.
@@ -195,13 +189,14 @@ def compute_clusters_on_json_handoff(
                     "7": 4,
                     "8": 7
                 },
-                "DBSCAN": {
-                    "74.0": -1,
-                    "82.8": -1,
-                    "91.6": 7,
-                    "100.4": 4,
-                    "109.2": 3,
-                    "118.0": 2
+                "Spectral": {
+                    "2": 0,
+                    "3": 4,
+                    "4": 0,
+                    "5": 0,
+                    "6": 1,
+                    "7": 7,
+                    "8": 5
                 }
             }
         }
@@ -228,21 +223,6 @@ def compute_clusters_on_json_handoff(
     ##### cluster_step: int = 1
     For algorithms whose primary parameter is `n_clusters` based, what is the
     stepping distance to increase `n_clusters` by after each generation.
-
-    ##### min_epsilon: Union[int, float] = 60
-    For algorithms whose primary parameter is `epsilon` based (distance between
-    two point to determine if they are "in cluster"), what is the minimum
-    distance to generate with.
-
-    ##### max_epsilon: Union[int, float] = 97
-    For algorithms whose primary parameter is `epsilon` based (distance between
-    two point to determine if they are "in cluster"), what is the maximum
-    distance to generate with.
-
-    ##### epsilon_steps: Union[int, float] = 7
-    For algorithms whose primary parameter is `epsilon` based (distance between
-    two point to determine if they are "in cluster"), how many steps should be
-    run for cluster generation.
 
 
     #### Returns
@@ -294,18 +274,23 @@ def compute_clusters_on_json_handoff(
         fitted = AgglomerativeClustering(n_clusters=i).fit(clustering_data)
         agglo["{}".format(i)] = fitted.labels_
 
-    # generate dbscan
-    dbscan = pd.DataFrame()
-    for i in np.linspace(min_epsilon, max_epsilon, epsilon_steps):
-        fitted = DBSCAN(eps=i).fit(clustering_data)
-        dbscan["{}".format(i)] = fitted.labels_
+    # generate spectral
+    spectral = pd.DataFrame()
+    for i in range(min_clusters, max_clusters + cluster_step, cluster_step):
+        fitted = SpectralClustering(
+            n_clusters=i,
+            eigen_solver="arpack",
+            affinity="nearest_neighbors",
+            n_neighbors=5
+        ).fit(clustering_data)
+        spectral["{}".format(i)] = fitted.labels_
 
     # cast all clusters to list of dict
     meta = meta.to_dict("records")
     features = features.to_dict("records")
     kmeans = kmeans.to_dict("records")
     agglo = agglo.to_dict("records")
-    dbscan = dbscan.to_dict("records")
+    spectral = spectral.to_dict("records")
 
     # pandas stores the integer values as numpy.int64 which sometimes have
     # issues with being json serializable depending on OS and python install.
@@ -313,7 +298,7 @@ def compute_clusters_on_json_handoff(
     # convert all key-value pairings for every row to base python int.
     kmeans = [{k: int(v) for k, v in r.items()} for r in kmeans]
     agglo = [{k: int(v) for k, v in r.items()} for r in agglo]
-    dbscan = [{k: int(v) for k, v in r.items()} for r in dbscan]
+    spectral = [{k: int(v) for k, v in r.items()} for r in spectral]
 
     # format
     handoff = []
@@ -324,7 +309,7 @@ def compute_clusters_on_json_handoff(
             "clusters": {
                 "KMeans": kmeans[i],
                 "Agglomerative": agglo[i],
-                "DBSCAN": dbscan[i]
+                "Spectral": spectral[i]
             }
         })
 
