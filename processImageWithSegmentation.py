@@ -583,7 +583,7 @@ def do_main_image(fname):
         jobspec = json.load(jobfile)
         info = cellJob.CellJob(jobspec["cells"])
         for key in jobspec:
-            info.setattr(key, jobspec[key])
+            setattr(info, key, jobspec[key])
         # if info.cbrParseError:
         #     sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
         #     pprint.pprint(jobspec, stream=sys.stderr)
