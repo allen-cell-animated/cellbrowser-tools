@@ -417,8 +417,7 @@ class ImageProcessor:
                 generator = thumbnailGenerator.ThumbnailGenerator(channel_indices=[memb_index, nuc_index, struct_index],
                                                                   size=self.job.cbrThumbnailSize,
                                                                   mask_channel_index=self.seg_indices[1],
-                                                                  colors=[[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]],
-                                                                  old_alg=True)
+                                                                  colors=[[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]])
                 ffthumb = generator.make_thumbnail(self.image.transpose(1, 0, 2, 3), apply_cell_mask=False)
                 print("done")
             else:
@@ -484,8 +483,7 @@ class ImageProcessor:
                     generator = thumbnailGenerator.ThumbnailGenerator(channel_indices=[memb_index, nuc_index, struct_index],
                                                                       size=self.job.cbrThumbnailSize,
                                                                       mask_channel_index=self.seg_indices[1],
-                                                                      colors=[[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]],
-                                                                      old_alg=True)
+                                                                      colors=[[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]])
                     thumb = generator.make_thumbnail(cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True)
                     print("done")
                 else:
