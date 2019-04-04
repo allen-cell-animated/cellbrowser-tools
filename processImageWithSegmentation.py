@@ -581,7 +581,7 @@ def do_main_image_with_celljob(info):
 def do_main_image(fname):
     with open(fname) as jobfile:
         jobspec = json.load(jobfile)
-        info = cellJob.CellJob(jobspec.cells)
+        info = cellJob.CellJob(jobspec["cells"])
         for key in jobspec:
             info.setattr(key, jobspec[key])
         # if info.cbrParseError:
