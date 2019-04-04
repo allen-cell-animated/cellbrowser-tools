@@ -186,7 +186,7 @@ def collect_data_rows(query_name, fovids=None):
 
     # assert all the angles and translations are valid production cells
     matches = (dataset.ds['CellId'].isin(df_data_handoff['CellId']))
-    assert(matches.all())
+    # assert(matches.all())
     df_data_handoff = pd.merge(df_data_handoff, dataset.ds[['CellId', 'Angle', 'x', 'y']], left_on='CellId', right_on='CellId', how='left')
 
     cell_line_protein_results = lk.select_rows_as_list(schema_name='celllines',

@@ -8,6 +8,7 @@ LET VERSION = 1.4.0
 On cluster, create a virtualenv and pip install 
 aicsimageio
 aicsimageprocessing>=0.6.1
+git+https://github.com/AllenCellModeling/datasetdatabase.git
 featurehandoff==0.1.1
 labkey
 lkaccess
