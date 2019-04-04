@@ -1,4 +1,7 @@
+import datasetdatabase as dsdb
 import labkey
+from lkaccess import LabKey, QueryFilter
+import lkaccess.contexts
 import os
 import pandas as pd
 import re
@@ -113,105 +116,101 @@ def check_dups(dfr, column, remove=True):
 
 # big assumption: any query_name passed in must return data of the same format!
 def collect_data_rows(query_name, fovids=None):
-    server_context = labkey.utils.create_server_context('aics.corp.alleninstitute.org', 'AICS', 'labkey', use_ssl=False)
+    # lk = LabKey(host="aics")
+    lk = LabKey(server_context=lkaccess.contexts.PROD)
 
-    data_handoff_results = labkey.query.select_rows(
-        server_context=server_context,
-        schema_name='processing',
-        query_name=query_name,
-        max_rows=-1
-    )
-    df_data_handoff = trim_labkeyurl(data_handoff_results['rows'])
+    print("REQUESTING DATA HANDOFF")
+    lkdatarows = lk.dataset.get_pipeline_4_production_data()
+    df_data_handoff = pd.DataFrame(lkdatarows)
 
     if fovids is not None and len(fovids) > 0:
         df_data_handoff = df_data_handoff[df_data_handoff['FOVId'].isin(fovids)]
 
     print("GOT DATA HANDOFF")
 
-    data_grouped = df_data_handoff.groupby("FOVId")
-    # get cell ids and indices into lists per FOV
-    cell_ids = pd.DataFrame(data_grouped['CellId'].apply(list))
-    cell_idx = pd.DataFrame(data_grouped['CellIndex'].apply(list))
-    # now remove dups in the data_grouped
-    df_data_handoff = data_grouped.first().reset_index()
-
-    df_data_handoff = df_data_handoff.drop(columns=["CellId", "CellIndex"])
-    df_data_handoff = pd.merge(df_data_handoff, cell_ids, how='left', left_on='FOVId', right_on='FOVId')
-    df_data_handoff = pd.merge(df_data_handoff, cell_idx, how='left', left_on='FOVId', right_on='FOVId')
-
-    # get colony position and legacy fov name for all fovs.
-    fovannotation_results = labkey.query.select_rows(
-        server_context=server_context,
-        schema_name='processing',
-        query_name='FOVAnnotationJunction',
-        columns='FOVId, AnnotationTypeId/Name, Value',
-        filter_array=[
-            labkey.query.QueryFilter('AnnotationTypeId/Name', 'Colony position;FOV name', 'in')
-        ],
-        max_rows=-1
+    # get mitotic state name for all cells
+    mitoticdata = lk.select_rows_as_list(
+        schema_name="processing",
+        query_name="MitoticAnnotation",
+        sort="MitoticAnnotation",
+        # columns=["CellId", "MitoticStateId/Name", "Complete"]
+        columns=["CellId", "MitoticStateId/Name"]
     )
-    df_fovannotation = trim_labkeyurl(fovannotation_results['rows'])
-    grouped_fovannotation = df_fovannotation.groupby("AnnotationTypeId/Name")
-    df_fovcolonyposition = grouped_fovannotation.get_group("Colony position")
-    df_fovcolonyposition = df_fovcolonyposition.rename(columns={"Value": "Colony position"})[['FOVId', 'Colony position']]
-    df_fovlegacyname = grouped_fovannotation.get_group("FOV name")
+    print("GOT MITOTIC ANNOTATIONS")
+
+    mitoticdata = pd.DataFrame(mitoticdata)
+    mitoticdata_grouped = mitoticdata.groupby(mitoticdata["MitoticStateId/Name"] == "Mitosis")
+    mitoticstatedata, mitoticbooldata = [x for _, x in mitoticdata_grouped]
+    mitoticbooldata = mitoticbooldata.rename(columns={"MitoticStateId/Name": "IsMitotic"})
+    mitoticstatedata = mitoticstatedata.rename(columns={"MitoticStateId/Name": "MitoticState"})
+    df_data_handoff = pd.merge(df_data_handoff, mitoticbooldata, how='left', left_on='CellId', right_on='CellId')
+    df_data_handoff = pd.merge(df_data_handoff, mitoticstatedata, how='left', left_on='CellId', right_on='CellId')
+    df_data_handoff.fillna(value={'IsMitotic': '', 'MitoticState': ''}, inplace=True)
+
+    # get legacy cell name for all cells
+    legacycellname_results = lk.select_rows_as_list(
+        schema_name='processing',
+        query_name='CellAnnotationJunction',
+        columns='CellId, Value',
+        filter_array=[
+            labkey.query.QueryFilter('AnnotationTypeId/Name', 'Cell name', 'in')
+        ]
+    )
+    print("GOT LEGACY CELL NAMES")
+    df_legacycellname = pd.DataFrame(legacycellname_results)
+    df_legacycellname = df_legacycellname.rename(columns={"Value": "LegacyCellName"})
+    df_data_handoff = pd.merge(df_data_handoff, df_legacycellname, how='left', left_on='CellId', right_on='CellId')
+
+    # get legacy fov name for all fovs.
+    fovannotation_results = lk.select_rows_as_list(schema_name='processing',
+                                                   query_name='FOVAnnotationJunction',
+                                                   columns='FOVId, AnnotationTypeId/Name, Value',
+                                                   filter_array=[
+                                                       labkey.query.QueryFilter('AnnotationTypeId/Name', 'FOV name', 'in')
+                                                   ])
+    print("GOT LEGACY FOV NAMES")
+    df_fovlegacyname = pd.DataFrame(fovannotation_results)
     df_fovlegacyname = df_fovlegacyname.rename(columns={"Value": "LegacyFOVName"})[['FOVId', 'LegacyFOVName']]
     # allow for multiple possible legacy names for a fov
     df_fovlegacyname = df_fovlegacyname.groupby(['FOVId'])['LegacyFOVName'].apply(list).reset_index()
 
-    # get mitotic stage and legacy cell name for all cells
-    cellannotation_results = labkey.query.select_rows(
-        server_context=server_context,
-        schema_name='processing',
-        query_name='CellAnnotationJunction',
-        columns='CellId, AnnotationTypeId/Name, Value',
-        filter_array=[
-            labkey.query.QueryFilter('AnnotationTypeId/Name', 'Mitotic;Mitotic stage;Cell name', 'in')
-        ],
-        max_rows=-1
-    )
-    df_cellannotation = trim_labkeyurl(cellannotation_results['rows'])
-    grouped_cellannotation = df_cellannotation.groupby("AnnotationTypeId/Name")
-    df_legacycellname = grouped_cellannotation.get_group("Cell name")
-    df_legacycellname = df_legacycellname.rename(columns={"Value": "LegacyCellName"})[['CellId', 'LegacyCellName']]
+    df_data_handoff = pd.merge(df_data_handoff, df_fovlegacyname, how='left', left_on='FOVId', right_on='FOVId')
+    # at this time since there have been duplicate legacy FOVs, let's eliminate them.
+    print('Removing duplicate legacy fov names...')
+    check_dups(df_data_handoff, "CellId")
 
-    # need to gather these into lists alongside the per-fov cell lists.
-    # is there a more efficient way to do this?
-    def find_legacy_cell_names(x):
-        ret = []
-        for cid in x:
-            cellnames = df_legacycellname.loc[df_legacycellname['CellId'] == cid]['LegacyCellName']
-            if cellnames.size > 0:
-                ret.append(cellnames.tolist())
-            else:
-                ret.append(None)
-        return ret
-    df_data_handoff['LegacyCellName'] = df_data_handoff['CellId'].apply(lambda x: find_legacy_cell_names(x))
+    # get the aligned mitotic cell data
+    prod = dsdb.DatasetDatabase(config='//allen/aics/animated-cell/Dan/dsdb/prod.json')
+    dataset = prod.get_dataset(name='april-2019-prod-cells')
+    print("GOT INTEGRATED MITOTIC DATA SET")
 
+    # assert all the angles and translations are valid production cells
+    matches = (dataset.ds['CellId'].isin(df_data_handoff['CellId']))
+    assert(matches.all())
+    df_data_handoff = pd.merge(df_data_handoff, dataset.ds[['CellId', 'Angle', 'x', 'y']], left_on='CellId', right_on='CellId', how='left')
 
-    df_data_handoff = pd.merge(df_data_handoff, df_fovcolonyposition, on='FOVId', how='left')
+    cell_line_protein_results = lk.select_rows_as_list(schema_name='celllines',
+                                                       query_name='CellLineDefinition',
+                                                       columns='CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name'
+                                                       )
+    print("GOT CELL LINE DATA")
 
-    check_dups(df_data_handoff, "FOVId")
-    df_data_handoff = pd.merge(df_data_handoff, df_fovlegacyname, on='FOVId', how='left')
+    df_cell_line_protein = pd.DataFrame(cell_line_protein_results)
+    df_cell_lines = df_cell_line_protein.set_index('CellLineId')
+
+    # put cell fov name in a new column:
+    df_data_handoff['FOV_3dcv_Name'] = df_data_handoff.apply(lambda row: get_fov_name_from_row(row, df_cell_lines), axis=1)
+
+    # deal with nans
+    df_data_handoff.fillna(value={'LegacyCellName': '', 'Angle': 0, 'x': 0, 'y': 0}, inplace=True)
+    df_data_handoff['LegacyFOVName'] = df_data_handoff['LegacyFOVName'].apply(lambda d: d if isinstance(d, list) else [])
+
     # replace NaNs with None
     df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
 
-    check_dups(df_data_handoff, "FOVId")
+    check_dups(df_data_handoff, "CellId")
 
-    cell_line_protein_results = labkey.query.select_rows(
-        server_context=server_context,
-        schema_name='celllines',
-        query_name='CellLineDefinition',
-        columns='CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name',
-        max_rows=-1
-    )
-    df_cell_line_protein = trim_labkeyurl(cell_line_protein_results['rows'])
-    df_cell_lines = df_cell_line_protein.set_index('CellLineId')
-    # put cell fov name in a new column:
-    df_data_handoff['FOV_3dcv_Name'] = df_data_handoff.apply(lambda row: get_fov_name_from_row(row, df_cell_lines), axis=1)
-    df_data_handoff['CellLineName'] = df_data_handoff.apply(lambda row: get_cellline_name_from_row(row, df_cell_lines), axis=1)
     print("DONE BUILDING TABLES")
-
     return df_data_handoff
 
 

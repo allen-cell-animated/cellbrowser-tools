@@ -25,10 +25,30 @@ import errno
 import json
 import numpy as np
 import os
+from pathlib import Path
 import pprint
+import shutil
 import subprocess
 import sys
+import tempfile
 import traceback
+
+
+def retrieve_file(read_path, file_name, output_directory):
+    """
+    Copy a file to the provided output directory.
+
+    The output directory must exist, this function will not make the directory for you.
+    Optionally symlink the file rather than copy with the `link` keyword.
+    """
+    # output_directory = Path(output_directory)
+    output_directory = Path(tempfile.gettempdir())
+    if not output_directory.is_dir():
+        raise Exception(f'Output directory {output_directory} does not exist!')
+
+    destination = output_directory / file_name
+    shutil.copyfile(read_path, destination)
+    return destination
 
 
 def _int32(x):
@@ -109,11 +129,12 @@ class ImageProcessor:
     # These methods use a cellJob object as one of their params
     # The functions outside of this class do not rely on a cellJob object
     def __init__(self, info):
-        self.row = info
+        self.job = info
+        self.row = info.cells[0]
 
         # Setting up directory paths for images
-        self.image_file = utils.normalize_path(self.row.SourceReadPath)
-        self.file_name = self.row.FOV_3dcv_Name
+        self.image_file = utils.normalize_path(self.row['SourceReadPath'])
+        self.file_name = self.row['FOV_3dcv_Name']
         self._generate_paths()
 
         # Setting up segmentation channels for full image
@@ -135,16 +156,16 @@ class ImageProcessor:
 
     def _generate_paths(self):
         # full fields need different directories than segmented cells do
-        thumbnaildir = utils.normalize_path(self.row.cbrThumbnailLocation)
+        thumbnaildir = utils.normalize_path(self.job.cbrThumbnailLocation)
         make_dir(thumbnaildir)
         self.png_dir = os.path.join(thumbnaildir, self.file_name)
-        self.png_url = self.row.cbrThumbnailURL + "/" + self.file_name
+        self.png_url = self.job.cbrThumbnailURL + "/" + self.file_name
 
-        ometifdir = utils.normalize_path(self.row.cbrImageLocation)
+        ometifdir = utils.normalize_path(self.job.cbrImageLocation)
         make_dir(ometifdir)
         self.ometif_dir = os.path.join(ometifdir, self.file_name)
 
-        atlasdir = utils.normalize_path(self.row.cbrTextureAtlasLocation)
+        atlasdir = utils.normalize_path(self.job.cbrTextureAtlasLocation)
         make_dir(atlasdir)
         self.atlas_dir = atlasdir
 
@@ -170,15 +191,15 @@ class ImageProcessor:
         file_list = []
 
         # structure segmentation
-        if self.row.StructureSegmentationReadPath != '':
-            struct_seg_file = utils.normalize_path(self.row.StructureSegmentationReadPath)
+        if self.row['StructureSegmentationReadPath'] != '':
+            struct_seg_file = utils.normalize_path(self.row['StructureSegmentationReadPath'])
             # print(struct_seg_file)
             file_list.append(struct_seg_file)
             self.channel_names.append("SEG_STRUCT")
             self.channel_colors.append(_rgba255(255, 0, 0, 255))
 
         # cell segmentation
-        cell_seg_file = self.row.MembraneSegmentationReadPath
+        cell_seg_file = self.row['MembraneSegmentationReadPath']
         # print(cell_seg_file)
         file_list.append(cell_seg_file)
         self.channel_names.append("SEG_Memb")
@@ -186,7 +207,7 @@ class ImageProcessor:
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # nucleus segmentation
-        nuc_seg_file = self.row.NucleusSegmentationReadPath
+        nuc_seg_file = self.row['NucleusSegmentationReadPath']
         # print(nuc_seg_file)
         file_list.append(nuc_seg_file)
         self.channel_names.append("SEG_DNA")
@@ -194,7 +215,7 @@ class ImageProcessor:
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # cell contour segmentation (good for viz in the volume viewer)
-        cell_con_file = self.row.MembraneContourReadPath
+        cell_con_file = self.row['MembraneContourReadPath']
         # print(cell_seg_file)
         file_list.append(cell_con_file)
         self.channel_names.append("CON_Memb")
@@ -202,7 +223,7 @@ class ImageProcessor:
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # nucleus contour segmentation (good for viz in the volume viewer)
-        nuc_con_file = self.row.NucleusContourReadPath
+        nuc_con_file = self.row['NucleusContourReadPath']
         # print(nuc_seg_file)
         file_list.append(nuc_con_file)
         self.channel_names.append("CON_DNA")
@@ -224,23 +245,20 @@ class ImageProcessor:
         return file_list
 
     def add_segs_to_img(self):
-        outdir = self.row.cbrImageLocation
+        outdir = self.job.cbrImageLocation
         make_dir(outdir)
 
-        thumbnaildir = self.row.cbrThumbnailLocation
+        thumbnaildir = self.job.cbrThumbnailLocation
         make_dir(thumbnaildir)
 
         file_list = self.build_file_list()
 
-        # ALERT no images will be loaded!!!!
-        if self.row.cbrAddToDb:
-            return None
-
-        image_file = self.row.SourceReadPath
+        image_file = self.row['SourceReadPath']
         image_file = utils.normalize_path(image_file)
         # print(image_file)
 
-        # TODO: COPY FILE TO LOCAL TMP STORAGE BEFORE READING
+        # COPY FILE TO LOCAL TMP STORAGE BEFORE READING
+        image_file = retrieve_file(image_file, self.row['SourceFilename'], '/tmp')
 
         # 1. obtain OME XML metadata from original microscopy image
         omexmlstring = TypeChecker(image_file).read_description()
@@ -260,10 +278,10 @@ class ImageProcessor:
         image = image.transpose(1, 0, 2, 3)
         # assumption: channel indices are one-based.
         self.channel_indices = [
-            self.row.ChannelNumber638,
-            self.row.ChannelNumberStruct,
-            self.row.ChannelNumber405,
-            self.row.ChannelNumberBrightfield
+            self.row['ChannelNumber638'],
+            self.row['ChannelNumberStruct'],
+            self.row['ChannelNumber405'],
+            self.row['ChannelNumberBrightfield']
         ]
         # image.shape[0] is num of channels.
         assert(image.shape[0] > max(self.channel_indices))
@@ -305,8 +323,10 @@ class ImageProcessor:
         self.seg_indices = []
         i = 0
         for f in file_list:
+            f = retrieve_file(f, os.path.basename(f), '/tmp')
             # expect TifReader to handle it.
-            seg = TifReader(f).load()
+            reader = TifReader(f)
+            seg = reader.load()
             # seg is expected to be TZCYX where T and C are 1
             # image is expected to be CZYX
             assert seg.shape[1] == image.shape[1], f + ' has shape mismatch ' + str(seg.shape[1]) + ' vs ' + str(image.shape[1])
@@ -317,10 +337,15 @@ class ImageProcessor:
             # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
             image = np.append(image, [seg[0, :, 0, :, :]], axis=0)
             self.seg_indices.append(image.shape[0] - 1)
+            reader.close()
+            os.remove(f)
             i += 1
 
         print("done")
+        cr.close()
+        os.remove(image_file)
         return image
+
 
     def generate_meta(self, a_im, row):
         m = {}
@@ -336,34 +361,41 @@ class ImageProcessor:
                 m['objective'] = objective.get("NominalMagnification")
                 m["numerical_aperture"] = objective.get("LensNA")
 
-        if row.cbrBounds is not None:
-            m["bounds"] = [row.cbrBounds['xmin'], row.cbrBounds['xmax'], row.cbrBounds['ymin'], row.cbrBounds['ymax'], row.cbrBounds['zmin'], row.cbrBounds['zmax']]
+        if self.job.cbrBounds is not None:
+            m["bounds"] = [self.job.cbrBounds['xmin'], self.job.cbrBounds['xmax'], self.job.cbrBounds['ymin'], self.job.cbrBounds['ymax'], self.job.cbrBounds['zmin'], self.job.cbrBounds['zmax']]
 
-        if row.cbrSourceImageName is not None:
-            m["source"] = row.cbrSourceImageName
+        if self.job.cbrSourceImageName is not None:
+            m["CellId"] = row['CellId']
+            m["source"] = self.job.cbrSourceImageName
             m["isCropped"] = True
+            m["mitoticPhase"] = row['MitoticState']
+            m["isMitotic"] = row['IsMitotic']
+            m["alignedTransform"] = {
+                'translation': [row['x'], row['y'], 0],
+                'rotation': [0, 0, row['Angle']]
+            }
         else:
             m["isCropped"] = False
         m["isModel"] = False
 
-        m["cell_line"] = row.CellLineName
-        m["cellSegmentationVersion"] = row.NucMembSegmentationAlgorithmVersion
-        m["cellSegmentationMethod"] = row.NucMembSegmentationAlgorithm
-        m["structureSegmentationVersion"] = row.StructureSegmentationAlgorithmVersion
-        m["structureSegmentationMethod"] = row.StructureSegmentationAlgorithm
-        m["inputFilename"] = row.SourceFilename  # czi
-
-        m["alignedTransform"] = {
-            'translation': [0, 0, 0],
-            'rotation': [0, 0, 0]
-        }
+        m["cellLine"] = row['CellLine']
+        m["colonyPosition"] = row['ColonyPosition']
+        m["cellSegmentationVersion"] = row['NucMembSegmentationAlgorithmVersion']
+        m["cellSegmentationMethod"] = row['NucMembSegmentationAlgorithm']
+        m["structureSegmentationVersion"] = row['StructureSegmentationAlgorithmVersion']
+        m["structureSegmentationMethod"] = row['StructureSegmentationAlgorithm']
+        m["inputFilename"] = row['SourceFilename']
+        m["protein"] = row['ProteinDisplayName']
+        m["structure"] = row['StructureDisplayName']
+        m["gene"] = row['Gene']
+        m["FOVId"] = row['FOVId']
 
         # TODO: any preset viewing / slider values go here, including contrast presets
 
         return m
 
     def generate_and_save(self):
-        base = self.row.FOV_3dcv_Name
+        base = self.file_name
 
         # indices of channels in the original image
         # before this, indices have been re-organized in add_segs_to_img (in __init__)
@@ -371,30 +403,28 @@ class ImageProcessor:
         nuc_index = 2
         struct_index = 1
 
-        if self.row.cbrGenerateFullFieldImages:
+        if self.job.cbrGenerateFullFieldImages:
             print("generating full fields...")
-            # necessary for bisque metadata, this is the config for a fullfield image
-            self.row.cbrBounds = None
-            self.row.cbrCellIndex = 0
-            self.row.cbrSourceImageName = None
-            self.row.cbrCellName = base
-            self.row.cbrLegacyCellNames = None
+            # this is the config for a fullfield image
+            self.job.cbrBounds = None
+            self.job.cbrCellIndex = 0
+            self.job.cbrSourceImageName = None
+            self.job.cbrCellName = base
+            self.job.cbrLegacyCellNames = None
 
-            # self.row.cbrCellName = os.path.splitext(self.row.inputFilename)[0]
-
-            if self.row.cbrGenerateThumbnail:
+            if self.job.cbrGenerateThumbnail:
                 print("making thumbnail...", end="")
                 generator = thumbnailGenerator.ThumbnailGenerator(channel_indices=[memb_index, nuc_index, struct_index],
-                                                                  size=self.row.cbrThumbnailSize,
+                                                                  size=self.job.cbrThumbnailSize,
                                                                   mask_channel_index=self.seg_indices[1],
-                                                                  colors=[[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 1.0]],
+                                                                  colors=[[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]],
                                                                   old_alg=True)
                 ffthumb = generator.make_thumbnail(self.image.transpose(1, 0, 2, 3), apply_cell_mask=False)
                 print("done")
             else:
                 ffthumb = None
 
-            if self.row.cbrGenerateCellImage:
+            if self.job.cbrGenerateCellImage:
                 print("making image...", end="")
                 im_to_save = self.image
                 print("done")
@@ -406,7 +436,7 @@ class ImageProcessor:
                 aimage = aicsImage.AICSImage(self.image, dims="CZYX")
                 aimage.metadata = self.omexml
                 print('generating atlas ...')
-                atlas = textureAtlas.generate_texture_atlas(aimage, name=self.row.cbrCellName, max_edge=2048, pack_order=None)
+                atlas = textureAtlas.generate_texture_atlas(aimage, name=self.row['FOV_3dcv_Name'], max_edge=2048, pack_order=None)
                 # grab metadata for display
                 static_meta = self.generate_meta(aimage, self.row)
             else:
@@ -415,9 +445,7 @@ class ImageProcessor:
 
             self._save_and_post(image=im_to_save, thumbnail=ffthumb, textureatlas=atlas, omexml=self.omexml, other_data=static_meta)
 
-        if self.row.cbrGenerateSegmentedImages:
-            segs = self.row.CellIndex
-            cellids = self.row.CellId
+        if self.job.cbrGenerateSegmentedImages:
 
             if self.image is not None:
                 # assumption: less than 256 cells segmented in the file.
@@ -428,11 +456,10 @@ class ImageProcessor:
                 h0 = np.unique(cell_segmentation_image)
                 h0 = h0[h0 > 0]
 
-            for idx, i in enumerate(segs):
+            for idx, row in enumerate(self.job.cells):
                 # for each cell segmented from this image:
                 print("generating segmented cells...", end="")
-                if i == 0:
-                    continue
+                i = row['CellIndex']
                 print(i, end=" ")
 
                 if self.image is not None:
@@ -444,32 +471,30 @@ class ImageProcessor:
                     # the values stored are not indexed by cell number.
                     for mi in self.channels_to_mask:
                         cropped[mi] = image_to_mask(cropped[mi], i, 255)
-                    self.row.cbrBounds = {'xmin': int(bounds[0][0]), 'xmax': int(bounds[0][1]),
+                    self.job.cbrBounds = {'xmin': int(bounds[0][0]), 'xmax': int(bounds[0][1]),
                                           'ymin': int(bounds[1][0]), 'ymax': int(bounds[1][1]),
                                           'zmin': int(bounds[2][0]), 'zmax': int(bounds[2][1])}
-                    for bn in self.row.cbrBounds:
-                        print(bn, self.row.cbrBounds[bn])
+                    for bn in self.job.cbrBounds:
+                        print(bn, self.job.cbrBounds[bn])
                 else:
                     cropped = None
 
-                if self.row.cbrGenerateThumbnail:
+                if self.job.cbrGenerateThumbnail:
                     print("making thumbnail...", end="")
                     generator = thumbnailGenerator.ThumbnailGenerator(channel_indices=[memb_index, nuc_index, struct_index],
-                                                                      size=self.row.cbrThumbnailSize,
+                                                                      size=self.job.cbrThumbnailSize,
                                                                       mask_channel_index=self.seg_indices[1],
-                                                                      colors=[[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 1.0, 1.0]],
+                                                                      colors=[[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]],
                                                                       old_alg=True)
                     thumb = generator.make_thumbnail(cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True)
-                    # thumb = thumbnailGenerator.make_segmented_thumbnail(cropped.copy(), channel_indices=[nuc_index, memb_index, struct_index],
-                    #                                                     size=self.row.cbrThumbnailSize, seg_channel_index=self.seg_indices[1])
                     print("done")
                 else:
                     thumb = None
 
-                self.row.cbrCellIndex = i
-                self.row.cbrSourceImageName = base
-                self.row.cbrCellName = base + '_' + str(cellids[idx])
-                self.row.cbrLegacyCellNames = self.row.LegacyCellName[idx]
+                self.job.cbrCellIndex = i
+                self.job.cbrSourceImageName = base
+                self.job.cbrCellName = base + '_' + str(row['CellId'])
+                self.job.cbrLegacyCellNames = row['LegacyCellName']
 
 
                 # copy self.omexml for output
@@ -502,23 +527,23 @@ class ImageProcessor:
                     aimage_cropped = aicsImage.AICSImage(cropped, dims="CZYX")
                     aimage_cropped.metadata = copyxml
                     print('generating atlas ...')
-                    atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.row.cbrCellName, max_edge=2048, pack_order=None)
+                    atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.job.cbrCellName, max_edge=2048, pack_order=None)
 
-                    static_meta_cropped = self.generate_meta(aimage_cropped, self.row)
+                    static_meta_cropped = self.generate_meta(aimage_cropped, row)
                 else:
                     atlas_cropped = None
                     static_meta_cropped = None
 
-                self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=cellids[idx], omexml=copyxml, other_data=static_meta_cropped)
+                self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=row['CellId'], omexml=copyxml, other_data=static_meta_cropped)
             print("done")
 
 
     def _save_and_post(self, image, thumbnail, textureatlas, seg_cell_index=None, omexml=None, other_data=None):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
-        physical_size = [self.row.PixelScaleX, self.row.PixelScaleY, self.row.PixelScaleZ]
-        png_dir, ometif_dir, png_url, atlas_dir, self.ometif_dir, self.png_url, self.atlas_dir, self.png_dir
-        if seg_cell_index != None:
+        physical_size = [self.row['PixelScaleX'], self.row['PixelScaleY'], self.row['PixelScaleZ']]
+        png_dir, ometif_dir, png_url, atlas_dir = self.png_dir, self.ometif_dir, self.png_url, self.atlas_dir
+        if seg_cell_index is not None:
             png_dir += '_' + str(seg_cell_index) + '.png'
             ometif_dir += '_' + str(seg_cell_index) + '.ome.tif'
             png_url += '_' + str(seg_cell_index) + '.png'
@@ -547,18 +572,6 @@ class ImageProcessor:
             textureatlas.save(self.atlas_dir, user_data=other_data)
             print("done")
 
-        if self.row.cbrAddToDb:
-            print("adding to db...", end="")
-            self.row.channelNames = self.channel_names
-            self.row.cbrThumbnailURL = png_url
-            session_info = {
-                'root': self.row.dbUrl,
-                'user': 'admin',
-                'password': 'admin'
-            }
-            dbkey = oneUp.oneUp(session_info, self.row.__dict__, None)
-            print("done")
-
 
 def do_main_image_with_celljob(info):
     processor = ImageProcessor(info)
@@ -568,7 +581,9 @@ def do_main_image_with_celljob(info):
 def do_main_image(fname):
     with open(fname) as jobfile:
         jobspec = json.load(jobfile)
-        info = cellJob.CellJob(jobspec)
+        info = cellJob.CellJob(jobspec.cells)
+        for key in jobspec:
+            info.setattr(key, jobspec[key])
         # if info.cbrParseError:
         #     sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
         #     pprint.pprint(jobspec, stream=sys.stderr)
