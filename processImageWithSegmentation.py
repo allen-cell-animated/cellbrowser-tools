@@ -402,7 +402,7 @@ class ImageProcessor:
         memb_index = 0
         nuc_index = 2
         struct_index = 1
-
+        thumbnail_colors = [[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 0.0]]
         if self.job.cbrGenerateFullFieldImages:
             print("generating full fields...")
             # this is the config for a fullfield image
@@ -417,7 +417,8 @@ class ImageProcessor:
                 generator = thumbnailGenerator.ThumbnailGenerator(channel_indices=[memb_index, nuc_index, struct_index],
                                                                   size=self.job.cbrThumbnailSize,
                                                                   mask_channel_index=self.seg_indices[1],
-                                                                  colors=[[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]])
+                                                                  colors=thumbnail_colors,
+                                                                  projection="slice")
                 ffthumb = generator.make_thumbnail(self.image.transpose(1, 0, 2, 3), apply_cell_mask=False)
                 print("done")
             else:
@@ -483,7 +484,8 @@ class ImageProcessor:
                     generator = thumbnailGenerator.ThumbnailGenerator(channel_indices=[memb_index, nuc_index, struct_index],
                                                                       size=self.job.cbrThumbnailSize,
                                                                       mask_channel_index=self.seg_indices[1],
-                                                                      colors=[[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.0, 1.0]])
+                                                                      colors=thumbnail_colors,
+                                                                      projection="max")
                     thumb = generator.make_thumbnail(cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True)
                     print("done")
                 else:
