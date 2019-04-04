@@ -278,6 +278,7 @@ def do_main(args, prefs):
             rows = group.to_dict(orient='records')
             json_file = do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
             json_list.append(json_file)
+            index = index + 1
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
         jobScheduler.slurp(json_list, prefs)

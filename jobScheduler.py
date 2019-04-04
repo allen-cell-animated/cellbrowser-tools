@@ -113,43 +113,51 @@ def submit_jobs_batches(files, json_obj, batch_size=128, tmp_file_name='tmp_scri
         i = i + 1
 
 
-def slurp(json_list, prefs):
-    job_prefs = prefs['job_prefs'].copy()
-    max_simultaneous_jobs = job_prefs.pop('max_simultaneous_jobs')
+def slurp(json_list, prefs, do_run=True):
+    n = 4096
+    json_lists = [json_list[i:i + n] for i in range(0, len(json_list), n)]
+    scripts = []
+    for i, jsons in enumerate(json_lists):
 
-    slurm_args = []
-    for keyword, value in job_prefs.items():
-        slurm_args.append(f'--{keyword} {value}')
+        job_prefs = prefs['job_prefs'].copy()
+        max_simultaneous_jobs = job_prefs.pop('max_simultaneous_jobs')
 
-    config = {
-        "directives": slurm_args,
-        "jsons": json_list,
-        "max_simultaneous_jobs": max_simultaneous_jobs,
-        "cwd": os.getcwd()
-    }
+        slurm_args = []
+        for keyword, value in job_prefs.items():
+            slurm_args.append(f'--{keyword} {value}')
 
-    script = Path(prefs['out_status']) / 'CellBrowserRunner.sh'
+        config = {
+            "directives": slurm_args,
+            "jsons": jsons,
+            "max_simultaneous_jobs": max_simultaneous_jobs,
+            "cwd": os.getcwd()
+        }
 
-    template_path = str(Path(__file__).parent)
-    j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+        script = Path(prefs['out_status']) / f"CellBrowserRunner{i}.sh"
 
-    with open(script, 'w') as f:
-        script_text = j2env.get_template('fov_job.j2').render(config)
-        f.write(script_text)
+        template_path = str(Path(__file__).parent)
+        j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
 
-    proc = subprocess.Popen(
-        ['sbatch', script],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    print(f"{script.name} output:")
-    output = []
-    for line in iter(proc.stdout.readline, b''):
-        line = line.decode('utf-8').rstrip()
-        output.append(line)
-        print(line)
-    proc.wait()
-    code = proc.returncode
-    if code != 0:
-        print(f"Error occurred in {script.name} processing")
-        raise subprocess.CalledProcessError(code, script.name)
+        with open(script, 'w') as f:
+            script_text = j2env.get_template('fov_job.j2').render(config)
+            f.write(script_text)
+        scripts.append(script)
+
+    if do_run is True or len(scripts) == 1:
+        for script in scripts:
+            proc = subprocess.Popen(
+                ['sbatch', script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            print(f"{script.name} output:")
+            output = []
+            for line in iter(proc.stdout.readline, b''):
+                line = line.decode('utf-8').rstrip()
+                output.append(line)
+                print(line)
+            proc.wait()
+            code = proc.returncode
+            if code != 0:
+                print(f"Error occurred in {script.name} processing")
+                raise subprocess.CalledProcessError(code, script.name)
