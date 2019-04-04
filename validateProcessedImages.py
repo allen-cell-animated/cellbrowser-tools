@@ -64,19 +64,21 @@ def make_path(dir0, dir1, filename):
     return dir0 + '/' + dir1 + '/' + filename
 
 
-def do_image(args, prefs, row, index, total_jobs):
-    info = cellJob.CellJob(row)
-    jobname = info.FOV_3dcv_Name
+def do_image(args, prefs, rows, index, total_jobs):
+    # use row 0 as the "full field" row
+    fovrow = rows[0]
 
-    imageName = info.FOV_3dcv_Name
-    segs = info.CellId
+    jobname = fovrow['FOV_3dcv_Name']
+
+    imageName = jobname
 
     data_dir = prefs['out_ometifroot']
     thumbs_dir = prefs['out_thumbnailroot']
-    cell_line = info.CellLineName
+    cell_line = fovrow['CellLine']
 
     names = [imageName]
-    for seg in segs:
+    for row in rows:
+        seg = row['CellId']
         n = imageName + "_" + str(int(seg))
         # str(int(seg)) removes leading zeros
         names.append(n)
@@ -120,13 +122,14 @@ def do_image(args, prefs, row, index, total_jobs):
     outrows = []
     if err is not True:
         outrows.append({
-            "file_id": "F" + str(int(info.FOVId)),
+            "file_id": "F" + str(int(fovrow['FOVId'])),
             "file_name": imageName + '.ome.tif',
             "read_path": make_path(data_dir, cell_line, imageName + '.ome.tif'),
             "file_size": os.path.getsize(make_path(data_dir, cell_line, imageName + '.ome.tif')),
             "CellLineName": cell_line
         })
-        for seg in segs:
+        for row in rows:
+            seg = row['CellId']
             n = imageName + "_" + str(int(seg))
             outrows.append({
                 "file_id": "C" + str(int(seg)),
@@ -329,23 +332,35 @@ def build_feature_data(prefs):
 
 
 def do_main(args, prefs):
-    # Read every .csv file and concat them together
-    data = utils.collect_data_rows(prefs['data_query'], prefs.get("fovs"))
-    data = data.to_dict(orient='records')
+    # Read every cell image to be processed
+    data = lkutils.collect_data_rows(prefs['data_query'], prefs.get('fovs'))
 
-    total_jobs = len(data)
+    print('Number of total cell rows: ' + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    print('Number of total FOVs: ' + str(total_jobs))
     print('VALIDATING ' + str(total_jobs) + ' JOBS')
+
+    #
+    # arrange into list of lists of dicts?
+
+    # one_of_each = data_grouped.first().reset_index()
+    # data = data.to_dict(orient='records')
 
     errorFovs = []
     allfiles = []
     # process each file
     # run serially
-    for index, row in enumerate(data):
-        filerows, err = do_image(args, prefs, row, index, total_jobs)
+    index = 0
+    for fovid, group in data_grouped:
+        rows = group.to_dict(orient='records')
+        filerows, err = do_image(args, prefs, rows, index, total_jobs)
         if err is True:
-            errorFovs.append(row['FOV_3dcv_Name'])
+            errorFovs.append(str(fovid))
         else:
             allfiles.extend(filerows)
+        index = index + 1
 
     if len(errorFovs) > 0:
         with open(os.path.join(prefs.get("out_status"), 'errorFovs.txt'), 'w', newline="") as error_file:
