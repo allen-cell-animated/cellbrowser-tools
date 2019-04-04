@@ -126,8 +126,13 @@ def parse_args():
 
 def make_json(jobname, info, prefs):
     cell_job_postfix = jobname
-    current_dir = os.path.join(prefs['out_status'], prefs['script_dir']) # os.path.join(os.getcwd(), outdir)
-    jsonname = os.path.join(current_dir, f'FOV_{cell_job_postfix}.json')
+    cellline = info.cells[0]['CellLine']
+    current_dir = os.path.join(prefs['out_status'], prefs['script_dir'])  # os.path.join(os.getcwd(), outdir)
+    dest_dir = os.path.join(current_dir, cellline)
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
+
+    jsonname = os.path.join(dest_dir, f'FOV_{cell_job_postfix}.json')
     with open(jsonname, 'w') as fp:
         json.dump(info.__dict__, fp)
     return jsonname
