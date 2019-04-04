@@ -553,7 +553,7 @@ class ImageProcessor:
         if thumbnail is not None:
             print("saving thumbnail...", end="")
             with PngWriter(file_path=png_dir, overwrite_file=True) as writer:
-                writer.save((thumbnail*255.0).astype(np.uint8))
+                writer.save(thumbnail)
             print("done")
 
         if image is not None:
