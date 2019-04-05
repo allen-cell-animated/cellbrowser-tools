@@ -281,7 +281,7 @@ def do_main(args, prefs):
             index = index + 1
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
-        jobScheduler.slurp(json_list, prefs, do_run=False)
+        jobScheduler.slurp(json_list, prefs)
 
     else:
         # run serially
