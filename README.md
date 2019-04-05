@@ -17,9 +17,17 @@ jinja2
 
 You might have to modify fov_jov.j2 template to correct some hardcoded paths.  TODO FIXME move them into prefs.json.  
 run:
-    ```
+```
+    
     python createJobsFromCSV.py myprefs.json -c -n  
-    ```
+    
+    sbatch /allen/aics/animated-cell/Dan/cellbrowser-tools/processing/CellBrowserRunner0.sh
+    sbatch /allen/aics/animated-cell/Dan/cellbrowser-tools/processing/CellBrowserRunner1.sh
+    sbatch /allen/aics/animated-cell/Dan/cellbrowser-tools/processing/CellBrowserRunner2.sh
+    
+```
+
+
 
 3. When cluster jobs are all done:
     ```
