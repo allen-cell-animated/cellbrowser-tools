@@ -5,7 +5,7 @@ LET VERSION = 1.4.0
 1. On data handoff, modify a copy of prefs.json to have the proper parameters inside.  You can omit prefs.json and it will use the existing prefs.json file or modify in-place but then you have to remember if you changed anything.
 
 2. Generate image data: 
-On cluster, create a virtualenv and pip install 
+On slurm-master, create a virtualenv and pip install 
 aicsimageio
 aicsimageprocessing>=0.6.1
 git+https://github.com/AllenCellModeling/datasetdatabase.git
