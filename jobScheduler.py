@@ -114,7 +114,11 @@ def submit_jobs_batches(files, json_obj, batch_size=128, tmp_file_name='tmp_scri
 
 
 def slurp(json_list, prefs, do_run=True):
+    # chunk up json_list into groups of no more than n jsons.
+    # This is to guarantee that we don't submit sbatch arrays greater than our slurm cluster's
+    # limit (currently 10k a the time of writing this comment).
     n = 4096
+    # TODO: consider using json_lists = more_itertools.chunked(json_list, n)
     json_lists = [json_list[i:i + n] for i in range(0, len(json_list), n)]
     scripts = []
     for i, jsons in enumerate(json_lists):
@@ -143,7 +147,7 @@ def slurp(json_list, prefs, do_run=True):
             f.write(script_text)
         scripts.append(script)
 
-    if do_run is True or len(scripts) == 1:
+    if do_run or len(scripts) == 1:
         for script in scripts:
             proc = subprocess.Popen(
                 ['sbatch', script],
