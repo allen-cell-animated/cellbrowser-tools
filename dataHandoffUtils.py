@@ -142,8 +142,8 @@ def collect_data_rows(fovids=None):
     print("GOT MITOTIC ANNOTATIONS")
 
     mitoticdata = pd.DataFrame(mitoticdata)
-    mitoticdata_grouped = mitoticdata.groupby(mitoticdata["MitoticStateId/Name"] == "Mitosis")
-    mitoticstatedata, mitoticbooldata = [x for _, x in mitoticdata_grouped]
+    mitoticbooldata = mitoticdata[mitoticdata["MitoticStateId/Name"] == "Mitosis"]
+    mitoticstatedata = mitoticdata[mitoticdata["MitoticStateId/Name"] != "Mitosis"]
     mitoticbooldata = mitoticbooldata.rename(columns={"MitoticStateId/Name": "IsMitotic"})
     mitoticstatedata = mitoticstatedata.rename(columns={"MitoticStateId/Name": "MitoticState"})
     df_data_handoff = pd.merge(df_data_handoff, mitoticbooldata, how='left', left_on='CellId', right_on='CellId')
