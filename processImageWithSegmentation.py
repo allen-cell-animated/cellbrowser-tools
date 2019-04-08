@@ -34,14 +34,10 @@ import tempfile
 import traceback
 
 
-def retrieve_file(read_path, file_name, output_directory):
+def retrieve_file(read_path, file_name):
     """
-    Copy a file to the provided output directory.
-
-    The output directory must exist, this function will not make the directory for you.
-    Optionally symlink the file rather than copy with the `link` keyword.
+    Copy a file to a temporary directory, assign it the given name, and return the full destination path.
     """
-    # output_directory = Path(output_directory)
     output_directory = Path(tempfile.gettempdir())
     if not output_directory.is_dir():
         raise Exception(f'Output directory {output_directory} does not exist!')
