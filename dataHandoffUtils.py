@@ -88,8 +88,8 @@ def get_cell_name(fovid, cellline, cellid):
     return f"{cellline}_{fovid}_{cellid}"
 
 
-def get_cellline_name_from_row(row, df_celllines):
-    return str(df_celllines.loc[row["CellLineId"]]["CellLineId/Name"])
+def get_cellline_name_from_row(row):
+    return row["CellLine"]
 
 
 # cellline must be 'AICS-#'
@@ -97,8 +97,8 @@ def get_fov_name(fovid, cellline):
     return f"{cellline}_{fovid}"
 
 
-def get_fov_name_from_row(row, df_celllines):
-    celllinename = get_cellline_name_from_row(row, df_celllines)
+def get_fov_name_from_row(row):
+    celllinename = get_cellline_name_from_row(row)
     fovid = row["FOVId"]
     return get_fov_name(fovid, celllinename)
 
@@ -199,7 +199,7 @@ def collect_data_rows(query_name, fovids=None):
     df_cell_lines = df_cell_line_protein.set_index('CellLineId')
 
     # put cell fov name in a new column:
-    df_data_handoff['FOV_3dcv_Name'] = df_data_handoff.apply(lambda row: get_fov_name_from_row(row, df_cell_lines), axis=1)
+    df_data_handoff['FOV_3dcv_Name'] = df_data_handoff.apply(lambda row: get_fov_name_from_row(row), axis=1)
 
     # deal with nans
     df_data_handoff.fillna(value={'LegacyCellName': '', 'Angle': 0, 'x': 0, 'y': 0}, inplace=True)
