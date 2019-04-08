@@ -327,7 +327,7 @@ def build_feature_data(prefs):
 
 def do_main(args, prefs):
     # Read every cell image to be processed
-    data = lkutils.collect_data_rows(prefs['data_query'], prefs.get('fovs'))
+    data = lkutils.collect_data_rows(fovs=prefs.get('fovs'))
 
     print('Number of total cell rows: ' + str(len(data)))
     # group by fov id

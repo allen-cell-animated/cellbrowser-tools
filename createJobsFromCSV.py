@@ -175,8 +175,6 @@ def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
 
     info.cbrThumbnailSize = 128
 
-    info.dbUrl = prefs['out_bisquedb']
-
     if args.all:
         info.cbrGenerateThumbnail = True
         info.cbrGenerateCellImage = True
@@ -253,7 +251,7 @@ def do_main(args, prefs):
     cell_lines_data = load_cell_line_info()
 
     # Read every cell image to be processed
-    data = lkutils.collect_data_rows(prefs['data_query'], prefs.get('fovs'))
+    data = lkutils.collect_data_rows(fovs=prefs.get('fovs'))
 
     print('Number of total cell rows: ' + str(len(data)))
     # group by fov id

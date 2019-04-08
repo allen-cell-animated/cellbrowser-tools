@@ -115,7 +115,7 @@ def check_dups(dfr, column, remove=True):
 
 
 # big assumption: any query_name passed in must return data of the same format!
-def collect_data_rows(query_name, fovids=None):
+def collect_data_rows(fovids=None):
     # lk = LabKey(host="aics")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
 
@@ -205,7 +205,7 @@ def collect_data_rows(query_name, fovids=None):
     df_data_handoff.fillna(value={'LegacyCellName': '', 'Angle': 0, 'x': 0, 'y': 0}, inplace=True)
     df_data_handoff['LegacyFOVName'] = df_data_handoff['LegacyFOVName'].apply(lambda d: d if isinstance(d, list) else [])
 
-    # replace NaNs with None
+    # replace any remaining NaNs with None
     df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
 
     check_dups(df_data_handoff, "CellId")
@@ -216,7 +216,7 @@ def collect_data_rows(query_name, fovids=None):
 
 if __name__ == "__main__":
     print(sys.argv)
-    collect_data_rows("Pipeline 4 Handoff 1")
+    collect_data_rows()
     sys.exit(0)
 
 
