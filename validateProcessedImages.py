@@ -6,7 +6,7 @@
 import argparse
 import cellJob
 import csv
-import dataHandoffUtils as utils
+import dataHandoffUtils as lkutils
 import glob
 import jobScheduler
 import json
@@ -106,12 +106,6 @@ def do_image(args, prefs, rows, index, total_jobs):
             if not os.path.isfile(fullat):
                 err = True
                 print("ERROR: " + jobname + ": Could not find file: " + fullat)
-
-        # check for image meta
-        fullmj = make_path(thumbs_dir, cell_line, f + '_meta.json')
-        if not os.path.isfile(fullmj):
-            err = True
-            print("ERROR: " + jobname + ": Could not find file: " + fullmj)
 
         # check for image
         fullf = make_path(data_dir, cell_line, f + '.ome.tif')
