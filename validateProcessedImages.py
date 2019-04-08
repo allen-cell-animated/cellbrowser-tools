@@ -346,15 +346,13 @@ def do_main(args, prefs):
     allfiles = []
     # process each file
     # run serially
-    index = 0
-    for fovid, group in data_grouped:
+    for index, (fovid, group) in data_grouped:
         rows = group.to_dict(orient='records')
         filerows, err = do_image(args, prefs, rows, index, total_jobs)
         if err is True:
             errorFovs.append(str(fovid))
         else:
             allfiles.extend(filerows)
-        index = index + 1
 
     if len(errorFovs) > 0:
         with open(os.path.join(prefs.get("out_status"), 'errorFovs.txt'), 'w', newline="") as error_file:

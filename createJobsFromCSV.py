@@ -268,25 +268,22 @@ def do_main(args, prefs):
 
 
     # process each file
-    index = 0
     if args.cluster:
         # gather cluster commands and submit in batch
         json_list = []
-        for fovid, group in data_grouped:
+        for index, (fovid, group) in data_grouped:
             rows = group.to_dict(orient='records')
             json_file = do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
             json_list.append(json_file)
-            index = index + 1
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
         jobScheduler.slurp(json_list, prefs)
 
     else:
         # run serially
-        for fovid, group in data_grouped:
+        for index, (fovid, group) in data_grouped:
             rows = group.to_dict(orient='records')
             do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
-            index = index + 1
 
 
 def setup_prefs(json_path):
