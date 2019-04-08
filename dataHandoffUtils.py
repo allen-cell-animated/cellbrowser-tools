@@ -2,10 +2,13 @@ import datasetdatabase as dsdb
 import labkey
 from lkaccess import LabKey, QueryFilter
 import lkaccess.contexts
+import logging
 import os
 import pandas as pd
 import re
 import sys
+
+logging.basicConfig(level=logging.INFO)
 
 
 def load_cell_line_info():
