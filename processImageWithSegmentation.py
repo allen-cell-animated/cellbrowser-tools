@@ -254,7 +254,7 @@ class ImageProcessor:
         # print(image_file)
 
         # COPY FILE TO LOCAL TMP STORAGE BEFORE READING
-        image_file = retrieve_file(image_file, self.row['SourceFilename'], '/tmp')
+        image_file = retrieve_file(image_file, self.row['SourceFilename'])
 
         # 1. obtain OME XML metadata from original microscopy image
         omexmlstring = TypeChecker(image_file).read_description()
@@ -319,7 +319,7 @@ class ImageProcessor:
         self.seg_indices = []
         i = 0
         for f in file_list:
-            f = retrieve_file(f, os.path.basename(f), '/tmp')
+            f = retrieve_file(f, os.path.basename(f))
             # expect TifReader to handle it.
             reader = TifReader(f)
             seg = reader.load()
