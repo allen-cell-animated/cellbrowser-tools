@@ -271,7 +271,7 @@ def do_main(args, prefs):
     if args.cluster:
         # gather cluster commands and submit in batch
         json_list = []
-        for index, (fovid, group) in data_grouped:
+        for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
             json_file = do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
             json_list.append(json_file)
@@ -281,7 +281,7 @@ def do_main(args, prefs):
 
     else:
         # run serially
-        for index, (fovid, group) in data_grouped:
+        for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
             do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
 

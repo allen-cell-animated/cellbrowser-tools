@@ -346,7 +346,7 @@ def do_main(args, prefs):
     allfiles = []
     # process each file
     # run serially
-    for index, (fovid, group) in data_grouped:
+    for index, (fovid, group) in enumerate(data_grouped):
         rows = group.to_dict(orient='records')
         filerows, err = do_image(args, prefs, rows, index, total_jobs)
         if err is True:
