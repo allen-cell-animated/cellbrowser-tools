@@ -251,7 +251,7 @@ def do_main(args, prefs):
     cell_lines_data = load_cell_line_info()
 
     # Read every cell image to be processed
-    data = lkutils.collect_data_rows(fovs=prefs.get('fovs'))
+    data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
 
     print('Number of total cell rows: ' + str(len(data)))
     # group by fov id
