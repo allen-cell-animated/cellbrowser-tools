@@ -145,7 +145,7 @@ def collect_data_rows(fovids=None):
     mitoticstatedata = mitoticstatedata.rename(columns={"MitoticStateId/Name": "MitoticState"})
     df_data_handoff = pd.merge(df_data_handoff, mitoticbooldata, how='left', left_on='CellId', right_on='CellId')
     df_data_handoff = pd.merge(df_data_handoff, mitoticstatedata, how='left', left_on='CellId', right_on='CellId')
-    df_data_handoff.fillna(value={'IsMitotic': '', 'MitoticState': ''}, inplace=True)
+    df_data_handoff = df_data_handoff.fillna(value={'IsMitotic': '', 'MitoticState': ''})
 
     # get legacy cell name for all cells
     legacycellname_results = lk.select_rows_as_list(
@@ -202,7 +202,7 @@ def collect_data_rows(fovids=None):
     df_data_handoff['FOV_3dcv_Name'] = df_data_handoff.apply(lambda row: get_fov_name_from_row(row), axis=1)
 
     # deal with nans
-    df_data_handoff.fillna(value={'LegacyCellName': '', 'Angle': 0, 'x': 0, 'y': 0}, inplace=True)
+    df_data_handoff = df_data_handoff.fillna(value={'LegacyCellName': '', 'Angle': 0, 'x': 0, 'y': 0})
     df_data_handoff['LegacyFOVName'] = df_data_handoff['LegacyFOVName'].apply(lambda d: d if isinstance(d, list) else [])
 
     # replace any remaining NaNs with None
