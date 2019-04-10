@@ -372,6 +372,7 @@ class ImageProcessor:
             }
         else:
             m["isCropped"] = False
+            m["CellId"] = [r["CellId"] for r in self.job.cells]
         m["isModel"] = False
 
         m["cellLine"] = row['CellLine']
