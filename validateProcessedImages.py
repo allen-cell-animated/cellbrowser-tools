@@ -313,9 +313,10 @@ def compute_clusters_on_json_handoff(
 
 
 def build_feature_data(prefs):
-    featuredata0 = fh.get_full_handoff(algorithm_name="aics-feature", algorithm_version="1.0.1", config="prod.json")
-    featuredata1 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier", algorithm_version="1.0.0", config="prod.json")
-    featuredata2 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier-curated", algorithm_version="1.0.0", config="prod.json")
+    configfile = "//allen/aics/animated-cell/Dan/featurehandoff/prod.json"
+    featuredata0 = fh.get_full_handoff(algorithm_name="aics-feature", algorithm_version="1.0.1", config=configfile)
+    featuredata1 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier", algorithm_version="1.0.0", config=configfile)
+    featuredata2 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier-curated", algorithm_version="1.0.0", config=configfile)
     allfeaturedata = pd.merge(featuredata0, featuredata1, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
     allfeaturedata = pd.merge(allfeaturedata, featuredata2, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
     allfeaturedata.dropna(inplace=True)
