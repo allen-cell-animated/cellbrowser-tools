@@ -126,18 +126,28 @@ def parse_args():
 
 def make_json(jobname, info, prefs):
     cell_job_postfix = jobname
-    current_dir = os.path.join(prefs['out_status'], prefs['script_dir']) # os.path.join(os.getcwd(), outdir)
-    jsonname = os.path.join(current_dir, f'FOV_{cell_job_postfix}.json')
+    cellline = info.cells[0]['CellLine']
+    current_dir = os.path.join(prefs['out_status'], prefs['script_dir'])  # os.path.join(os.getcwd(), outdir)
+    dest_dir = os.path.join(current_dir, cellline)
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
+
+    jsonname = os.path.join(dest_dir, f'FOV_{cell_job_postfix}.json')
     with open(jsonname, 'w') as fp:
         json.dump(info.__dict__, fp)
     return jsonname
 
 
-def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
-    # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
-    print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + ' : ' + row['FOV_3dcv_Name'])
+def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
+    # use row 0 as the "full field" row
+    row = rows[0]
 
-    aicscelllineid = str(row['CellLineName'])
+    jobname = row['FOV_3dcv_Name']
+
+    # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
+    print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + ' : ' + jobname)
+
+    aicscelllineid = str(row['CellLine'])
     celllinename = aicscelllineid  # 'AICS-' + str(aicscelllineid)
     subdir = celllinename
 
@@ -145,8 +155,7 @@ def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
     if cell_line_data is None:
         raise('Can\'t find cell line ' + celllinename)
 
-    info = cellJob.CellJob(row)
-    info.cbrAddToDb = True
+    info = cellJob.CellJob(rows)
 
     info.structureProteinName = cell_line_data['ProteinName']
     info.structureName = cell_line_data['StructureName']
@@ -166,23 +175,17 @@ def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
 
     info.cbrThumbnailSize = 128
 
-    info.dbUrl = prefs['out_bisquedb']
-
     if args.all:
-        info.cbrAddToDb = True
         info.cbrGenerateThumbnail = True
         info.cbrGenerateCellImage = True
         info.cbrGenerateSegmentedImages = True
         info.cbrGenerateFullFieldImages = True
     else:
         if args.dbonly:
-            info.cbrAddToDb = True
             info.cbrGenerateThumbnail = False
             info.cbrGenerateCellImage = False
             info.cbrGenerateFullFieldImages = True
             info.cbrGenerateSegmentedImages = True
-        elif args.notdb:
-            info.cbrAddToDb = False
 
         if args.thumbnailsonly:
             info.cbrGenerateThumbnail = True
@@ -211,7 +214,6 @@ def do_image(args, prefs, cell_lines_data, row, index, total_jobs):
     if not os.path.exists(info.cbrThumbnailLocation):
         os.makedirs(info.cbrThumbnailLocation)
 
-    jobname = info.FOV_3dcv_Name
     if args.run:
         do_main_image_with_celljob(info)
     elif args.cluster:
@@ -249,19 +251,29 @@ def do_main(args, prefs):
     cell_lines_data = load_cell_line_info()
 
     # Read every cell image to be processed
-    data = lkutils.collect_data_rows(prefs['data_query'], prefs.get('fovs'))
-    data = data.to_dict(orient='records')
+    data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
 
-    total_jobs = len(data)
-
+    print('Number of total cell rows: ' + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    print('Number of total FOVs: ' + str(total_jobs))
     print('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
+
+    #
+    # arrange into list of lists of dicts?
+
+    # one_of_each = data_grouped.first().reset_index()
+    # data = data.to_dict(orient='records')
+
 
     # process each file
     if args.cluster:
         # gather cluster commands and submit in batch
         json_list = []
-        for index, row in enumerate(data):
-            json_file = do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+        for index, (fovid, group) in enumerate(data_grouped):
+            rows = group.to_dict(orient='records')
+            json_file = do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
             json_list.append(json_file)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
@@ -269,8 +281,9 @@ def do_main(args, prefs):
 
     else:
         # run serially
-        for index, row in enumerate(data):
-            do_image(args, prefs, cell_lines_data, row, index, total_jobs)
+        for index, (fovid, group) in enumerate(data_grouped):
+            rows = group.to_dict(orient='records')
+            do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
 
 
 def setup_prefs(json_path):

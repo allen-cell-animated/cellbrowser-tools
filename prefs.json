@@ -1,10 +1,8 @@
 {
-  "data_query": "Pipeline 4 Production Data Passing QC",
   "out_status": "//allen/aics/animated-cell/Dan/cellbrowser-tools/processing",
-  "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Data",
-  "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Thumbnails",
-  "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.3.0/Cell-Viewer_Thumbnails",
-  "out_bisquedb": "http://dev-aics-dtp-001.corp.alleninstitute.org:81",
+  "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/Cell-Viewer_Data",
+  "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/Cell-Viewer_Thumbnails",
+  "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/Cell-Viewer_Thumbnails",
 
   "script_dir": "scripts_slurm",
   "data_log_name": "data_jobs_out.csv",
@@ -13,7 +11,7 @@
     "partition": "aics_cpu_general",
     "time": "03:00:00",
     "cpus-per-task": 1,
-    "output": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/FOV-%A_%a.out",
-    "error": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/FOV-%A_%a.err"
+    "output": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/out/FOV-%A_%a.out",
+    "error": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/err/FOV-%A_%a.err"
   }
 }

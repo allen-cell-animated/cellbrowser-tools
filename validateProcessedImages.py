@@ -6,7 +6,7 @@
 import argparse
 import cellJob
 import csv
-import dataHandoffUtils as utils
+import dataHandoffUtils as lkutils
 import glob
 import jobScheduler
 import json
@@ -64,19 +64,21 @@ def make_path(dir0, dir1, filename):
     return dir0 + '/' + dir1 + '/' + filename
 
 
-def do_image(args, prefs, row, index, total_jobs):
-    info = cellJob.CellJob(row)
-    jobname = info.FOV_3dcv_Name
+def do_image(args, prefs, rows, index, total_jobs):
+    # use row 0 as the "full field" row
+    fovrow = rows[0]
 
-    imageName = info.FOV_3dcv_Name
-    segs = info.CellId
+    jobname = fovrow['FOV_3dcv_Name']
+
+    imageName = jobname
 
     data_dir = prefs['out_ometifroot']
     thumbs_dir = prefs['out_thumbnailroot']
-    cell_line = info.CellLineName
+    cell_line = fovrow['CellLine']
 
     names = [imageName]
-    for seg in segs:
+    for row in rows:
+        seg = row['CellId']
         n = imageName + "_" + str(int(seg))
         # str(int(seg)) removes leading zeros
         names.append(n)
@@ -105,12 +107,6 @@ def do_image(args, prefs, row, index, total_jobs):
                 err = True
                 print("ERROR: " + jobname + ": Could not find file: " + fullat)
 
-        # check for image meta
-        fullmj = make_path(thumbs_dir, cell_line, f + '_meta.json')
-        if not os.path.isfile(fullmj):
-            err = True
-            print("ERROR: " + jobname + ": Could not find file: " + fullmj)
-
         # check for image
         fullf = make_path(data_dir, cell_line, f + '.ome.tif')
         if not os.path.isfile(fullf):
@@ -120,13 +116,14 @@ def do_image(args, prefs, row, index, total_jobs):
     outrows = []
     if err is not True:
         outrows.append({
-            "file_id": "F" + str(int(info.FOVId)),
+            "file_id": "F" + str(int(fovrow['FOVId'])),
             "file_name": imageName + '.ome.tif',
             "read_path": make_path(data_dir, cell_line, imageName + '.ome.tif'),
             "file_size": os.path.getsize(make_path(data_dir, cell_line, imageName + '.ome.tif')),
             "CellLineName": cell_line
         })
-        for seg in segs:
+        for row in rows:
+            seg = row['CellId']
             n = imageName + "_" + str(int(seg))
             outrows.append({
                 "file_id": "C" + str(int(seg)),
@@ -316,9 +313,10 @@ def compute_clusters_on_json_handoff(
 
 
 def build_feature_data(prefs):
-    featuredata0 = fh.get_full_handoff(algorithm_name="aics-feature", algorithm_version="1.0.1", config="prod.json")
-    featuredata1 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier", algorithm_version="1.0.0", config="prod.json")
-    featuredata2 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier-curated", algorithm_version="1.0.0", config="prod.json")
+    configfile = "//allen/aics/animated-cell/Dan/featurehandoff/prod.json"
+    featuredata0 = fh.get_full_handoff(algorithm_name="aics-feature", algorithm_version="1.0.1", config=configfile)
+    featuredata1 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier", algorithm_version="1.0.0", config=configfile)
+    featuredata2 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier-curated", algorithm_version="1.0.0", config=configfile)
     allfeaturedata = pd.merge(featuredata0, featuredata1, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
     allfeaturedata = pd.merge(allfeaturedata, featuredata2, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
     allfeaturedata.dropna(inplace=True)
@@ -329,21 +327,31 @@ def build_feature_data(prefs):
 
 
 def do_main(args, prefs):
-    # Read every .csv file and concat them together
-    data = utils.collect_data_rows(prefs['data_query'], prefs.get("fovs"))
-    data = data.to_dict(orient='records')
+    # Read every cell image to be processed
+    data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
 
-    total_jobs = len(data)
+    print('Number of total cell rows: ' + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    print('Number of total FOVs: ' + str(total_jobs))
     print('VALIDATING ' + str(total_jobs) + ' JOBS')
+
+    #
+    # arrange into list of lists of dicts?
+
+    # one_of_each = data_grouped.first().reset_index()
+    # data = data.to_dict(orient='records')
 
     errorFovs = []
     allfiles = []
     # process each file
     # run serially
-    for index, row in enumerate(data):
-        filerows, err = do_image(args, prefs, row, index, total_jobs)
+    for index, (fovid, group) in enumerate(data_grouped):
+        rows = group.to_dict(orient='records')
+        filerows, err = do_image(args, prefs, rows, index, total_jobs)
         if err is True:
-            errorFovs.append(row['FOV_3dcv_Name'])
+            errorFovs.append(str(fovid))
         else:
             allfiles.extend(filerows)
 
