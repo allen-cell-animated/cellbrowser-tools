@@ -21,7 +21,7 @@ import sys
 from typing import Union, Dict, List
 import uploader.db_api as db_api
 
-import featurehandoff as fh
+import featuredb as fh
 
 from cellNameDb import CellNameDatabase
 from processImageWithSegmentation import do_main_image
@@ -151,7 +151,7 @@ def compute_clusters_on_json_handoff(
 
     #### Example
     ```
-    >>> import featurehandoff as fh
+    >>> import featuredb as fh
     >>> handoff = fh.get_full_handoff("prod.json", "aics-feature", "1.0.1")
     >>> json_handoff = fh.df_to_json(handoff)
     >>> compute_clusters_on_json_handoff(json_handoff)
@@ -204,7 +204,7 @@ def compute_clusters_on_json_handoff(
     #### Parameters
     ##### handoff: List[Dict[str, Union[int, str, float]]]
     The output from a:
-    `featurehandoff.df_to_json(featurehandoff.get_full_handoff(*args))`
+    `featuredb.df_to_json(featuredb.get_full_handoff(*args))`
     call. This is a list of dictionarys where each dictionary has a "file_info",
     and, "measured_features" blob.
 
@@ -224,7 +224,7 @@ def compute_clusters_on_json_handoff(
     #### Returns
     ##### handoff: List[Dict[str, Union[int, str, float]]]
     A list of dictionaries similar to that produced by
-    `featurehandoff.df_to_json`, with an additional "clusters" key for each row.
+    `featuredb.df_to_json`, with an additional "clusters" key for each row.
     Each key in the clusters blob is the name of which clustering algorithm was
     used to generate that portion of the data. Inside that dictionary are
     key-value pairings that correspond to the parameter used to generate that

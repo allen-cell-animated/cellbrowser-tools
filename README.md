@@ -9,7 +9,7 @@ LET VERSION = 1.4.0
     aicsimageio
     aicsimageprocessing>=0.6.1
     git+https://github.com/AllenCellModeling/datasetdatabase.git
-    featurehandoff==0.1.1
+    featuredb>=0.3.0
     labkey
     lkaccess
     pandas
