@@ -40,8 +40,8 @@ DEFAULT_CLUSTER_STEP = 1
 # this is temporary as this is not future proof a better system for determining which
 # features should actually be used in cluster calculation should be adopted at a later point
 IGNORE_FEATURES_COLUMNS_DURING_CLUSTERING = [
-    "Cell Cycle State (unitless)",
-    "Cell Cycle State (curated)"
+    # "Cell Cycle State (unitless)",
+    # "Cell Cycle State (curated)"
 ]
 
 # type def
@@ -64,7 +64,7 @@ def make_path(dir0, dir1, filename):
     return dir0 + '/' + dir1 + '/' + filename
 
 
-def do_image(args, prefs, rows, index, total_jobs):
+def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
     # use row 0 as the "full field" row
     fovrow = rows[0]
 
@@ -99,6 +99,14 @@ def do_image(args, prefs, rows, index, total_jobs):
         if not os.path.isfile(fullaj):
             err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullaj)
+        else:
+            # load file and look at channel names
+            with open(fullaj, 'r') as json_file:
+                atlasjsondata = json.load(json_file)
+                for n in atlasjsondata['channel_names']:
+                    if n not in channel_name_list:
+                        channel_name_list.append(n)
+
 
         # expect 3 atlas png files
         for i in ['0', '1', '2']:
@@ -314,12 +322,22 @@ def compute_clusters_on_json_handoff(
 
 def build_feature_data(prefs):
     configfile = "//allen/aics/animated-cell/Dan/featurehandoff/prod.json"
-    featuredata0 = fh.get_full_handoff(algorithm_name="aics-feature", algorithm_version="1.0.1", config=configfile)
-    featuredata1 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier", algorithm_version="1.0.0", config=configfile)
-    featuredata2 = fh.get_full_handoff(algorithm_name="aics-mitosis-classifier-curated", algorithm_version="1.0.0", config=configfile)
-    allfeaturedata = pd.merge(featuredata0, featuredata1, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
-    allfeaturedata = pd.merge(allfeaturedata, featuredata2, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
+
+    data_sources = [
+        ("aics-feature", "0.2.0"),
+        # ("aics-mitosis-classifier-mitotic", "1.0.0"),
+        # ("aics-mitosis-classifier-four-stage", "1.0.0"),
+    ]
+    allfeaturedata = None
+    for data_source in data_sources:
+        featuredata = fh.get_full_handoff(algorithm_name=data_source[0], algorithm_version=data_source[1], config=configfile)
+        if allfeaturedata is None:
+            allfeaturedata = featuredata
+        else:
+            allfeaturedata = pd.merge(allfeaturedata, featuredata, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
+
     allfeaturedata.dropna(inplace=True)
+
     jsondictlist = fh.df_to_json(allfeaturedata)
     jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
     with open(os.path.join(prefs.get("out_status"), 'cell-feature-analysis.json'), 'w', newline="") as output_file:
@@ -345,20 +363,27 @@ def do_main(args, prefs):
 
     errorFovs = []
     allfiles = []
+    channel_name_list = []
     # process each file
     # run serially
     for index, (fovid, group) in enumerate(data_grouped):
         rows = group.to_dict(orient='records')
-        filerows, err = do_image(args, prefs, rows, index, total_jobs)
+        filerows, err = do_image(args, prefs, rows, index, total_jobs, channel_name_list)
         if err is True:
             errorFovs.append(str(fovid))
         else:
             allfiles.extend(filerows)
 
+    # write out all collected channel names
+    with open(os.path.join(prefs.get("out_status"), 'allChannelNames.txt'), 'w', newline="") as channel_names_file:
+        channel_names_file.write('\n'.join(channel_name_list))
+
+    # write out all FOVs identified with errors
     if len(errorFovs) > 0:
         with open(os.path.join(prefs.get("out_status"), 'errorFovs.txt'), 'w', newline="") as error_file:
             error_file.write('\n'.join(errorFovs))
 
+    # write out all files for downloader service
     if len(allfiles) > 0:
         keys = allfiles[0].keys()
         with open(os.path.join(prefs.get("out_status"), 'cellviewer-files.csv'), 'w', newline="") as output_file:
@@ -366,6 +391,7 @@ def do_main(args, prefs):
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
 
+    # write out the cell_feature_analysis.json database
     build_feature_data(prefs)
 
 
