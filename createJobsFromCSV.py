@@ -108,6 +108,7 @@ def parse_args():
     generation = parser.add_mutually_exclusive_group()
     generation.add_argument('--thumbnailsonly', '-t', help='only generate thumbnail', action='store_true')
     generation.add_argument('--imagesonly', '-i', help='only generate images', action='store_true')
+    generation.add_argument('--atlasonly', '-l', help='only generate texture atlases', action='store_true')
 
     cell_images = parser.add_mutually_exclusive_group()
     cell_images.add_argument('--fullfieldonly', '-d', help='only generate fullfield images', action='store_true')
@@ -178,24 +179,33 @@ def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
     if args.all:
         info.cbrGenerateThumbnail = True
         info.cbrGenerateCellImage = True
+        info.cbrGenerateTextureAtlas = True
         info.cbrGenerateSegmentedImages = True
         info.cbrGenerateFullFieldImages = True
     else:
         if args.dbonly:
             info.cbrGenerateThumbnail = False
             info.cbrGenerateCellImage = False
+            info.cbrGenerateTextureAtlas = False
             info.cbrGenerateFullFieldImages = True
             info.cbrGenerateSegmentedImages = True
 
         if args.thumbnailsonly:
             info.cbrGenerateThumbnail = True
             info.cbrGenerateCellImage = False
+            info.cbrGenerateTextureAtlas = False
         elif args.imagesonly:
             info.cbrGenerateThumbnail = False
             info.cbrGenerateCellImage = True
+            info.cbrGenerateTextureAtlas = False
+        elif args.atlasonly:
+            info.cbrGenerateThumbnail = False
+            info.cbrGenerateCellImage = False
+            info.cbrGenerateTextureAtlas = True
         elif not args.dbonly:
             info.cbrGenerateThumbnail = True
             info.cbrGenerateCellImage = True
+            info.cbrGenerateTextureAtlas = True
 
         info.cbrGenerateFullFieldImages = True
         info.cbrGenerateSegmentedImages = True
@@ -219,31 +229,6 @@ def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
     elif args.cluster:
         # TODO: set arg to copy each indiv file to another output
         return make_json(jobname, info, prefs)
-
-
-# conversion adapter to legacy spreadsheet names
-def convert_columns(data):
-    return data.rename(columns={
-        "Colony position": "colony_position",
-        "MembraneChannel": "memChannel",
-        "NucleusChannel": "nucChannel",
-        "StructureChannel": "structureChannel",
-        "FileId": "inputFilename",
-        "FileId/FileReplica/BasePath": "inputFolder",
-        "StructureSegFileId": "structureSegOutputFilename",
-        "StructureSegBasePath": "structureSegOutputFolder",
-        "NucleusSegFileId": "outputNucSegWholeFilename",
-        "NucleusSegBasePath": "outputNucSegmentationPath",
-        "MembraneSegFileId": "outputCellSegWholeFilename",
-        "MembraneSegBasePath": "outputSegmentationPath",
-        "StructureSegmentationAlgorithm": "VersionStructure",
-        "CellSegmentationAlgorithm": "VersionNucMemb",
-        "FileId/CellLineId/Name": "cell_line_ID"
-    })
-
-
-def create_cell_name(row):
-    row['cbrCellName'] = str(row['cell_line_ID'][0]) + '_' + str(row['FOVId'])
 
 
 def do_main(args, prefs):
