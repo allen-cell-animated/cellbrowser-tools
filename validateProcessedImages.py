@@ -19,7 +19,6 @@ import re
 from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 import sys
 from typing import Union, Dict, List
-import uploader.db_api as db_api
 
 import featuredb as fh
 

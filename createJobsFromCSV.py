@@ -59,7 +59,7 @@ def generate_sh_for_row(jobname, info, prefs):
     # set anaconda install path.
     script_string += "export PATH=/allen/aics/animated-cell/Dan/anaconda3/bin:$PATH\n"
     # enable locating the source code of these scripts
-    script_string += "export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools:/home/danielt/cellbrowserpipeline/cellbrowser-tools/uploader\n"
+    script_string += "export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools\n"
     # script_string += "source /allen/aics/animated-cell/Dan/venvs/ace/bin/activate\n"
     script_string += "source activate /allen/aics/animated-cell/Dan/venvs/ace\n"
     script_string += "python " + os.getcwd() + "/processImageWithSegmentation.py "

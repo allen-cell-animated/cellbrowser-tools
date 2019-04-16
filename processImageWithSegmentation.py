@@ -17,7 +17,6 @@ import dataHandoffSpreadsheetUtils as utils
 from aicsimageio import aicsImage
 from aicsimageprocessing import thumbnailGenerator
 from aicsimageprocessing import textureAtlas
-from uploader import oneUp
 
 import argparse
 import copy
