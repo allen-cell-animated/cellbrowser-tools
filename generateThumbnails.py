@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument("--channels", nargs='+', type=int, default=[0], help='which channels')
 
     runner = parser.add_mutually_exclusive_group()
-    runner.add_argument('--run', '-r', help='run the jobs locally', action='store_true', default=True)
+    runner.add_argument('--run', '-r', help='run the jobs locally', action='store_true', default=False)
     runner.add_argument('--cluster', '-c', help='run jobs using the cluster', action='store_true', default=False)
 
     args = parser.parse_args()
