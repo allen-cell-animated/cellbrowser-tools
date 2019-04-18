@@ -165,3 +165,67 @@ def slurp(json_list, prefs, do_run=True):
             if code != 0:
                 print(f"Error occurred in {script.name} processing")
                 raise subprocess.CalledProcessError(code, script.name)
+
+
+def slurp_dicts(dict_list, prefs, do_run=True):
+    # chunk up json_list into groups of no more than n jsons.
+    # This is to guarantee that we don't submit sbatch arrays greater than our slurm cluster's
+    # limit (currently 10k a the time of writing this comment).
+    n = 4096
+    # TODO: consider using json_lists = more_itertools.chunked(json_list, n)
+    dict_lists = [dict_list[i:i + n] for i in range(0, len(dict_list), n)]
+    scripts = []
+    for i, dicts in enumerate(dict_lists):
+
+        job_prefs = prefs['job_prefs'].copy()
+        max_simultaneous_jobs = job_prefs.pop('max_simultaneous_jobs')
+
+        slurm_args = []
+        for keyword, value in job_prefs.items():
+            slurm_args.append(f'--{keyword} {value}')
+
+        config = {
+            "infiles": [d['infile'] for d in dicts],
+            "outfiles": [d['outfile'] for d in dicts],
+            "labels": [d['label'] for d in dicts],
+            "channels": dicts[0]['channels'],
+
+            "directives": slurm_args,
+            "max_simultaneous_jobs": max_simultaneous_jobs,
+            "cwd": os.getcwd()
+        }
+
+        # Put all our dicts into the config as single lists per key
+        # transpose list of dicts to dict of lists
+        # ASSUMES ALL DICTS HAVE SAME KEYS
+        dict_of_lists = {k: [d[k] for d in dicts] for k in dicts[0]}
+        config.update(dict_of_lists)
+
+        script = Path(prefs['out_status']) / f"CellBrowserRunner{i}.sh"
+
+        template_path = str(Path(__file__).parent)
+        j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
+
+        with open(script, 'w') as f:
+            script_text = j2env.get_template('fov_job.j2').render(config)
+            f.write(script_text)
+        scripts.append(script)
+
+    if do_run or len(scripts) == 1:
+        for script in scripts:
+            proc = subprocess.Popen(
+                ['sbatch', script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            print(f"{script.name} output:")
+            output = []
+            for line in iter(proc.stdout.readline, b''):
+                line = line.decode('utf-8').rstrip()
+                output.append(line)
+                print(line)
+            proc.wait()
+            code = proc.returncode
+            if code != 0:
+                print(f"Error occurred in {script.name} processing")
+                raise subprocess.CalledProcessError(code, script.name)
