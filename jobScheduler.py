@@ -195,7 +195,7 @@ def slurp_dicts(dict_list, prefs, do_run=True):
             "cwd": os.getcwd()
         }
 
-        script = Path(prefs['out_status']) / f"CellBrowserRunner{i}.sh"
+        script = Path(prefs['out_status']) / f"ThumbnailRunner{i}.sh"
 
         template_path = str(Path(__file__).parent)
         j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
