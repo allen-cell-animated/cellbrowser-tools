@@ -70,11 +70,12 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
+    colors = [(tuple(int(h[i:i+2], 16)/255.0 for i in (0, 2, 4))) for h in args.colors]
     make_one_thumbnail(
         infile=args.infile,
         outfile=args.outfile,
         channels=args.channels,
-        colors=args.colors,
+        colors=colors,
         size=args.size,
         projection=args.projection,
         axis=args.axis,
