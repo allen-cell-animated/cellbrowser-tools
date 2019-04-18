@@ -38,8 +38,8 @@ DEFAULT_CLUSTER_STEP = 1
 # this is temporary as this is not future proof a better system for determining which
 # features should actually be used in cluster calculation should be adopted at a later point
 IGNORE_FEATURES_COLUMNS_DURING_CLUSTERING = [
-    # "Cell Cycle State (unitless)",
-    # "Cell Cycle State (curated)"
+    "Cell Cycle State (mitotic)",
+    "Cell Cycle State (stage)"
 ]
 
 # type def
@@ -323,8 +323,8 @@ def build_feature_data(prefs):
 
     data_sources = [
         ("aics-feature", "0.2.0"),
-        # ("aics-mitosis-classifier-mitotic", "1.0.0"),
-        # ("aics-mitosis-classifier-four-stage", "1.0.0"),
+        ("aics-mitosis-classifier-mitotic", "1.0.0"),
+        ("aics-mitosis-classifier-four-stage", "1.0.0"),
     ]
     allfeaturedata = None
     for data_source in data_sources:
@@ -352,12 +352,6 @@ def do_main(args, prefs):
     total_jobs = len(data_grouped)
     print('Number of total FOVs: ' + str(total_jobs))
     print('VALIDATING ' + str(total_jobs) + ' JOBS')
-
-    #
-    # arrange into list of lists of dicts?
-
-    # one_of_each = data_grouped.first().reset_index()
-    # data = data.to_dict(orient='records')
 
     errorFovs = []
     allfiles = []
