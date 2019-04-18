@@ -16,7 +16,7 @@ import platform
 import re
 import shutil
 import sys
-from cellNameDb import CellNameDatabase
+
 from processImageWithSegmentation import do_main_image_with_celljob
 
 

@@ -22,7 +22,6 @@ from typing import Union, Dict, List
 
 import featuredb as fh
 
-from cellNameDb import CellNameDatabase
 from processImageWithSegmentation import do_main_image
 
 # cbrImageLocation path to cellbrowser images
