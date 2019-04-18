@@ -44,34 +44,6 @@ def load_cell_line_info():
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 
-def generate_sh_for_row(jobname, info, prefs):
-    # dump row data into json
-    # Cell_job_postfix = subdir + "_" + str(jobnumber)
-    cell_job_postfix = jobname
-    current_dir = os.path.join(prefs['out_status'], prefs['script_dir']) # os.path.join(os.getcwd(), outdir)
-    jsonname = os.path.join(current_dir, 'aicsCellJob_'+cell_job_postfix+'.json')
-    pathjson = jsonname
-    with open(pathjson, 'w') as fp:
-        json.dump(info.__dict__, fp)
-    script_string = ""
-    # script_string += "env > /allen/aics/animated-cell/Dan/env.txt\n"
-    script_string += "export PATH=/bin:$PATH\n"
-    # set anaconda install path.
-    script_string += "export PATH=/allen/aics/animated-cell/Dan/anaconda3/bin:$PATH\n"
-    # enable locating the source code of these scripts
-    script_string += "export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools\n"
-    # script_string += "source /allen/aics/animated-cell/Dan/venvs/ace/bin/activate\n"
-    script_string += "source activate /allen/aics/animated-cell/Dan/venvs/ace\n"
-    script_string += "python " + os.getcwd() + "/processImageWithSegmentation.py "
-    script_string += jsonname
-
-    path = os.path.join(current_dir, 'aicsCellJob_' + cell_job_postfix + '.sh')
-    with open(path, 'w') as fp:
-        fp.write(script_string)
-        fp.write(os.linesep)
-    return path
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
                                                  'and set up a job script for each row.'
@@ -139,7 +111,7 @@ def make_json(jobname, info, prefs):
     return jsonname
 
 
-def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
+def do_image(args, prefs, rows, index, total_jobs):
     # use row 0 as the "full field" row
     row = rows[0]
 
@@ -152,14 +124,7 @@ def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
     celllinename = aicscelllineid  # 'AICS-' + str(aicscelllineid)
     subdir = celllinename
 
-    cell_line_data = cell_lines_data[celllinename]
-    if cell_line_data is None:
-        raise('Can\'t find cell line ' + celllinename)
-
     info = cellJob.CellJob(rows)
-
-    info.structureProteinName = cell_line_data['ProteinName']
-    info.structureName = cell_line_data['StructureName']
 
     # drop images here
     info.cbrDataRoot = prefs['out_ometifroot']
@@ -233,8 +198,6 @@ def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
 
 def do_main(args, prefs):
 
-    cell_lines_data = load_cell_line_info()
-
     # Read every cell image to be processed
     data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
 
@@ -258,7 +221,7 @@ def do_main(args, prefs):
         json_list = []
         for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
-            json_file = do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
+            json_file = do_image(args, prefs, rows, index, total_jobs)
             json_list.append(json_file)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
@@ -268,7 +231,7 @@ def do_main(args, prefs):
         # run serially
         for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
-            do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
+            do_image(args, prefs, rows, index, total_jobs)
 
 
 def setup_prefs(json_path):
@@ -296,9 +259,9 @@ def setup_prefs(json_path):
     #     with open(json_path_local) as f:
     #         prefs = json.load(f)
 
-    #record the location of the json object
+    # record the location of the json object
     prefs['my_path'] = json_path_local
-    #record the location of the data object
+    # record the location of the data object
     prefs['save_log_path'] = prefs['out_status'] + os.sep + prefs['data_log_name']
 
     return prefs
