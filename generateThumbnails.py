@@ -63,7 +63,7 @@ def do_image(args, prefs, row, index):
     label = str(row['CellId'])
 
     channelsstr = " ".join(map(str, args.channels))
-    print(channelsstr)
+    print(str(index) + ' -- ' + label)
 
     if args.run:
         make_one_thumbnail.make_one_thumbnail(infilename, outfilename, label=label, channels=args.channels, colors=[[1, 1, 1]], size=128, projection='max', axis=2, apply_mask=True, mask_channel=5)
