@@ -38,7 +38,7 @@ def check_dups(dfr, column, remove=True):
 
 
 # big assumption: any query_name passed in must return data of the same format!
-def collect_data_rows(fovids=None):
+def collect_data_rows(fovids=None, raw_only=False):
     # lk = LabKey(host="aics")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
 
@@ -50,6 +50,9 @@ def collect_data_rows(fovids=None):
         df_data_handoff = df_data_handoff[df_data_handoff['FOVId'].isin(fovids)]
 
     print("GOT DATA HANDOFF")
+
+    if raw_only:
+        return df_data_handoff
 
     # get mitotic state name for all cells
     mitoticdata = lk.select_rows_as_list(
