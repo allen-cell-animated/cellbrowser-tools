@@ -52,8 +52,8 @@ def make_one_thumbnail(infile, outfile, channels, colors, size, projection='max'
 def parse_args():
     parser = argparse.ArgumentParser(description='Make a thumbnail from a ome-tiff')
 
-    parser.add_argument('infile', type=argparse.FileType('r'), help='input zstack')
-    parser.add_argument('outfile', type=argparse.FileType('w'), help='output png')
+    parser.add_argument('infile', type=str, help='input zstack')
+    parser.add_argument('outfile', type=str, help='output png')
 
     # assume square for now
     parser.add_argument('--size', type=int, help='size', default=128)
