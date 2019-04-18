@@ -195,12 +195,6 @@ def slurp_dicts(dict_list, prefs, do_run=True):
             "cwd": os.getcwd()
         }
 
-        # Put all our dicts into the config as single lists per key
-        # transpose list of dicts to dict of lists
-        # ASSUMES ALL DICTS HAVE SAME KEYS
-        dict_of_lists = {k: [d[k] for d in dicts] for k in dicts[0]}
-        config.update(dict_of_lists)
-
         script = Path(prefs['out_status']) / f"CellBrowserRunner{i}.sh"
 
         template_path = str(Path(__file__).parent)
