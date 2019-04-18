@@ -201,7 +201,7 @@ def slurp_dicts(dict_list, prefs, do_run=True):
         j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
 
         with open(script, 'w') as f:
-            script_text = j2env.get_template('fov_job.j2').render(config)
+            script_text = j2env.get_template('thumbnail_job.j2').render(config)
             f.write(script_text)
         scripts.append(script)
 
