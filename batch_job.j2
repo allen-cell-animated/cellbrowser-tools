@@ -7,7 +7,7 @@
 {#- Lastly, add the array directive based off of the number of items in the query #}
 {#- Also add a maximum number of simultaneous jobs #}
 {#- See https://slurm.schedmd.com/sbatch.html#OPT_array for further details #}
-#SBATCH --array 0-{{ (mybatchsize) - 1 }}%{{ max_simultaneous_jobs | default(32) }}
+#SBATCH --array 0-{{ (mybatchsize) }}%{{ max_simultaneous_jobs | default(32) }}
 
 # set anaconda install path.
 # enable locating the source code of these scripts
