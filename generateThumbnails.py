@@ -42,6 +42,8 @@ def parse_args():
     # control what data to process.
     parser.add_argument("--channels", nargs='+', type=int, default=[0], help='which channels')
 
+    parser.add_argument("-n", type=int, default=0, help='how many randomly selected (0 for all)')
+
     runner = parser.add_mutually_exclusive_group()
     runner.add_argument('--run', '-r', help='run the jobs locally', action='store_true', default=False)
     runner.add_argument('--cluster', '-c', help='run jobs using the cluster', action='store_true', default=False)
@@ -86,13 +88,13 @@ def do_main(args, prefs):
     # total_jobs = len(data_grouped)
     # print('Number of total FOVs: ' + str(total_jobs))
 
-    N = 2
-    # pick NxN random cells
-    data_shuffled = data.sample(n=N*N, random_state=1234).to_dict(orient='records')
+    if args.n == 0:
+        data_shuffled = data.to_dict(orient='records')
+    else:
+        data_shuffled = data.sample(n=args.n, random_state=1234).to_dict(orient='records')
 
-    print('ABOUT TO CREATE ' + str(N*N*3) + ' JOBS')
-
-    total_jobs = N*N
+    total_jobs = len(data_shuffled)
+    print('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
 
     # process each file
     if args.cluster:
