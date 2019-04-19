@@ -1,5 +1,6 @@
 import subprocess
 import os
+import random
 import time
 from pathlib import Path
 import jinja2
@@ -175,6 +176,7 @@ def slurp(json_list, prefs, do_run=True):
 # or:
 # srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID cmds.txt | tail -n 1)"
 def slurp_commands(commandlist, prefs, name='', do_run=True):
+    unique_id = '%08x' % random.randrange(16**8)
     # varying_args is an array of dicts.
     # chunk up varying_args into groups of no more than n jsons.
     # This is to guarantee that we don't submit sbatch arrays greater than our slurm cluster's
@@ -192,8 +194,8 @@ def slurp_commands(commandlist, prefs, name='', do_run=True):
         for keyword, value in job_prefs.items():
             slurm_args.append(f'--{keyword} {value}')
 
-        batchrunnerscriptname = f"BatchRunner{i}{name}.sh"
-        batchdatafilename = f"BatchData{i}{name}.txt"
+        batchrunnerscriptname = f"BatchRunner{i}{name}_{unique_id}.sh"
+        batchdatafilename = f"BatchData{i}{name}_{unique_id}.txt"
         script = Path(prefs['out_status']) / batchrunnerscriptname
         batchfile = Path(prefs['out_status']) / batchdatafilename
 
