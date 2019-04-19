@@ -44,6 +44,7 @@ def parse_args():
     parser.add_argument("--projection", type=str, default='max', help='projection max or slice')
 
     parser.add_argument("-n", type=int, default=0, help='how many randomly selected (0 for all)')
+    parser.add_argument("--size", type=int, default=128, help='pixel size')
 
     runner = parser.add_mutually_exclusive_group()
     runner.add_argument('--run', '-r', help='run the jobs locally', action='store_true', default=False)
