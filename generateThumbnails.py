@@ -55,7 +55,7 @@ def parse_args():
 
 
 def do_image(args, prefs, row, index):
-    channelsstr_nospace = 'c' + "".join(map(str, args.channels))
+    channelsstr_nospace = 'c' + "".join(map(str, args.channels)) + args.projection
 
     outdir = '//allen/aics/animated-cell/Dan/april2019mitotic/randomcells/' + channelsstr_nospace + '/'
     outfilename = outdir + '/' + str(row['CellId']) + '_' + channelsstr_nospace + '.png'
