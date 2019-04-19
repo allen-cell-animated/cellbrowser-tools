@@ -174,7 +174,7 @@ def slurp(json_list, prefs, do_run=True):
 # srun $(sed -n ${SLURM_ARRAY_TASK_ID}p cmds.txt)
 # or:
 # srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID cmds.txt | tail -n 1)"
-def slurp_commands(commandlist, prefs, do_run=True):
+def slurp_commands(commandlist, prefs, name='', do_run=True):
     # varying_args is an array of dicts.
     # chunk up varying_args into groups of no more than n jsons.
     # This is to guarantee that we don't submit sbatch arrays greater than our slurm cluster's
@@ -192,16 +192,18 @@ def slurp_commands(commandlist, prefs, do_run=True):
         for keyword, value in job_prefs.items():
             slurm_args.append(f'--{keyword} {value}')
 
+        batchrunnerscriptname = f"BatchRunner{i}{name}.sh"
+        batchdatafilename = f"BatchData{i}{name}.txt"
         config = {
-            "mybatchnumber": i,
+            "mybatchdatafilename": batchdatafilename,
             "mybatchsize": len(commands),
             "directives": slurm_args,
             "max_simultaneous_jobs": max_simultaneous_jobs,
             "cwd": os.getcwd()
         }
 
-        script = Path(prefs['out_status']) / f"BatchRunner{i}.sh"
-        batchfile = Path(prefs['out_status']) / f"BatchData{i}.sh"
+        script = Path(prefs['out_status']) / batchrunnerscriptname
+        batchfile = Path(prefs['out_status']) / batchdatafilename
 
         template_path = str(Path(__file__).parent)
         j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))

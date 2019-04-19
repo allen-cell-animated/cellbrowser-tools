@@ -18,5 +18,5 @@ export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tool
 source activate /allen/aics/animated-cell/Dan/venvs/ace
 
 {# srun the script, and add the item to the end of the script call #}
-srun $(head -n $SLURM_ARRAY_TASK_ID BatchData{{mybatchnumber}}.txt | tail -n 1)
+srun $(head -n $SLURM_ARRAY_TASK_ID {{mybatchdatafilename}} | tail -n 1)
 # srun python {{ cwd }}/{{ mycommand }} ${ITEM_ARRAY[$SLURM_ARRAY_TASK_ID]} ${OUT_ARRAY[$SLURM_ARRAY_TASK_ID]} --size 128 --channels {{ channels }} --mask 5 --projection {{ projection }} --label ${LABEL_ARRAY[$SLURM_ARRAY_TASK_ID]}
