@@ -7,25 +7,7 @@
 {#- Lastly, add the array directive based off of the number of items in the query #}
 {#- Also add a maximum number of simultaneous jobs #}
 {#- See https://slurm.schedmd.com/sbatch.html#OPT_array for further details #}
-#SBATCH --array 0-{{ (infiles | length) - 1 }}%{{ max_simultaneous_jobs | default(32) }}
-
-ITEM_ARRAY=(
-{% for item in infiles -%}
-  {{ item }}
-{% endfor -%}
-)
-
-OUT_ARRAY=(
-{% for item in outfiles -%}
-  {{ item }}
-{% endfor -%}
-)
-
-LABEL_ARRAY=(
-{% for item in labels -%}
-  {{ item }}
-{% endfor -%}
-)
+#SBATCH --array 0-{{ (mybatchsize) - 1 }}%{{ max_simultaneous_jobs | default(32) }}
 
 # set anaconda install path.
 # enable locating the source code of these scripts
@@ -36,4 +18,5 @@ export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tool
 source activate /allen/aics/animated-cell/Dan/venvs/ace
 
 {# srun the script, and add the item to the end of the script call #}
-srun python {{ cwd }}/make_one_thumbnail.py ${ITEM_ARRAY[$SLURM_ARRAY_TASK_ID]} ${OUT_ARRAY[$SLURM_ARRAY_TASK_ID]} --size 128 --channels {{ channels }} --mask 5 --projection max --label ${LABEL_ARRAY[$SLURM_ARRAY_TASK_ID]}
+srun $(head -n $SLURM_ARRAY_TASK_ID BatchData{{mybatchnumber}}.txt | tail -n 1)
+# srun python {{ cwd }}/{{ mycommand }} ${ITEM_ARRAY[$SLURM_ARRAY_TASK_ID]} ${OUT_ARRAY[$SLURM_ARRAY_TASK_ID]} --size 128 --channels {{ channels }} --mask 5 --projection {{ projection }} --label ${LABEL_ARRAY[$SLURM_ARRAY_TASK_ID]}

@@ -167,15 +167,23 @@ def slurp(json_list, prefs, do_run=True):
                 raise subprocess.CalledProcessError(code, script.name)
 
 
-def slurp_dicts(dict_list, prefs, do_run=True):
-    # chunk up json_list into groups of no more than n jsons.
+
+# put entire command lines into a text file and run them from
+# srun $(head -n $SLURM_ARRAY_TASK_ID cmds.txt | tail -n 1)
+# This can also be done with sed like:
+# srun $(sed -n ${SLURM_ARRAY_TASK_ID}p cmds.txt)
+# or:
+# srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID cmds.txt | tail -n 1)"
+def slurp_commands(commandlist, prefs, do_run=True):
+    # varying_args is an array of dicts.
+    # chunk up varying_args into groups of no more than n jsons.
     # This is to guarantee that we don't submit sbatch arrays greater than our slurm cluster's
     # limit (currently 10k a the time of writing this comment).
     n = 4096
     # TODO: consider using json_lists = more_itertools.chunked(json_list, n)
-    dict_lists = [dict_list[i:i + n] for i in range(0, len(dict_list), n)]
+    command_lists = [commandlist[i:i + n] for i in range(0, len(commandlist), n)]
     scripts = []
-    for i, dicts in enumerate(dict_lists):
+    for i, commands in enumerate(command_lists):
 
         job_prefs = prefs['job_prefs'].copy()
         max_simultaneous_jobs = job_prefs.pop('max_simultaneous_jobs')
@@ -185,25 +193,27 @@ def slurp_dicts(dict_list, prefs, do_run=True):
             slurm_args.append(f'--{keyword} {value}')
 
         config = {
-            "infiles": [d['infile'] for d in dicts],
-            "outfiles": [d['outfile'] for d in dicts],
-            "labels": [d['label'] for d in dicts],
-            "channels": dicts[0]['channels'],
-
+            "mybatchnumber": i,
+            "mybatchsize": len(commands),
             "directives": slurm_args,
             "max_simultaneous_jobs": max_simultaneous_jobs,
             "cwd": os.getcwd()
         }
 
-        script = Path(prefs['out_status']) / f"ThumbnailRunner{i}.sh"
+        script = Path(prefs['out_status']) / f"BatchRunner{i}.sh"
+        batchfile = Path(prefs['out_status']) / f"BatchData{i}.sh"
 
         template_path = str(Path(__file__).parent)
         j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
 
         with open(script, 'w') as f:
-            script_text = j2env.get_template('thumbnail_job.j2').render(config)
+            script_text = j2env.get_template('batch_job.j2').render(config)
             f.write(script_text)
         scripts.append(script)
+
+        with open(batchfile, 'w') as bf:
+            for cmd in commands:
+                bf.write(cmd + '\n')
 
     if do_run or len(scripts) == 1:
         for script in scripts:

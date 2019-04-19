@@ -41,6 +41,7 @@ def parse_args():
 
     # control what data to process.
     parser.add_argument("--channels", nargs='+', type=int, default=[0], help='which channels')
+    parser.add_argument("--projection", type=str, default='max', help='projection max or slice')
 
     parser.add_argument("-n", type=int, default=0, help='how many randomly selected (0 for all)')
 
@@ -68,14 +69,9 @@ def do_image(args, prefs, row, index):
     print(str(index) + ' -- ' + label)
 
     if args.run:
-        make_one_thumbnail.make_one_thumbnail(infilename, outfilename, label=label, channels=args.channels, colors=[[1, 1, 1]], size=128, projection='max', axis=2, apply_mask=True, mask_channel=5)
+        make_one_thumbnail.make_one_thumbnail(infilename, outfilename, label=label, channels=args.channels, colors=[[1, 1, 1]], size=128, projection=args.projection, axis=2, apply_mask=True, mask_channel=5)
     elif args.cluster:
-        return {
-            "infile": infilename,
-            "outfile": outfilename,
-            "label": label,
-            "channels": channelsstr
-        }
+        return f"python ./make_one_thumbnail.py {infilename} {outfilename} --size {args.size} --channels {channelsstr} --mask 5 --projection {args.projection} --label {label}"
 
 
 def do_main(args, prefs):
@@ -101,11 +97,11 @@ def do_main(args, prefs):
         # gather cluster commands and submit in batch
         jobdata_list = []
         for index, row in enumerate(data_shuffled):
-            jobdatadict = do_image(args, prefs, row, index)
-            jobdata_list.append(jobdatadict)
+            jobdata = do_image(args, prefs, row, index)
+            jobdata_list.append(jobdata)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
-        jobScheduler.slurp_dicts(jobdata_list, prefs)
+        jobScheduler.slurp_commands(jobdata_list, prefs)
 
     else:
         # run serially
