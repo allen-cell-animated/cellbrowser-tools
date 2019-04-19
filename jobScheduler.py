@@ -176,9 +176,10 @@ def slurp(json_list, prefs, do_run=True):
 # or:
 # srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID cmds.txt | tail -n 1)"
 def slurp_commands(commandlist, prefs, name='', do_run=True):
+    # adding this unique id lets me submit over and over and know that i'm not overwriting a key data file
     unique_id = '%08x' % random.randrange(16**8)
-    # varying_args is an array of dicts.
-    # chunk up varying_args into groups of no more than n jsons.
+
+    # Chunk up the list of commands.
     # This is to guarantee that we don't submit sbatch arrays greater than our slurm cluster's
     # limit (currently 10k a the time of writing this comment).
     n = 4096
