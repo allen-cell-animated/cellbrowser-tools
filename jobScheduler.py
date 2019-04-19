@@ -194,16 +194,17 @@ def slurp_commands(commandlist, prefs, name='', do_run=True):
 
         batchrunnerscriptname = f"BatchRunner{i}{name}.sh"
         batchdatafilename = f"BatchData{i}{name}.txt"
+        script = Path(prefs['out_status']) / batchrunnerscriptname
+        batchfile = Path(prefs['out_status']) / batchdatafilename
+
         config = {
-            "mybatchdatafilename": batchdatafilename,
+            "mybatchdatafilename": batchfile,
             "mybatchsize": len(commands),
             "directives": slurm_args,
             "max_simultaneous_jobs": max_simultaneous_jobs,
             "cwd": os.getcwd()
         }
 
-        script = Path(prefs['out_status']) / batchrunnerscriptname
-        batchfile = Path(prefs['out_status']) / batchdatafilename
 
         template_path = str(Path(__file__).parent)
         j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
