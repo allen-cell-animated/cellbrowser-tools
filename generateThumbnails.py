@@ -101,7 +101,7 @@ def do_main(args, prefs):
             jobdata_list.append(jobdata)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
-        jobScheduler.slurp_commands(jobdata_list, prefs)
+        jobScheduler.slurp_commands(jobdata_list, prefs, name="thumbs")
 
     else:
         # run serially
