@@ -5,6 +5,7 @@
 
 import argparse
 import cellJob
+from collections import namedtuple as NamedTuple
 import csv
 import dataHandoffUtils as lkutils
 import glob
@@ -321,14 +322,18 @@ def compute_clusters_on_json_handoff(
 def build_feature_data(prefs):
     configfile = "//allen/aics/animated-cell/Dan/featurehandoff/prod.json"
 
+    class FeatureDataSource(NamedTuple):
+        name: str
+        version: str
+
     data_sources = [
-        ("aics-feature", "0.2.0"),
-        ("aics-mitosis-classifier-mitotic", "1.0.0"),
-        ("aics-mitosis-classifier-four-stage", "1.0.0"),
+        FeatureDataSource("aics-feature", "0.2.0"),
+        FeatureDataSource("aics-mitosis-classifier-mitotic", "1.0.0"),
+        FeatureDataSource("aics-mitosis-classifier-four-stage", "1.0.0"),
     ]
     allfeaturedata = None
     for data_source in data_sources:
-        featuredata = fh.get_full_handoff(algorithm_name=data_source[0], algorithm_version=data_source[1], config=configfile)
+        featuredata = fh.get_full_handoff(algorithm_name=data_source.name, algorithm_version=data_source.version, config=configfile)
         if allfeaturedata is None:
             allfeaturedata = featuredata
         else:
