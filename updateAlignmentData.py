@@ -55,7 +55,6 @@ def setup_prefs(json_path):
 
 
 def do_main(args, prefs):
-    print("hello world")
     # get the aligned mitotic cell data
     prod = dsdb.DatasetDatabase(config='//allen/aics/animated-cell/Dan/dsdb/prod.json')
     mitodataset = prod.get_dataset(name='april-2019-prod-cells')
@@ -90,8 +89,6 @@ def do_main(args, prefs):
 
         with open(fpath, 'w') as json_file:
             json.dump(jsondata, json_file)
-
-    print("bye bye")
 
 
 def main():
