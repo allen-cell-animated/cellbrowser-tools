@@ -5,7 +5,7 @@
 
 import argparse
 import cellJob
-from collections import namedtuple as NamedTuple
+from typing import NamedTuple
 import csv
 import dataHandoffUtils as lkutils
 import glob
