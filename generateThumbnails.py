@@ -20,6 +20,13 @@ import sys
 import make_one_thumbnail
 
 
+def check_nonnegative(value):
+    ivalue = int(value)
+    if ivalue < 0:
+        raise argparse.ArgumentTypeError("%s is an invalid negative int value" % value)
+    return ivalue
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
                                                  'and set up a job script for each row.'
@@ -43,7 +50,7 @@ def parse_args():
     parser.add_argument("--channels", nargs='+', type=int, default=[0], help='which channels')
     parser.add_argument("--projection", type=str, default='max', help='projection max or slice')
 
-    parser.add_argument("-n", type=int, default=0, help='how many randomly selected (0 for all)')
+    parser.add_argument("-n", type=check_nonnegative, default=0, help='how many randomly selected (0 for all)')
     parser.add_argument("--size", type=int, default=128, help='pixel size')
 
     runner = parser.add_mutually_exclusive_group()
