@@ -28,19 +28,12 @@ def check_nonnegative(value):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Process data set defined in csv files, '
-                                                 'and set up a job script for each row.'
-                                                 'Example: python createJobsFromCSV.py -c -n')
+    parser = argparse.ArgumentParser(description='Generate a batch of thumbnail images')
 
     # to generate images on cluster:
     # python createJobsFromCSV.py -c -n
     # to generate images serially:
     # python createJobsFromCSV.py -r -n
-
-    # to add images to bisque db via cluster:
-    # python createJobsFromCSV.py -c -p
-    # to add images to bisque db serially:
-    # python createJobsFromCSV.py -r -p
 
     # python createJobsFromCSV.py -c -n myprefs.json
 
@@ -63,23 +56,32 @@ def parse_args():
 
 
 def do_image(args, prefs, row, index):
+    # I am generating file names here for the outputs of this code.
+    # the channel indices will be strung together to form part of the filename:
+    # for cell id 789, channels=[0,1,2] and projection="max", the filename will be:
+    # 789_c012max.png
     channelsstr_nospace = 'c' + "".join(map(str, args.channels)) + args.projection
 
-    outdir = '//allen/aics/animated-cell/Dan/april2019mitotic/randomcells/' + channelsstr_nospace + '/'
-    outfilename = outdir + '/' + str(row['CellId']) + '_' + channelsstr_nospace + '.png'
+    outdir = prefs['out_thumbnailroot']  # e.g. '//allen/aics/animated-cell/Dan/april2019mitotic/randomcells/' + channelsstr_nospace + '/'
+    outfilename = str(row['CellId']) + '_' + channelsstr_nospace + '.png'
+    outfilepath = os.path.join(outdir, outfilename)
+    # This code is assuming that pre-cropped cell ome.tifs exist in prefs['out_ometifroot']/cellline
     # find the pre-cropped zstack image from the data set.
     infilename = row["CellLine"] + '_' + str(row['FOVId']) + '_' + str(row['CellId']) + '.ome.tif'
-    infilename = prefs['out_ometifroot'] + '/' + row['CellLine'] + '/' + infilename
+    infilepath = os.path.join(prefs['out_ometifroot'], row['CellLine'], infilename)
 
     label = str(row['CellId'])
 
     channelsstr = " ".join(map(str, args.channels))
     print(str(index) + ' -- ' + label)
 
+    # this is a big assumption about where the cell membrane segmentation lives in all the input files
+    mask_channel_index = 5
+
     if args.run:
-        make_one_thumbnail.make_one_thumbnail(infilename, outfilename, label=label, channels=args.channels, colors=[[1, 1, 1]], size=128, projection=args.projection, axis=2, apply_mask=True, mask_channel=5)
+        make_one_thumbnail.make_one_thumbnail(infilepath, outfilepath, label=label, channels=args.channels, colors=[[1, 1, 1]], size=128, projection=args.projection, axis=2, apply_mask=True, mask_channel=mask_channel_index)
     elif args.cluster:
-        return f"python ./make_one_thumbnail.py {infilename} {outfilename} --size {args.size} --channels {channelsstr} --mask 5 --projection {args.projection} --label {label}"
+        return f"python ./make_one_thumbnail.py {infilepath} {outfilepath} --size {args.size} --channels {channelsstr} --mask {mask_channel_index} --projection {args.projection} --label {label}"
 
 
 def do_main(args, prefs):
