@@ -39,8 +39,9 @@ DEFAULT_CLUSTER_STEP = 1
 # this is temporary as this is not future proof a better system for determining which
 # features should actually be used in cluster calculation should be adopted at a later point
 IGNORE_FEATURES_COLUMNS_DURING_CLUSTERING = [
-    "Cell Cycle State (mitotic)",
-    "Cell Cycle State (stage)"
+    "Interphase and Mitotic Stages [stage]",
+    "Interphase and Mitosis [stage]",
+    "Cell Segmentation [complete]"
 ]
 
 # type def
@@ -330,6 +331,7 @@ def build_feature_data(prefs):
         FeatureDataSource("aics-feature", "0.2.0"),
         FeatureDataSource("aics-mitosis-classifier-mitotic", "1.0.0"),
         FeatureDataSource("aics-mitosis-classifier-four-stage", "1.0.0"),
+        FeatureDataSource("aics-cell-segmentation", "1.0.0")
     ]
     allfeaturedata = None
     for data_source in data_sources:
