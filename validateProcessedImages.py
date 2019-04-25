@@ -23,7 +23,6 @@ from typing import Union, Dict, List
 
 import featuredb as fh
 
-from processImageWithSegmentation import do_main_image
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
@@ -39,9 +38,9 @@ DEFAULT_CLUSTER_STEP = 1
 # this is temporary as this is not future proof a better system for determining which
 # features should actually be used in cluster calculation should be adopted at a later point
 IGNORE_FEATURES_COLUMNS_DURING_CLUSTERING = [
-    "Interphase and Mitotic Stages [stage]",
-    "Interphase and Mitosis [stage]",
-    "Cell Segmentation [complete]"
+    "Interphase and Mitotic Stages (stage)",
+    "Interphase and Mitosis (stage)",
+    "Cell Segmentation (complete)"
 ]
 
 # type def
