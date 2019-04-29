@@ -90,7 +90,8 @@ def make_json(jobname, info, prefs):
     jsonname = os.path.join(dest_dir, f'FOV_{cell_job_postfix}.json')
     with open(jsonname, 'w') as fp:
         json.dump(info.__dict__, fp)
-    return jsonname
+
+    return f"python ./processImageWithSegmentation.py {jsonname}"
 
 
 def do_image(args, prefs, rows, index, total_jobs):
@@ -200,15 +201,14 @@ def do_main(args, prefs):
     # process each file
     if args.cluster:
         # gather cluster commands and submit in batch
-        json_list = []
+        jobdata_list = []
         for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
-            json_file = do_image(args, prefs, rows, index, total_jobs)
-            json_list.append(json_file)
+            jobdata = do_image(args, prefs, rows, index, total_jobs)
+            jobdata_list.append(jobdata)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
-        jobScheduler.slurp(json_list, prefs)
-
+        jobScheduler.slurp_commands(jobdata_list, prefs, name="fovs")
     else:
         # run serially
         for index, (fovid, group) in enumerate(data_grouped):

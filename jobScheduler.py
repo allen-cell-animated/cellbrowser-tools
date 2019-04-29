@@ -114,61 +114,6 @@ def submit_jobs_batches(files, json_obj, batch_size=128, tmp_file_name='tmp_scri
         i = i + 1
 
 
-def slurp(json_list, prefs, do_run=True):
-    # chunk up json_list into groups of no more than n jsons.
-    # This is to guarantee that we don't submit sbatch arrays greater than our slurm cluster's
-    # limit (currently 10k a the time of writing this comment).
-    n = 4096
-    # TODO: consider using json_lists = more_itertools.chunked(json_list, n)
-    json_lists = [json_list[i:i + n] for i in range(0, len(json_list), n)]
-    scripts = []
-    for i, jsons in enumerate(json_lists):
-
-        job_prefs = prefs['job_prefs'].copy()
-        max_simultaneous_jobs = job_prefs.pop('max_simultaneous_jobs')
-
-        slurm_args = []
-        for keyword, value in job_prefs.items():
-            slurm_args.append(f'--{keyword} {value}')
-
-        config = {
-            "directives": slurm_args,
-            "jsons": jsons,
-            "max_simultaneous_jobs": max_simultaneous_jobs,
-            "cwd": os.getcwd()
-        }
-
-        script = Path(prefs['out_status']) / f"CellBrowserRunner{i}.sh"
-
-        template_path = str(Path(__file__).parent)
-        j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
-
-        with open(script, 'w') as f:
-            script_text = j2env.get_template('fov_job.j2').render(config)
-            f.write(script_text)
-        scripts.append(script)
-
-    if do_run or len(scripts) == 1:
-        for script in scripts:
-            proc = subprocess.Popen(
-                ['sbatch', script],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            print(f"{script.name} output:")
-            output = []
-            for line in iter(proc.stdout.readline, b''):
-                line = line.decode('utf-8').rstrip()
-                output.append(line)
-                print(line)
-            proc.wait()
-            code = proc.returncode
-            if code != 0:
-                print(f"Error occurred in {script.name} processing")
-                raise subprocess.CalledProcessError(code, script.name)
-
-
-
 # put entire command lines into a text file and run them from
 # srun $(head -n $SLURM_ARRAY_TASK_ID cmds.txt | tail -n 1)
 # This can also be done with sed like:
