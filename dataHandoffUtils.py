@@ -11,86 +11,6 @@ import sys
 logging.basicConfig(level=logging.INFO)
 
 
-def load_cell_line_info():
-    server_context = labkey.utils.create_server_context('aics.corp.alleninstitute.org', 'AICS', 'labkey', use_ssl=False)
-    my_results = labkey.query.select_rows(
-        columns='CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name',
-        server_context=server_context,
-        schema_name='celllines',
-        query_name='CellLineDefinition'
-    )
-    # organize into dictionary by cell line
-    my_results = {
-        d["CellLineId/Name"]: {
-            "ProteinName":d["ProteinId/DisplayName"],
-            "StructureName":d["StructureId/Name"],
-            "GeneName":d["GeneId/Name"]
-        } for d in my_results['rows']
-    }
-    return my_results
-
-
-def normalize_path(path):
-    # legacy: windows paths that start with \\aibsdata
-    path = path.replace("\\\\aibsdata\\aics\\AssayDevelopment", "\\\\allen\\aics\\assay-dev")
-    path = path.replace("\\\\aibsdata\\aics\\Microscopy", "\\\\allen\\aics\\microscopy")
-
-    # windows: \\\\allen\\aics
-    windowsroot = '\\\\allen\\aics\\'
-    # mac:     /Volumes/aics (???)
-    macroot = '/Volumes/aics/'
-    # linux:   /allen/aics
-    linuxroot = '/allen/aics/'
-    linuxroot2 = '//allen/aics/'
-
-    # 1. strip away the root.
-    if path.startswith(windowsroot):
-        path = path[len(windowsroot):]
-    elif path.startswith(linuxroot):
-        path = path[len(linuxroot):]
-    elif path.startswith(linuxroot2):
-        path = path[len(linuxroot2):]
-    elif path.startswith(macroot):
-        path = path[len(macroot):]
-    else:
-        # if the path does not reference a known root, don't try to change it.
-        # it's probably a local path.
-        return path
-
-    # 2. split the path up into a list of dirs
-    path_as_list = re.split(r'\\|/', path)
-
-    # 3. insert the proper system root for this platform (without the trailing slash)
-    dest_root = ''
-    if sys.platform.startswith('darwin'):
-        dest_root = macroot[:-1]
-    elif sys.platform.startswith('linux'):
-        dest_root = linuxroot[:-1]
-    else:
-        dest_root = windowsroot[:-1]
-
-    path_as_list.insert(0, dest_root)
-
-    out_path = os.path.join(*path_as_list)
-    return out_path
-
-
-def trim_labkeyurl(rows):
-    df = pd.DataFrame(rows)
-    cols = [c for c in df.columns if not c.startswith('_labkeyurl_')]
-    df = df[cols]
-    return df
-
-
-def get_read_path(fileid, basepath):
-    return '%s/%s/%s' % (basepath, fileid[-2:], fileid)
-
-
-# cellline must be 'AICS-#'
-def get_cell_name(fovid, cellline, cellid):
-    return f"{cellline}_{fovid}_{cellid}"
-
-
 def get_cellline_name_from_row(row):
     return row["CellLine"]
 
@@ -118,7 +38,7 @@ def check_dups(dfr, column, remove=True):
 
 
 # big assumption: any query_name passed in must return data of the same format!
-def collect_data_rows(fovids=None):
+def collect_data_rows(fovids=None, raw_only=False):
     # lk = LabKey(host="aics")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
 
@@ -130,6 +50,9 @@ def collect_data_rows(fovids=None):
         df_data_handoff = df_data_handoff[df_data_handoff['FOVId'].isin(fovids)]
 
     print("GOT DATA HANDOFF")
+
+    if raw_only:
+        return df_data_handoff
 
     # get mitotic state name for all cells
     mitoticdata = lk.select_rows_as_list(

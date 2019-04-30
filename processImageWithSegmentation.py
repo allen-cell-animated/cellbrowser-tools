@@ -17,7 +17,6 @@ import dataHandoffSpreadsheetUtils as utils
 from aicsimageio import aicsImage
 from aicsimageprocessing import thumbnailGenerator
 from aicsimageprocessing import textureAtlas
-from uploader import oneUp
 
 import argparse
 import copy
@@ -428,7 +427,7 @@ class ImageProcessor:
             else:
                 im_to_save = None
 
-            if self.image is not None:
+            if self.image is not None and self.job.cbrGenerateTextureAtlas:
                 # do texture atlas here
                 aimage = aicsImage.AICSImage(self.image, dims="CZYX")
                 aimage.metadata = self.omexml
@@ -523,15 +522,24 @@ class ImageProcessor:
                     # do texture atlas here
                     aimage_cropped = aicsImage.AICSImage(cropped, dims="CZYX")
                     aimage_cropped.metadata = copyxml
-                    print('generating atlas ...')
-                    atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.job.cbrCellName, max_edge=2048, pack_order=None)
-
-                    static_meta_cropped = self.generate_meta(aimage_cropped, row)
+                    if self.job.cbrGeneratetextureAtlas:
+                        print('generating atlas ...')
+                        atlas_cropped = textureAtlas.generate_texture_atlas(aimage_cropped, name=self.job.cbrCellName, max_edge=2048, pack_order=None)
+                        static_meta_cropped = self.generate_meta(aimage_cropped, row)
+                    else:
+                        atlas_cropped = None
+                        static_meta_cropped = None
                 else:
                     atlas_cropped = None
                     static_meta_cropped = None
 
-                self._save_and_post(image=cropped, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=row['CellId'], omexml=copyxml, other_data=static_meta_cropped)
+                if self.job.cbrGenerateCellImage:
+                    im_to_save = cropped
+                    print("done")
+                else:
+                    im_to_save = None
+
+                self._save_and_post(image=im_to_save, thumbnail=thumb, textureatlas=atlas_cropped, seg_cell_index=row['CellId'], omexml=copyxml, other_data=static_meta_cropped)
             print("done")
 
 

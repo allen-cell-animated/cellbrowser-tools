@@ -16,60 +16,14 @@ import platform
 import re
 import shutil
 import sys
-from cellNameDb import CellNameDatabase
+
 from processImageWithSegmentation import do_main_image_with_celljob
 
-
-def load_cell_line_info():
-    server_context = labkey.utils.create_server_context('aics.corp.alleninstitute.org', 'AICS', 'labkey', use_ssl=False)
-    my_results = labkey.query.select_rows(
-        columns='CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name',
-        server_context=server_context,
-        schema_name='celllines',
-        query_name='CellLineDefinition'
-    )
-    # organize into dictionary by cell line
-    my_results = {
-        d["CellLineId/Name"]: {
-            "ProteinName": d["ProteinId/DisplayName"],
-            "StructureName": d["StructureId/Name"],
-            "GeneName": d["GeneId/Name"]
-        } for d in my_results['rows']
-    }
-    return my_results
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
 # cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
-
-
-def generate_sh_for_row(jobname, info, prefs):
-    # dump row data into json
-    # Cell_job_postfix = subdir + "_" + str(jobnumber)
-    cell_job_postfix = jobname
-    current_dir = os.path.join(prefs['out_status'], prefs['script_dir']) # os.path.join(os.getcwd(), outdir)
-    jsonname = os.path.join(current_dir, 'aicsCellJob_'+cell_job_postfix+'.json')
-    pathjson = jsonname
-    with open(pathjson, 'w') as fp:
-        json.dump(info.__dict__, fp)
-    script_string = ""
-    # script_string += "env > /allen/aics/animated-cell/Dan/env.txt\n"
-    script_string += "export PATH=/bin:$PATH\n"
-    # set anaconda install path.
-    script_string += "export PATH=/allen/aics/animated-cell/Dan/anaconda3/bin:$PATH\n"
-    # enable locating the source code of these scripts
-    script_string += "export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools:/home/danielt/cellbrowserpipeline/cellbrowser-tools/uploader\n"
-    # script_string += "source /allen/aics/animated-cell/Dan/venvs/ace/bin/activate\n"
-    script_string += "source activate /allen/aics/animated-cell/Dan/venvs/ace\n"
-    script_string += "python " + os.getcwd() + "/processImageWithSegmentation.py "
-    script_string += jsonname
-
-    path = os.path.join(current_dir, 'aicsCellJob_' + cell_job_postfix + '.sh')
-    with open(path, 'w') as fp:
-        fp.write(script_string)
-        fp.write(os.linesep)
-    return path
 
 
 def parse_args():
@@ -108,6 +62,7 @@ def parse_args():
     generation = parser.add_mutually_exclusive_group()
     generation.add_argument('--thumbnailsonly', '-t', help='only generate thumbnail', action='store_true')
     generation.add_argument('--imagesonly', '-i', help='only generate images', action='store_true')
+    generation.add_argument('--atlasonly', '-l', help='only generate texture atlases', action='store_true')
 
     cell_images = parser.add_mutually_exclusive_group()
     cell_images.add_argument('--fullfieldonly', '-d', help='only generate fullfield images', action='store_true')
@@ -135,10 +90,11 @@ def make_json(jobname, info, prefs):
     jsonname = os.path.join(dest_dir, f'FOV_{cell_job_postfix}.json')
     with open(jsonname, 'w') as fp:
         json.dump(info.__dict__, fp)
-    return jsonname
+
+    return f"python ./processImageWithSegmentation.py {jsonname}"
 
 
-def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
+def do_image(args, prefs, rows, index, total_jobs):
     # use row 0 as the "full field" row
     row = rows[0]
 
@@ -151,14 +107,7 @@ def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
     celllinename = aicscelllineid  # 'AICS-' + str(aicscelllineid)
     subdir = celllinename
 
-    cell_line_data = cell_lines_data[celllinename]
-    if cell_line_data is None:
-        raise('Can\'t find cell line ' + celllinename)
-
     info = cellJob.CellJob(rows)
-
-    info.structureProteinName = cell_line_data['ProteinName']
-    info.structureName = cell_line_data['StructureName']
 
     # drop images here
     info.cbrDataRoot = prefs['out_ometifroot']
@@ -178,24 +127,33 @@ def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
     if args.all:
         info.cbrGenerateThumbnail = True
         info.cbrGenerateCellImage = True
+        info.cbrGenerateTextureAtlas = True
         info.cbrGenerateSegmentedImages = True
         info.cbrGenerateFullFieldImages = True
     else:
         if args.dbonly:
             info.cbrGenerateThumbnail = False
             info.cbrGenerateCellImage = False
+            info.cbrGenerateTextureAtlas = False
             info.cbrGenerateFullFieldImages = True
             info.cbrGenerateSegmentedImages = True
 
         if args.thumbnailsonly:
             info.cbrGenerateThumbnail = True
             info.cbrGenerateCellImage = False
+            info.cbrGenerateTextureAtlas = False
         elif args.imagesonly:
             info.cbrGenerateThumbnail = False
             info.cbrGenerateCellImage = True
+            info.cbrGenerateTextureAtlas = False
+        elif args.atlasonly:
+            info.cbrGenerateThumbnail = False
+            info.cbrGenerateCellImage = False
+            info.cbrGenerateTextureAtlas = True
         elif not args.dbonly:
             info.cbrGenerateThumbnail = True
             info.cbrGenerateCellImage = True
+            info.cbrGenerateTextureAtlas = True
 
         info.cbrGenerateFullFieldImages = True
         info.cbrGenerateSegmentedImages = True
@@ -221,34 +179,7 @@ def do_image(args, prefs, cell_lines_data, rows, index, total_jobs):
         return make_json(jobname, info, prefs)
 
 
-# conversion adapter to legacy spreadsheet names
-def convert_columns(data):
-    return data.rename(columns={
-        "Colony position": "colony_position",
-        "MembraneChannel": "memChannel",
-        "NucleusChannel": "nucChannel",
-        "StructureChannel": "structureChannel",
-        "FileId": "inputFilename",
-        "FileId/FileReplica/BasePath": "inputFolder",
-        "StructureSegFileId": "structureSegOutputFilename",
-        "StructureSegBasePath": "structureSegOutputFolder",
-        "NucleusSegFileId": "outputNucSegWholeFilename",
-        "NucleusSegBasePath": "outputNucSegmentationPath",
-        "MembraneSegFileId": "outputCellSegWholeFilename",
-        "MembraneSegBasePath": "outputSegmentationPath",
-        "StructureSegmentationAlgorithm": "VersionStructure",
-        "CellSegmentationAlgorithm": "VersionNucMemb",
-        "FileId/CellLineId/Name": "cell_line_ID"
-    })
-
-
-def create_cell_name(row):
-    row['cbrCellName'] = str(row['cell_line_ID'][0]) + '_' + str(row['FOVId'])
-
-
 def do_main(args, prefs):
-
-    cell_lines_data = load_cell_line_info()
 
     # Read every cell image to be processed
     data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
@@ -270,20 +201,19 @@ def do_main(args, prefs):
     # process each file
     if args.cluster:
         # gather cluster commands and submit in batch
-        json_list = []
+        jobdata_list = []
         for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
-            json_file = do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
-            json_list.append(json_file)
+            jobdata = do_image(args, prefs, rows, index, total_jobs)
+            jobdata_list.append(jobdata)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
-        jobScheduler.slurp(json_list, prefs)
-
+        jobScheduler.slurp_commands(jobdata_list, prefs, name="fovs")
     else:
         # run serially
         for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
-            do_image(args, prefs, cell_lines_data, rows, index, total_jobs)
+            do_image(args, prefs, rows, index, total_jobs)
 
 
 def setup_prefs(json_path):
@@ -311,9 +241,9 @@ def setup_prefs(json_path):
     #     with open(json_path_local) as f:
     #         prefs = json.load(f)
 
-    #record the location of the json object
+    # record the location of the json object
     prefs['my_path'] = json_path_local
-    #record the location of the data object
+    # record the location of the data object
     prefs['save_log_path'] = prefs['out_status'] + os.sep + prefs['data_log_name']
 
     return prefs
