@@ -77,7 +77,6 @@ def do_main(args, prefs):
         name = f"{row['CellLine']}_{row['FOVId']}_{row['CellId']}_atlas.json"
         fpath = dir + '/' + subdir + '/' + name
 
-        #open the seg file to get its dimensions
         # get the fov's Dimensiony value.
         fovdims_results = lk.select_rows_as_list(
             schema_name='microscopy',
@@ -103,7 +102,7 @@ def do_main(args, prefs):
                 "rotation": [0, 0, row['Angle']]
             }
 
-        #write the file
+        # write the file
         with open(fpath, 'w') as json_file:
             json.dump(jsondata, json_file)
 
