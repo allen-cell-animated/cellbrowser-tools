@@ -78,17 +78,15 @@ def do_main(args, prefs):
         fpath = dir + '/' + subdir + '/' + name
 
         # get the fov's Dimensiony value.
-        fovdims_results = lk.select_rows_as_list(
+        fovdims_result = lk.select_first(
             schema_name='microscopy',
             query_name='FOV',
             columns='DimensionX, DimensionY, DimensionZ',
-            filter_array=[
-                labkey.query.QueryFilter('FOVId', str(row['FOVId']), 'eq')
-            ]
+            filter_array=[('FOVId', row['FOVId'], 'eq')]
         )
-        dim_x = fovdims_results[0]['DimensionX']
-        dim_y = fovdims_results[0]['DimensionY']
-        dim_z = fovdims_results[0]['DimensionZ']
+        dim_x = fovdims_result['DimensionX']
+        dim_y = fovdims_result['DimensionY']
+        dim_z = fovdims_result['DimensionZ']
 
         # open the json and doctor it
         print(name)
