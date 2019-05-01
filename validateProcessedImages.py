@@ -328,9 +328,9 @@ def build_feature_data(prefs):
 
     data_sources = [
         FeatureDataSource("aics-feature", "0.2.0"),
+        FeatureDataSource("aics-cell-segmentation", "1.0.0"),
         FeatureDataSource("aics-mitosis-classifier-mitotic", "1.0.0"),
-        FeatureDataSource("aics-mitosis-classifier-four-stage", "1.0.0"),
-        FeatureDataSource("aics-cell-segmentation", "1.0.0")
+        FeatureDataSource("aics-mitosis-classifier-four-stage", "1.0.0")
     ]
     allfeaturedata = None
     for data_source in data_sources:
@@ -338,9 +338,7 @@ def build_feature_data(prefs):
         if allfeaturedata is None:
             allfeaturedata = featuredata
         else:
-            allfeaturedata = pd.merge(allfeaturedata, featuredata, how='inner', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
-
-    allfeaturedata.dropna(inplace=True)
+            allfeaturedata = pd.merge(allfeaturedata, featuredata, how='left', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
 
     jsondictlist = fh.df_to_json(allfeaturedata)
     jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
