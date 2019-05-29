@@ -33,9 +33,21 @@ LET VERSION = 1.4.0
     ```
 *This generates cell-line-def.json in the prefs.out_status directory.*
 
-5. If no errors, put the results of steps in cell-feature-explorer/src/data directory.
+5. If no errors, put the results of steps 3 and 4 in cell-feature-explorer/src/data directory.
+These files should also be stored in /allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/
 
 6. Count files, do final qa. 
 
- 
+7. Upload data:  This step is tied to the implementation of Cell-Feature-Explorer.  The current strategy is to upload two large directories of files:  the OME-TIFF files, and the postprocessed json and png files.
+To upload the json and png data:
+    ```
+    cd /allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/
+    s3promotion upload --dest-bucket bisque.allencell.org --dest-prefix v1.4.0/ Cell-Viewer_Thumbnails/
+    ```
+Upload of the OME-TIFF files is accomplished by handing the cellviewer-files.csv from step 3 to Gabe, currently. << fill in details here >>
+
+8. At actual deploy time, update the files in https://github.com/AllenInstitute/cell-feature-data
+cell-feature-analysis.json
+cell-line-def.json
+
 
