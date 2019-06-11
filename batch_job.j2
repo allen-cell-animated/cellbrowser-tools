@@ -12,6 +12,7 @@
 # set anaconda install path.
 # enable locating the source code of these scripts
 export PATH=/bin:$PATH
+# TODO templatize/parameterize python path, virtual env path?
 export PATH=/allen/aics/animated-cell/Dan/anaconda3/bin:$PATH
 export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools
 
@@ -19,4 +20,3 @@ source activate /allen/aics/animated-cell/Dan/venvs/ace
 
 {# srun the script, and add the item to the end of the script call #}
 srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID {{mybatchdatafilename}} | tail -n 1)"
-# srun python {{ cwd }}/{{ mycommand }} ${ITEM_ARRAY[$SLURM_ARRAY_TASK_ID]} ${OUT_ARRAY[$SLURM_ARRAY_TASK_ID]} --size 128 --channels {{ channels }} --mask 5 --projection {{ projection }} --label ${LABEL_ARRAY[$SLURM_ARRAY_TASK_ID]}

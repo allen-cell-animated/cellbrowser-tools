@@ -17,7 +17,7 @@ import re
 import shutil
 import sys
 
-import make_one_thumbnail
+from aicsimageprocessing import thumbnailGenerator
 
 
 def check_nonnegative(value):
@@ -79,9 +79,9 @@ def do_image(args, prefs, row, index):
     mask_channel_index = 5
 
     if args.run:
-        make_one_thumbnail.make_one_thumbnail(infilepath, outfilepath, label=label, channels=args.channels, colors=[[1, 1, 1]], size=128, projection=args.projection, axis=2, apply_mask=True, mask_channel=mask_channel_index)
+        thumbnailGenerator.make_one_thumbnail(infilepath, outfilepath, label=label, channels=args.channels, colors=[[1, 1, 1]], size=128, projection=args.projection, axis=2, apply_mask=True, mask_channel=mask_channel_index)
     elif args.cluster:
-        return f"python ./make_one_thumbnail.py {infilepath} {outfilepath} --size {args.size} --channels {channelsstr} --mask {mask_channel_index} --projection {args.projection} --label {label}"
+        return f"make_thumbnail {infilepath} {outfilepath} --size {args.size} --channels {channelsstr} --mask {mask_channel_index} --projection {args.projection} --label {label}"
 
 
 def do_main(args, prefs):
