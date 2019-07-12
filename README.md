@@ -4,9 +4,9 @@ LET VERSION = 1.4.0
 
 1. On data handoff, modify a copy of prefs.json to have the proper parameters inside.  You can omit prefs.json and it will use the existing prefs.json file or modify in-place but then you have to remember if you changed anything.
 
-2. Generate image data: 
-    On slurm-master, create a virtualenv and pip install 
-    aicsimageio
+2. Generate image data:
+    On slurm-master, create a virtualenv and pip install
+    aicsimageio==0.6.4
     aicsimageprocessing>=0.6.1
     git+https://github.com/AllenCellModeling/datasetdatabase.git
     featuredb>=0.3.0
@@ -36,7 +36,7 @@ LET VERSION = 1.4.0
 5. If no errors, put the results of steps 3 and 4 in cell-feature-explorer/src/data directory.
 These files should also be stored in /allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/
 
-6. Count files, do final qa. 
+6. Count files, do final qa.
 
 7. Upload data:  This step is tied to the implementation of Cell-Feature-Explorer.  The current strategy is to upload two large directories of files:  the OME-TIFF files, and the postprocessed json and png files.
 To upload the json and png data:
@@ -49,5 +49,3 @@ Upload of the OME-TIFF files is accomplished by handing the cellviewer-files.csv
 8. At actual deploy time, update the files in https://github.com/AllenInstitute/cell-feature-data
 cell-feature-analysis.json
 cell-line-def.json
-
-
