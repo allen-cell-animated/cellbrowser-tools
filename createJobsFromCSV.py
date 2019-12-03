@@ -32,43 +32,15 @@ def parse_args():
                                                  'Example: python createJobsFromCSV.py -c -n')
 
     # to generate images on cluster:
-    # python createJobsFromCSV.py -c -n
+    # python createJobsFromCSV.py -c
     # to generate images serially:
-    # python createJobsFromCSV.py -r -n
+    # python createJobsFromCSV.py -r
 
-    # to add images to bisque db via cluster:
-    # python createJobsFromCSV.py -c -p
-    # to add images to bisque db serially:
-    # python createJobsFromCSV.py -r -p
-
-    # python createJobsFromCSV.py -c -n myprefs.json
+    # python createJobsFromCSV.py -c myprefs.json
 
     parser.add_argument('prefs', nargs='?', default='prefs.json', help='prefs file')
 
     parser.add_argument('--first', type=int, help='how many to process', default=-1)
-
-    # sheets overrides prefs file...
-    parser.add_argument('--sheets', help='directory containing *.xlsx', default='')
-
-    # control what data to process.
-
-    parser.add_argument('--fovid', '-f', help='select one specific fov id', type=int, default=-1)
-
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('--notdb', '-n', help='write to the server dirs but do not add to db', action='store_true')
-    group.add_argument('--dbonly', '-p', help='only post to db', action='store_true')
-
-
-    generation = parser.add_mutually_exclusive_group()
-    generation.add_argument('--thumbnailsonly', '-t', help='only generate thumbnail', action='store_true')
-    generation.add_argument('--imagesonly', '-i', help='only generate images', action='store_true')
-    generation.add_argument('--atlasonly', '-l', help='only generate texture atlases', action='store_true')
-
-    cell_images = parser.add_mutually_exclusive_group()
-    cell_images.add_argument('--fullfieldonly', '-d', help='only generate fullfield images', action='store_true')
-    cell_images.add_argument('--segmentedonly', '-s', help='only generate segmented cell images', action='store_true')
-
-    parser.add_argument('--all', '-a', action='store_true')
 
     runner = parser.add_mutually_exclusive_group()
     runner.add_argument('--run', '-r', help='run the jobs locally', action='store_true', default=False)
@@ -123,49 +95,6 @@ def do_image(args, prefs, rows, index, total_jobs):
     info.cbrThumbnailURL = subdir
 
     info.cbrThumbnailSize = 128
-
-    if args.all:
-        info.cbrGenerateThumbnail = True
-        info.cbrGenerateCellImage = True
-        info.cbrGenerateTextureAtlas = True
-        info.cbrGenerateSegmentedImages = True
-        info.cbrGenerateFullFieldImages = True
-    else:
-        if args.dbonly:
-            info.cbrGenerateThumbnail = False
-            info.cbrGenerateCellImage = False
-            info.cbrGenerateTextureAtlas = False
-            info.cbrGenerateFullFieldImages = True
-            info.cbrGenerateSegmentedImages = True
-
-        if args.thumbnailsonly:
-            info.cbrGenerateThumbnail = True
-            info.cbrGenerateCellImage = False
-            info.cbrGenerateTextureAtlas = False
-        elif args.imagesonly:
-            info.cbrGenerateThumbnail = False
-            info.cbrGenerateCellImage = True
-            info.cbrGenerateTextureAtlas = False
-        elif args.atlasonly:
-            info.cbrGenerateThumbnail = False
-            info.cbrGenerateCellImage = False
-            info.cbrGenerateTextureAtlas = True
-        elif not args.dbonly:
-            info.cbrGenerateThumbnail = True
-            info.cbrGenerateCellImage = True
-            info.cbrGenerateTextureAtlas = True
-
-        info.cbrGenerateFullFieldImages = True
-        info.cbrGenerateSegmentedImages = True
-        if args.fullfieldonly:
-            info.cbrGenerateSegmentedImages = False
-            info.cbrGenerateFullFieldImages = True
-        elif args.segmentedonly:
-            info.cbrGenerateSegmentedImages = True
-            info.cbrGenerateFullFieldImages = False
-        elif not args.dbonly:
-            info.cbrGenerateSegmentedImages = True
-            info.cbrGenerateFullFieldImages = True
 
     if not os.path.exists(info.cbrImageLocation):
         os.makedirs(info.cbrImageLocation)
