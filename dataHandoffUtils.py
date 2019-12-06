@@ -11,6 +11,47 @@ import sys
 logging.basicConfig(level=logging.INFO)
 
 
+def normalize_path(path):
+    # windows: \\\\allen\\aics
+    windowsroot = '\\\\allen\\'
+    # mac:     /Volumes/aics (???)
+    macroot = '/Volumes/'
+    # linux:   /allen/aics
+    linuxroot = '/allen/'
+    linuxroot2 = '//allen/'
+
+    # 1. strip away the root.
+    if path.startswith(windowsroot):
+        path = path[len(windowsroot):]
+    elif path.startswith(linuxroot):
+        path = path[len(linuxroot):]
+    elif path.startswith(linuxroot2):
+        path = path[len(linuxroot2):]
+    elif path.startswith(macroot):
+        path = path[len(macroot):]
+    else:
+        # if the path does not reference a known root, don't try to change it.
+        # it's probably a local path.
+        return path
+
+    # 2. split the path up into a list of dirs
+    path_as_list = re.split(r'\\|/', path)
+
+    # 3. insert the proper system root for this platform (without the trailing slash)
+    dest_root = ''
+    if sys.platform.startswith('darwin'):
+        dest_root = macroot[:-1]
+    elif sys.platform.startswith('linux'):
+        dest_root = linuxroot[:-1]
+    else:
+        dest_root = windowsroot[:-1]
+
+    path_as_list.insert(0, dest_root)
+
+    out_path = os.path.join(*path_as_list)
+    return out_path
+
+
 def get_cellline_name_from_row(row):
     return row["CellLine"]
 
