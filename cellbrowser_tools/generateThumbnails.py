@@ -4,12 +4,8 @@
 #          Zach Crabtree zacharyc@alleninstitute.org
 
 import argparse
-import cellJob
 import csv
-import dataHandoffUtils as lkutils
-import dataset_constants
 import glob
-import jobScheduler
 import json
 import labkey
 import os
@@ -17,6 +13,11 @@ import platform
 import re
 import shutil
 import sys
+
+from . import cellJob
+from . import dataHandoffUtils as lkutils
+from . import dataset_constants
+from . import jobScheduler
 
 from aicsimageprocessing import thumbnailGenerator
 

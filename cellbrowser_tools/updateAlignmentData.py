@@ -1,5 +1,5 @@
 import argparse
-import dataHandoffUtils as lkutils
+from . import dataHandoffUtils as lkutils
 import datasetdatabase as dsdb
 import glob
 import json

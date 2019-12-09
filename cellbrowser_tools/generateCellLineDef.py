@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import dataset_constants
-import dataHandoffUtils
+from . import dataset_constants
+from . import dataHandoffUtils
 import json
 import sys
 import logging

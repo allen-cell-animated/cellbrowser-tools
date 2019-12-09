@@ -1,4 +1,4 @@
-import dataset_constants
+from . import dataset_constants
 import datasetdatabase as dsdb
 import json
 import labkey

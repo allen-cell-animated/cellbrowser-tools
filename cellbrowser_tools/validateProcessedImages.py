@@ -4,7 +4,7 @@
 #          Zach Crabtree zacharyc@alleninstitute.org
 
 import argparse
-import cellJob
+from . import cellJob
 from typing import NamedTuple
 import csv
 import dataHandoffUtils as lkutils
