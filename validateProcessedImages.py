@@ -343,11 +343,11 @@ def build_feature_data(prefs):
 
     jsondictlist = fh.df_to_json(allfeaturedata)
     jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
-    with open(os.path.join(prefs.get("out_status"), dataset_constants.FEATURE_DATA_FILENAME), 'w', newline="") as output_file:
+    with open(os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME), 'w', newline="") as output_file:
         output_file.write(json.dumps(jsondictlist))
 
 
-def do_main(args, prefs):
+def validate_processed_images(args, prefs):
     # Read every cell image to be processed
     data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
 
@@ -383,7 +383,7 @@ def do_main(args, prefs):
     # write out all files for downloader service
     if len(allfiles) > 0:
         keys = allfiles[0].keys()
-        with open(os.path.join(prefs.get("out_status"), dataset_constants.FILE_LIST_FILENAME), 'w', newline="") as output_file:
+        with open(os.path.join(prefs.get("out_dir"), dataset_constants.FILE_LIST_FILENAME), 'w', newline="") as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
@@ -395,7 +395,7 @@ def do_main(args, prefs):
 def main():
     args = parse_args()
     prefs = lkutils.setup_prefs(args.prefs)
-    do_main(args, prefs)
+    validate_processed_images(args, prefs)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import dataset_constants
+import dataHandoffUtils
 import json
 import sys
 import logging
@@ -44,6 +45,7 @@ class Args(object):
     def __init__(self, log_cmdline=True):
         self.debug = False
         self.cell_line = None
+        self.prefs = ""
         #
         self.__parse()
         #
@@ -127,24 +129,10 @@ def use_select_rows_cellline_name_to_protein_name(server, prefs):
     with open(os.path.join(prefs.get("out_status"), dataset_constants.CELL_LINE_DATA_FILENAME), 'w') as outfile:
         json.dump(rows, outfile, indent=4)
 
-def use_execute_sql_cellline_name_to_protein_name(server):
-    sql = """
-SELECT CellLine.Name AS CL_Name, Protein.Name AS P_Name
-FROM CellLine
-JOIN CellLineDefinition ON CellLine.CellLineId = CellLineDefinition.CellLineId
-JOIN Protein ON Protein.ProteinId = CellLineDefinition.ProteinId
-WHERE NOT LOWER(CellLine.Name) LIKE 'drubin%'
-"""
-    results = lk.execute_sql(server.context, server.SCHEMA_CELLLINES, sql)
-    rows = results['rows']
-    log.debug(PP.pformat(rows))
-    log.debug("Row Count {}: ".format(len(rows)))
 
-
-def query_cellline_to_protein(prefs):
+def generate_cellline_def(prefs):
     server = LabkeyServer('aics')
     use_select_rows_cellline_name_to_protein_name(server, prefs)
-    # use_execute_sql_cellline_name_to_protein_name(server)
 
 ###############################################################################
 
@@ -153,10 +141,8 @@ if __name__ == "__main__":
     try:
         args = Args()
         dbg = args.debug
-        with open(args.prefs) as f:
-            prefs = json.load(f)
-
-        query_cellline_to_protein(prefs)
+        prefs = dataHandoffUtils.setup_prefs(args.prefs)
+        generate_cellline_def(prefs)
 
     except Exception as e:
         log.error("=============================================")

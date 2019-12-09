@@ -109,7 +109,7 @@ def do_image(args, prefs, rows, index, total_jobs):
         return make_json(jobname, info, prefs)
 
 
-def do_main(args, prefs):
+def process_images(args, prefs):
 
     # Read every cell image to be processed
     data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
@@ -151,7 +151,7 @@ def main():
 
     prefs = lkutils.setup_prefs(args.prefs)
 
-    do_main(args, prefs)
+    process_images(args, prefs)
 
 
 if __name__ == "__main__":
