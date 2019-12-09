@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import dataset_constants
 import json
 import sys
 import logging
@@ -123,7 +124,7 @@ def use_select_rows_cellline_name_to_protein_name(server, prefs):
     log.debug(PP.pformat(rows))
     log.debug("Row Count {}: ".format(len(rows)))
     import json
-    with open(os.path.join(prefs.get("out_status"), 'cell-line-def.json'), 'w') as outfile:
+    with open(os.path.join(prefs.get("out_status"), dataset_constants.CELL_LINE_DATA_FILENAME), 'w') as outfile:
         json.dump(rows, outfile, indent=4)
 
 def use_execute_sql_cellline_name_to_protein_name(server):
@@ -140,7 +141,8 @@ WHERE NOT LOWER(CellLine.Name) LIKE 'drubin%'
     log.debug("Row Count {}: ".format(len(rows)))
 
 
-def query_cellline_to_protein(server, prefs):
+def query_cellline_to_protein(prefs):
+    server = LabkeyServer('aics')
     use_select_rows_cellline_name_to_protein_name(server, prefs)
     # use_execute_sql_cellline_name_to_protein_name(server)
 
@@ -154,8 +156,7 @@ if __name__ == "__main__":
         with open(args.prefs) as f:
             prefs = json.load(f)
 
-        server = LabkeyServer('aics')
-        query_cellline_to_protein(server, prefs)
+        query_cellline_to_protein(prefs)
 
     except Exception as e:
         log.error("=============================================")

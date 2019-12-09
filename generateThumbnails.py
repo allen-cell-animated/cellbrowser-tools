@@ -7,6 +7,7 @@ import argparse
 import cellJob
 import csv
 import dataHandoffUtils as lkutils
+import dataset_constants
 import glob
 import jobScheduler
 import json
@@ -62,13 +63,13 @@ def do_image(args, prefs, row, index):
     # 789_c012max.png
     channelsstr_nospace = 'c' + "".join(map(str, args.channels)) + args.projection
 
-    outdir = prefs['out_thumbnailroot']  # e.g. '//allen/aics/animated-cell/Dan/april2019mitotic/randomcells/' + channelsstr_nospace + '/'
+    outdir = prefs['thumbs_dir']  # e.g. '//allen/aics/animated-cell/Dan/april2019mitotic/randomcells/' + channelsstr_nospace + '/'
     outfilename = str(row['CellId']) + '_' + channelsstr_nospace + '.png'
     outfilepath = os.path.join(outdir, outfilename)
-    # This code is assuming that pre-cropped cell ome.tifs exist in prefs['out_ometifroot']/cellline
+    # This code is assuming that pre-cropped cell ome.tifs exist in prefs['images_dir']/cellline
     # find the pre-cropped zstack image from the data set.
     infilename = row["CellLine"] + '_' + str(row['FOVId']) + '_' + str(row['CellId']) + '.ome.tif'
-    infilepath = os.path.join(prefs['out_ometifroot'], row['CellLine'], infilename)
+    infilepath = os.path.join(prefs['images_dir'], row['CellLine'], infilename)
 
     label = str(row['CellId'])
 
@@ -119,43 +120,10 @@ def do_main(args, prefs):
             do_image(args, prefs, row, index)
 
 
-def setup_prefs(json_path):
-    with open(json_path) as f:
-        prefs = json.load(f)
-
-    # make the output directories if it doesnt exist
-    if not os.path.exists(prefs['out_status']):
-        os.makedirs(prefs['out_status'])
-    if not os.path.exists(prefs['out_ometifroot']):
-        os.makedirs(prefs['out_ometifroot'])
-    if not os.path.exists(prefs['out_thumbnailroot']):
-        os.makedirs(prefs['out_thumbnailroot'])
-    if not os.path.exists(prefs['out_atlasroot']):
-        os.makedirs(prefs['out_atlasroot'])
-
-    json_path_local = prefs['out_status'] + os.sep + 'prefs.json'
-    shutil.copyfile(json_path, json_path_local)
-    # if not os.path.exists(json_path_local):
-    #     # make a copy of the json object in the parent directory
-    #     shutil.copyfile(json_path, json_path_local)
-    # else:
-    #     # use the local copy
-    #     print('Local copy of preference file already exists at ' + json_path_local)
-    #     with open(json_path_local) as f:
-    #         prefs = json.load(f)
-
-    # record the location of the json object
-    prefs['my_path'] = json_path_local
-    # record the location of the data object
-    prefs['save_log_path'] = prefs['out_status'] + os.sep + prefs['data_log_name']
-
-    return prefs
-
-
 def main():
     args = parse_args()
 
-    prefs = setup_prefs(args.prefs)
+    prefs = lkutils.setup_prefs(args.prefs)
 
     do_main(args, prefs)
 

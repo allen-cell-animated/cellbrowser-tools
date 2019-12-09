@@ -1,4 +1,6 @@
+import dataset_constants
 import datasetdatabase as dsdb
+import json
 import labkey
 from lkaccess import LabKey, QueryFilter
 import lkaccess.contexts
@@ -6,6 +8,7 @@ import logging
 import os
 import pandas as pd
 import re
+import shutil
 import sys
 
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +53,47 @@ def normalize_path(path):
 
     out_path = os.path.join(*path_as_list)
     return out_path
+
+
+def setup_prefs(json_path):
+    with open(json_path) as f:
+        prefs = json.load(f)
+
+    # make the output directories if it doesnt exist
+    if not os.path.exists(prefs['out_status']):
+        os.makedirs(prefs['out_status'])
+    if not os.path.exists(prefs['out_dir']):
+        os.makedirs(prefs['out_dir'])
+    images_dir = os.path.join(prefs['out_dir'], dataset_constants.IMAGES_DIR)
+    if not os.path.exists(images_dir):
+        os.makedirs(images_dir)
+    prefs['images_dir'] = images_dir
+    thumbs_dir = os.path.join(prefs['out_dir'], dataset_constants.THUMBNAILS_DIR)
+    if not os.path.exists(thumbs_dir):
+        os.makedirs(thumbs_dir)
+    prefs['thumbs_dir'] = thumbs_dir
+    atlas_dir = os.path.join(prefs['out_dir'], dataset_constants.ATLAS_DIR)
+    if not os.path.exists(atlas_dir):
+        os.makedirs(atlas_dir)
+    prefs['atlas_dir'] = atlas_dir
+ 
+    json_path_local = prefs['out_status'] + os.sep + 'prefs.json'
+    shutil.copyfile(json_path, json_path_local)
+    # if not os.path.exists(json_path_local):
+    #     # make a copy of the json object in the parent directory
+    #     shutil.copyfile(json_path, json_path_local)
+    # else:
+    #     # use the local copy
+    #     print('Local copy of preference file already exists at ' + json_path_local)
+    #     with open(json_path_local) as f:
+    #         prefs = json.load(f)
+
+    # record the location of the json object
+    prefs['my_path'] = json_path_local
+    # record the location of the data object
+    prefs['save_log_path'] = prefs['out_status'] + os.sep + prefs['data_log_name']
+
+    return prefs
 
 
 def get_cellline_name_from_row(row):

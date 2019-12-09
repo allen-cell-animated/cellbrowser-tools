@@ -23,39 +23,6 @@ def parse_args():
     return args
 
 
-def setup_prefs(json_path):
-    with open(json_path) as f:
-        prefs = json.load(f)
-
-    # make the output directories if it doesnt exist
-    if not os.path.exists(prefs['out_status']):
-        os.makedirs(prefs['out_status'])
-    if not os.path.exists(prefs['out_ometifroot']):
-        os.makedirs(prefs['out_ometifroot'])
-    if not os.path.exists(prefs['out_thumbnailroot']):
-        os.makedirs(prefs['out_thumbnailroot'])
-    if not os.path.exists(prefs['out_atlasroot']):
-        os.makedirs(prefs['out_atlasroot'])
-
-    json_path_local = prefs['out_status'] + os.sep + 'prefs.json'
-    shutil.copyfile(json_path, json_path_local)
-    # if not os.path.exists(json_path_local):
-    #     # make a copy of the json object in the parent directory
-    #     shutil.copyfile(json_path, json_path_local)
-    # else:
-    #     # use the local copy
-    #     print('Local copy of preference file already exists at ' + json_path_local)
-    #     with open(json_path_local) as f:
-    #         prefs = json.load(f)
-
-    # record the location of the json object
-    prefs['my_path'] = json_path_local
-    # record the location of the data object
-    prefs['save_log_path'] = prefs['out_status'] + os.sep + prefs['data_log_name']
-
-    return prefs
-
-
 def do_main(args, prefs):
     lk = LabKey(server_context=lkaccess.contexts.PROD)
 
@@ -72,10 +39,10 @@ def do_main(args, prefs):
     mitodataset = mitodataset.to_dict(orient='records')
     for row in mitodataset:
         # load the atlas.json edit it and resave it
-        dir = prefs['out_atlasroot']
+        atlasdir = prefs['atlas_dir']
         subdir = row['CellLine']
         name = f"{row['CellLine']}_{row['FOVId']}_{row['CellId']}_atlas.json"
-        fpath = dir + '/' + subdir + '/' + name
+        fpath = atlasdir + '/' + subdir + '/' + name
 
         # get the fov's Dimensiony value.
         fovdims_result = lk.select_first(
@@ -108,7 +75,7 @@ def do_main(args, prefs):
 def main():
     args = parse_args()
 
-    prefs = setup_prefs(args.prefs)
+    prefs = lkutils.setup_prefs(args.prefs)
 
     do_main(args, prefs)
 

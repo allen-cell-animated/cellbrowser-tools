@@ -1,8 +1,6 @@
 {
   "out_status": "//allen/aics/animated-cell/Dan/cellbrowser-tools/processing",
-  "out_ometifroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/Cell-Viewer_Data",
-  "out_thumbnailroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/Cell-Viewer_Thumbnails",
-  "out_atlasroot": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0/Cell-Viewer_Thumbnails",
+  "out_dir": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.4.0",
 
   "script_dir": "scripts_slurm",
   "data_log_name": "data_jobs_out.csv",

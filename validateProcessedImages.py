@@ -8,6 +8,7 @@ import cellJob
 from typing import NamedTuple
 import csv
 import dataHandoffUtils as lkutils
+import dataset_constants
 import glob
 import jobScheduler
 import json
@@ -71,8 +72,8 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
 
     imageName = jobname
 
-    data_dir = prefs['out_ometifroot']
-    thumbs_dir = prefs['out_thumbnailroot']
+    data_dir = prefs['images_dir']
+    thumbs_dir = prefs['thumbs_dir']
     cell_line = fovrow['CellLine']
 
     names = [imageName]
@@ -342,7 +343,7 @@ def build_feature_data(prefs):
 
     jsondictlist = fh.df_to_json(allfeaturedata)
     jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
-    with open(os.path.join(prefs.get("out_status"), 'cell-feature-analysis.json'), 'w', newline="") as output_file:
+    with open(os.path.join(prefs.get("out_status"), dataset_constants.FEATURE_DATA_FILENAME), 'w', newline="") as output_file:
         output_file.write(json.dumps(jsondictlist))
 
 
@@ -371,18 +372,18 @@ def do_main(args, prefs):
             allfiles.extend(filerows)
 
     # write out all collected channel names
-    with open(os.path.join(prefs.get("out_status"), 'allChannelNames.txt'), 'w', newline="") as channel_names_file:
+    with open(os.path.join(prefs.get("out_status"), dataset_constants.CHANNEL_NAMES_FILENAME), 'w', newline="") as channel_names_file:
         channel_names_file.write('\n'.join(channel_name_list))
 
     # write out all FOVs identified with errors
     if len(errorFovs) > 0:
-        with open(os.path.join(prefs.get("out_status"), 'errorFovs.txt'), 'w', newline="") as error_file:
+        with open(os.path.join(prefs.get("out_status"), dataset_constants.ERROR_FOVS_FILENAME), 'w', newline="") as error_file:
             error_file.write('\n'.join(errorFovs))
 
     # write out all files for downloader service
     if len(allfiles) > 0:
         keys = allfiles[0].keys()
-        with open(os.path.join(prefs.get("out_status"), 'cellviewer-files.csv'), 'w', newline="") as output_file:
+        with open(os.path.join(prefs.get("out_status"), dataset_constants.FILE_LIST_FILENAME), 'w', newline="") as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
@@ -393,8 +394,7 @@ def do_main(args, prefs):
 
 def main():
     args = parse_args()
-    with open(args.prefs) as f:
-        prefs = json.load(f)
+    prefs = lkutils.setup_prefs(args.prefs)
     do_main(args, prefs)
 
 

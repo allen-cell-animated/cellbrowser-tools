@@ -7,6 +7,7 @@ import argparse
 import cellJob
 import csv
 import dataHandoffUtils as lkutils
+import dataset_constants
 import glob
 import jobScheduler
 import json
@@ -82,11 +83,11 @@ def do_image(args, prefs, rows, index, total_jobs):
     info = cellJob.CellJob(rows)
 
     # drop images here
-    info.cbrDataRoot = prefs['out_ometifroot']
+    info.cbrDataRoot = prefs['images_dir']
     # drop thumbnails here
-    info.cbrThumbnailRoot = prefs['out_thumbnailroot']
+    info.cbrThumbnailRoot = prefs['thumbs_dir']
     # drop texture atlases here
-    info.cbrTextureAtlasRoot = prefs['out_atlasroot']
+    info.cbrTextureAtlasRoot = prefs['atlas_dir']
 
     info.cbrImageRelPath = subdir
     info.cbrImageLocation = os.path.join(info.cbrDataRoot, info.cbrImageRelPath)
@@ -145,42 +146,10 @@ def do_main(args, prefs):
             do_image(args, prefs, rows, index, total_jobs)
 
 
-def setup_prefs(json_path):
-    with open(json_path) as f:
-        prefs = json.load(f)
-
-    # make the output directories if it doesnt exist
-    if not os.path.exists(prefs['out_status']):
-        os.makedirs(prefs['out_status'])
-    if not os.path.exists(prefs['out_ometifroot']):
-        os.makedirs(prefs['out_ometifroot'])
-    if not os.path.exists(prefs['out_thumbnailroot']):
-        os.makedirs(prefs['out_thumbnailroot'])
-    if not os.path.exists(prefs['out_atlasroot']):
-        os.makedirs(prefs['out_atlasroot'])
-
-    json_path_local = prefs['out_status'] + os.sep + 'prefs.json'
-    shutil.copyfile(json_path, json_path_local)
-    # if not os.path.exists(json_path_local):
-    #     # make a copy of the json object in the parent directory
-    #     shutil.copyfile(json_path, json_path_local)
-    # else:
-    #     # use the local copy
-    #     print('Local copy of preference file already exists at ' + json_path_local)
-    #     with open(json_path_local) as f:
-    #         prefs = json.load(f)
-
-    # record the location of the json object
-    prefs['my_path'] = json_path_local
-    # record the location of the data object
-    prefs['save_log_path'] = prefs['out_status'] + os.sep + prefs['data_log_name']
-
-    return prefs
-
 def main():
     args = parse_args()
 
-    prefs = setup_prefs(args.prefs)
+    prefs = lkutils.setup_prefs(args.prefs)
 
     do_main(args, prefs)
 
