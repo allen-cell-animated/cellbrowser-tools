@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-
-# authors: Dan Toloudis danielt@alleninstitute.org
-#          Zach Crabtree zacharyc@alleninstitute.org
-
 import argparse
 import csv
 import glob
@@ -67,14 +62,13 @@ def make_json(jobname, info, prefs):
     return f"python ./processImageWithSegmentation.py {jsonname}"
 
 
-def do_image(args, prefs, rows, index, total_jobs):
+def do_image(args, prefs, rows):
     # use row 0 as the "full field" row
     row = rows[0]
 
     jobname = row['FOV_3dcv_Name']
 
     # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
-    print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + ' : ' + jobname)
 
     aicscelllineid = str(row['CellLine'])
     celllinename = aicscelllineid  # 'AICS-' + str(aicscelllineid)
@@ -134,7 +128,9 @@ def process_images(args, prefs):
         jobdata_list = []
         for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
-            jobdata = do_image(args, prefs, rows, index, total_jobs)
+            print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + ' : ' + fovid)
+
+            jobdata = do_image(args, prefs, rows)
             jobdata_list.append(jobdata)
 
         print('SUBMITTING ' + str(total_jobs) + ' JOBS')
@@ -143,8 +139,15 @@ def process_images(args, prefs):
         # run serially
         for index, (fovid, group) in enumerate(data_grouped):
             rows = group.to_dict(orient='records')
-            do_image(args, prefs, rows, index, total_jobs)
+            print("(" + str(index) + '/' + str(total_jobs) + ") : Processing " + ' : ' + fovid)
+            do_image(args, prefs, rows)
 
+
+def is_process_images_done(args):
+    if args.cluster:
+        return jobScheduler.any_jobs_queued()
+    else:
+        return True
 
 def main():
     args = parse_args()

@@ -7,10 +7,10 @@ import argparse
 from . import cellJob
 from typing import NamedTuple
 import csv
-import dataHandoffUtils as lkutils
-import dataset_constants
+from . import dataHandoffUtils as lkutils
+from . import dataset_constants
 import glob
-import jobScheduler
+from . import jobScheduler
 import json
 import numpy as np
 import os
@@ -347,17 +347,8 @@ def build_feature_data(prefs):
         output_file.write(json.dumps(jsondictlist))
 
 
-def validate_processed_images(args, prefs):
-    # Read every cell image to be processed
-    data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
 
-    print('Number of total cell rows: ' + str(len(data)))
-    # group by fov id
-    data_grouped = data.groupby("FOVId")
-    total_jobs = len(data_grouped)
-    print('Number of total FOVs: ' + str(total_jobs))
-    print('VALIDATING ' + str(total_jobs) + ' JOBS')
-
+def validate_rows(data_grouped, args, prefs):
     errorFovs = []
     allfiles = []
     channel_name_list = []
@@ -365,7 +356,7 @@ def validate_processed_images(args, prefs):
     # run serially
     for index, (fovid, group) in enumerate(data_grouped):
         rows = group.to_dict(orient='records')
-        filerows, err = do_image(args, prefs, rows, index, total_jobs, channel_name_list)
+        filerows, err = do_image(args, prefs, rows, index, len(data_grouped), channel_name_list)
         if err is True:
             errorFovs.append(str(fovid))
         else:
@@ -387,6 +378,20 @@ def validate_processed_images(args, prefs):
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
+
+
+def validate_processed_images(args, prefs):
+    # Read every cell image to be processed
+    data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
+
+    print('Number of total cell rows: ' + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    print('Number of total FOVs: ' + str(total_jobs))
+    print('VALIDATING ' + str(total_jobs) + ' JOBS')
+
+    validate_rows(data_grouped, args, prefs)
 
     # write out the cell_feature_analysis.json database
     build_feature_data(prefs)
