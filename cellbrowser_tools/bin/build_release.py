@@ -3,8 +3,6 @@
 
 import argparse
 import logging
-import os
-from pathlib import Path
 
 from prefect import task, Flow, unmapped
 
@@ -52,12 +50,12 @@ def setup_prefs(p):
 
 @task
 def get_data_grouped(prefs):
-    data = dataHandoffUtils.collect_data_rows(fovids=prefs.get('fovs'))
-    log.info('Number of total cell rows: ' + str(len(data)))
+    data = dataHandoffUtils.collect_data_rows(fovids=prefs.get("fovs"))
+    log.info("Number of total cell rows: " + str(len(data)))
     # group by fov id
     data_grouped = data.groupby("FOVId")
     total_jobs = len(data_grouped)
-    log.info('Number of total FOVs: ' + str(total_jobs))
+    log.info("Number of total FOVs: " + str(total_jobs))
     return data_grouped
 
 
@@ -72,7 +70,7 @@ def get_data_groups(data_grouped):
 
 @task
 def process_fov_row(group, args, prefs):
-    rows = group.to_dict(orient='records')
+    rows = group.to_dict(orient="records")
     createJobsFromCSV.do_image(args, prefs, rows)
 
 
@@ -81,15 +79,18 @@ def validate_fov_rows(data_grouped, args, prefs):
     validateProcessedImages.validate_rows(data_grouped, args, prefs)
     return True
 
+
 @task
 def build_feature_data(prefs):
     validateProcessedImages.build_feature_data(prefs)
     return True
 
+
 @task
 def generate_cellline_def(prefs):
     generateCellLineDef.generate_cellline_def(prefs)
     return True
+
 
 def str2bool(v):
     if v.lower() in ("yes", "true", "t", "y", "1"):
@@ -99,6 +100,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
+
 def main():
     """
     Dask/Prefect distributed command for running pipeline
@@ -106,11 +108,7 @@ def main():
 
     p = argparse.ArgumentParser(prog="process", description="Process the FOV pipeline")
 
-    p.add_argument('prefs',
-        nargs='?',
-        default='prefs.json',
-        help='prefs file'
-    )
+    p.add_argument("prefs", nargs="?", default="prefs.json", help="prefs file")
 
     p.add_argument(
         "-s",
@@ -121,7 +119,7 @@ def main():
     )
 
     p.add_argument(
-        "--n_fovs", type=int, default=100, help="Number of fov's per cell line to use.",
+        "--n_fovs", type=int, default=100, help="Number of fov's per cell line to use."
     )
     p.add_argument(
         "--debug",
@@ -179,19 +177,20 @@ def main():
         groups = get_data_groups(data_grouped)
 
         process_fov_row_map = process_fov_row.map(
-            group=groups,
-            args=unmapped(p),
-            prefs=unmapped(prefs)
+            group=groups, args=unmapped(p), prefs=unmapped(prefs)
         )
         upstream_tasks = [process_fov_row_map]
 
-        validate_result = validate_fov_rows(data_grouped, p, prefs, upstream_tasks=upstream_tasks)
+        validate_result = validate_fov_rows(
+            data_grouped, p, prefs, upstream_tasks=upstream_tasks
+        )
         # TODO make @task
         my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
         # TODO make @task
         generate_cellline_def(prefs, upstream_tasks=[my_return_value])
 
-    state = flow.run(executor=executor)
+    # flow.run can return a state object to be used to get results
+    flow.run(executor=executor)
 
     # pull some result data (return values) back into this host's process
     # df_stats = state.result[flow.get_tasks(name="load_stats")[0]].result

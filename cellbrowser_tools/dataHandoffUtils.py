@@ -2,7 +2,7 @@ from . import dataset_constants
 import datasetdatabase as dsdb
 import json
 import labkey
-from lkaccess import LabKey, QueryFilter
+from lkaccess import LabKey
 import lkaccess.contexts
 import logging
 import os
@@ -38,13 +38,13 @@ def normalize_path(path):
         return path
 
     # 2. split the path up into a list of dirs
-    path_as_list = re.split(r'\\|/', path)
+    path_as_list = re.split(r"\\|/", path)
 
     # 3. insert the proper system root for this platform (without the trailing slash)
-    dest_root = ''
-    if sys.platform.startswith('darwin'):
+    dest_root = ""
+    if sys.platform.startswith("darwin"):
         dest_root = macroot[:-1]
-    elif sys.platform.startswith('linux'):
+    elif sys.platform.startswith("linux"):
         dest_root = linuxroot[:-1]
     else:
         dest_root = windowsroot[:-1]
@@ -60,24 +60,24 @@ def setup_prefs(json_path):
         prefs = json.load(f)
 
     # make the output directories if it doesnt exist
-    if not os.path.exists(prefs['out_status']):
-        os.makedirs(prefs['out_status'])
-    if not os.path.exists(prefs['out_dir']):
-        os.makedirs(prefs['out_dir'])
-    images_dir = os.path.join(prefs['out_dir'], dataset_constants.IMAGES_DIR)
+    if not os.path.exists(prefs["out_status"]):
+        os.makedirs(prefs["out_status"])
+    if not os.path.exists(prefs["out_dir"]):
+        os.makedirs(prefs["out_dir"])
+    images_dir = os.path.join(prefs["out_dir"], dataset_constants.IMAGES_DIR)
     if not os.path.exists(images_dir):
         os.makedirs(images_dir)
-    prefs['images_dir'] = images_dir
-    thumbs_dir = os.path.join(prefs['out_dir'], dataset_constants.THUMBNAILS_DIR)
+    prefs["images_dir"] = images_dir
+    thumbs_dir = os.path.join(prefs["out_dir"], dataset_constants.THUMBNAILS_DIR)
     if not os.path.exists(thumbs_dir):
         os.makedirs(thumbs_dir)
-    prefs['thumbs_dir'] = thumbs_dir
-    atlas_dir = os.path.join(prefs['out_dir'], dataset_constants.ATLAS_DIR)
+    prefs["thumbs_dir"] = thumbs_dir
+    atlas_dir = os.path.join(prefs["out_dir"], dataset_constants.ATLAS_DIR)
     if not os.path.exists(atlas_dir):
         os.makedirs(atlas_dir)
-    prefs['atlas_dir'] = atlas_dir
- 
-    json_path_local = prefs['out_status'] + os.sep + 'prefs.json'
+    prefs["atlas_dir"] = atlas_dir
+
+    json_path_local = prefs["out_status"] + os.sep + "prefs.json"
     shutil.copyfile(json_path, json_path_local)
     # if not os.path.exists(json_path_local):
     #     # make a copy of the json object in the parent directory
@@ -89,9 +89,9 @@ def setup_prefs(json_path):
     #         prefs = json.load(f)
 
     # record the location of the json object
-    prefs['my_path'] = json_path_local
+    prefs["my_path"] = json_path_local
     # record the location of the data object
-    prefs['save_log_path'] = prefs['out_status'] + os.sep + prefs['data_log_name']
+    prefs["save_log_path"] = prefs["out_status"] + os.sep + prefs["data_log_name"]
 
     return prefs
 
@@ -116,7 +116,7 @@ def check_dups(dfr, column, remove=True):
     repeats = (dfr[dupes])[column].unique()
     if len(repeats) > 0:
         print("FOUND DUPLICATE DATA FOR THESE " + column + " KEYS:")
-        print(*repeats, sep=' ')
+        print(*repeats, sep=" ")
         # print(repeats)
     if remove:
         dfr.drop_duplicates(subset=column, keep="first", inplace=True)
@@ -132,7 +132,7 @@ def collect_data_rows(fovids=None, raw_only=False):
     df_data_handoff = pd.DataFrame(lkdatarows)
 
     if fovids is not None and len(fovids) > 0:
-        df_data_handoff = df_data_handoff[df_data_handoff['FOVId'].isin(fovids)]
+        df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
 
     print("GOT DATA HANDOFF")
 
@@ -145,76 +145,123 @@ def collect_data_rows(fovids=None, raw_only=False):
         query_name="MitoticAnnotation",
         sort="MitoticAnnotation",
         # columns=["CellId", "MitoticStateId/Name", "Complete"]
-        columns=["CellId", "MitoticStateId/Name"]
+        columns=["CellId", "MitoticStateId/Name"],
     )
     print("GOT MITOTIC ANNOTATIONS")
 
     mitoticdata = pd.DataFrame(mitoticdata)
     mitoticbooldata = mitoticdata[mitoticdata["MitoticStateId/Name"] == "Mitosis"]
     mitoticstatedata = mitoticdata[mitoticdata["MitoticStateId/Name"] != "Mitosis"]
-    mitoticbooldata = mitoticbooldata.rename(columns={"MitoticStateId/Name": "IsMitotic"})
-    mitoticstatedata = mitoticstatedata.rename(columns={"MitoticStateId/Name": "MitoticState"})
-    df_data_handoff = pd.merge(df_data_handoff, mitoticbooldata, how='left', left_on='CellId', right_on='CellId')
-    df_data_handoff = pd.merge(df_data_handoff, mitoticstatedata, how='left', left_on='CellId', right_on='CellId')
-    df_data_handoff = df_data_handoff.fillna(value={'IsMitotic': '', 'MitoticState': ''})
+    mitoticbooldata = mitoticbooldata.rename(
+        columns={"MitoticStateId/Name": "IsMitotic"}
+    )
+    mitoticstatedata = mitoticstatedata.rename(
+        columns={"MitoticStateId/Name": "MitoticState"}
+    )
+    df_data_handoff = pd.merge(
+        df_data_handoff,
+        mitoticbooldata,
+        how="left",
+        left_on="CellId",
+        right_on="CellId",
+    )
+    df_data_handoff = pd.merge(
+        df_data_handoff,
+        mitoticstatedata,
+        how="left",
+        left_on="CellId",
+        right_on="CellId",
+    )
+    df_data_handoff = df_data_handoff.fillna(
+        value={"IsMitotic": "", "MitoticState": ""}
+    )
 
     # get legacy cell name for all cells
     legacycellname_results = lk.select_rows_as_list(
-        schema_name='processing',
-        query_name='CellAnnotationJunction',
-        columns='CellId, Value',
+        schema_name="processing",
+        query_name="CellAnnotationJunction",
+        columns="CellId, Value",
         filter_array=[
-            labkey.query.QueryFilter('AnnotationTypeId/Name', 'Cell name', 'in')
-        ]
+            labkey.query.QueryFilter("AnnotationTypeId/Name", "Cell name", "in")
+        ],
     )
     print("GOT LEGACY CELL NAMES")
     df_legacycellname = pd.DataFrame(legacycellname_results)
     df_legacycellname = df_legacycellname.rename(columns={"Value": "LegacyCellName"})
-    df_data_handoff = pd.merge(df_data_handoff, df_legacycellname, how='left', left_on='CellId', right_on='CellId')
+    df_data_handoff = pd.merge(
+        df_data_handoff,
+        df_legacycellname,
+        how="left",
+        left_on="CellId",
+        right_on="CellId",
+    )
 
     # get legacy fov name for all fovs.
-    fovannotation_results = lk.select_rows_as_list(schema_name='processing',
-                                                   query_name='FOVAnnotationJunction',
-                                                   columns='FOVId, AnnotationTypeId/Name, Value',
-                                                   filter_array=[
-                                                       labkey.query.QueryFilter('AnnotationTypeId/Name', 'FOV name', 'in')
-                                                   ])
+    fovannotation_results = lk.select_rows_as_list(
+        schema_name="processing",
+        query_name="FOVAnnotationJunction",
+        columns="FOVId, AnnotationTypeId/Name, Value",
+        filter_array=[
+            labkey.query.QueryFilter("AnnotationTypeId/Name", "FOV name", "in")
+        ],
+    )
     print("GOT LEGACY FOV NAMES")
     df_fovlegacyname = pd.DataFrame(fovannotation_results)
-    df_fovlegacyname = df_fovlegacyname.rename(columns={"Value": "LegacyFOVName"})[['FOVId', 'LegacyFOVName']]
+    df_fovlegacyname = df_fovlegacyname.rename(columns={"Value": "LegacyFOVName"})[
+        ["FOVId", "LegacyFOVName"]
+    ]
     # allow for multiple possible legacy names for a fov
-    df_fovlegacyname = df_fovlegacyname.groupby(['FOVId'])['LegacyFOVName'].apply(list).reset_index()
+    df_fovlegacyname = (
+        df_fovlegacyname.groupby(["FOVId"])["LegacyFOVName"].apply(list).reset_index()
+    )
 
-    df_data_handoff = pd.merge(df_data_handoff, df_fovlegacyname, how='left', left_on='FOVId', right_on='FOVId')
+    df_data_handoff = pd.merge(
+        df_data_handoff, df_fovlegacyname, how="left", left_on="FOVId", right_on="FOVId"
+    )
     # at this time since there have been duplicate legacy FOVs, let's eliminate them.
-    print('Removing duplicate legacy fov names...')
+    print("Removing duplicate legacy fov names...")
     check_dups(df_data_handoff, "CellId")
 
     # get the aligned mitotic cell data
-    prod = dsdb.DatasetDatabase(config='//allen/aics/animated-cell/Dan/dsdb/prod.json')
-    dataset = prod.get_dataset(name='april-2019-prod-cells')
+    prod = dsdb.DatasetDatabase(config="//allen/aics/animated-cell/Dan/dsdb/prod.json")
+    dataset = prod.get_dataset(name="april-2019-prod-cells")
     print("GOT INTEGRATED MITOTIC DATA SET")
 
     # assert all the angles and translations are valid production cells
-    matches = (dataset.ds['CellId'].isin(df_data_handoff['CellId']))
+    # matches = dataset.ds["CellId"].isin(df_data_handoff["CellId"])
     # assert(matches.all())
-    df_data_handoff = pd.merge(df_data_handoff, dataset.ds[['CellId', 'Angle', 'x', 'y']], left_on='CellId', right_on='CellId', how='left')
 
-    cell_line_protein_results = lk.select_rows_as_list(schema_name='celllines',
-                                                       query_name='CellLineDefinition',
-                                                       columns='CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name'
-                                                       )
+    df_data_handoff = pd.merge(
+        df_data_handoff,
+        dataset.ds[["CellId", "Angle", "x", "y"]],
+        left_on="CellId",
+        right_on="CellId",
+        how="left",
+    )
+
+    cell_line_protein_results = lk.select_rows_as_list(
+        schema_name="celllines",
+        query_name="CellLineDefinition",
+        columns="CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name",
+    )
     print("GOT CELL LINE DATA")
 
     df_cell_line_protein = pd.DataFrame(cell_line_protein_results)
-    df_cell_lines = df_cell_line_protein.set_index('CellLineId')
+    # df_cell_lines = df_cell_line_protein.set_index("CellLineId")
+    df_cell_line_protein.set_index("CellLineId")
 
     # put cell fov name in a new column:
-    df_data_handoff['FOV_3dcv_Name'] = df_data_handoff.apply(lambda row: get_fov_name_from_row(row), axis=1)
+    df_data_handoff["FOV_3dcv_Name"] = df_data_handoff.apply(
+        lambda row: get_fov_name_from_row(row), axis=1
+    )
 
     # deal with nans
-    df_data_handoff = df_data_handoff.fillna(value={'LegacyCellName': '', 'Angle': 0, 'x': 0, 'y': 0})
-    df_data_handoff['LegacyFOVName'] = df_data_handoff['LegacyFOVName'].apply(lambda d: d if isinstance(d, list) else [])
+    df_data_handoff = df_data_handoff.fillna(
+        value={"LegacyCellName": "", "Angle": 0, "x": 0, "y": 0}
+    )
+    df_data_handoff["LegacyFOVName"] = df_data_handoff["LegacyFOVName"].apply(
+        lambda d: d if isinstance(d, list) else []
+    )
 
     # replace any remaining NaNs with None
     df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
@@ -229,5 +276,3 @@ if __name__ == "__main__":
     print(sys.argv)
     collect_data_rows()
     sys.exit(0)
-
-
