@@ -157,14 +157,13 @@ def main():
         process_fov_row_map = process_fov_row.map(
             group=groups, args=unmapped(p), prefs=unmapped(prefs)
         )
-        upstream_tasks = [process_fov_row_map]
 
         validate_result = validate_fov_rows(
-            groups, p, prefs, upstream_tasks=upstream_tasks
+            groups, p, prefs, upstream_tasks=[process_fov_row_map]
         )
-        # TODO make @task
+
         my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
-        # TODO make @task
+
         generate_cellline_def(prefs, upstream_tasks=[my_return_value])
 
     # flow.run can return a state object to be used to get results
