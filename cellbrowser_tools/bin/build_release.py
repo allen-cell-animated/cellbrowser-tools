@@ -143,9 +143,9 @@ def main():
             address="tcp://localhost:{PORT}".format(**{"PORT": p.port})
         )
     else:
-        from prefect.engine.executors import LocalExecutor
+        from prefect.engine.executors import DaskExecutor
 
-        executor = LocalExecutor()
+        executor = DaskExecutor()
 
     # This is the main function
     with Flow("FOV_processing_pipeline") as flow:
