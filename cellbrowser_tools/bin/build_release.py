@@ -23,48 +23,27 @@ logging.basicConfig(
 
 
 @task
-def get_save_paths(save_dir, fov_data):
-    # Sets up the save paths for all of the results
-    summary_path = "{}/summary.csv".format(save_dir)
-
-    stats_paths = [
-        "{}/plate_{}/stats_{}.pkl".format(save_dir, row.PlateId, row.FOVId)
-        for i, row in fov_data.iterrows()
-    ]
-    proj_paths = [
-        "{}/plate_{}/proj_{}.png".format(save_dir, row.PlateId, row.FOVId)
-        for i, row in fov_data.iterrows()
-    ]
-
-    stats_plots_dir = "{}/stats_plots".format(save_dir)
-    diagnostics_dir = "{}/diagnostics".format(save_dir)
-
-    return summary_path, stats_paths, proj_paths, stats_plots_dir, diagnostics_dir
-
-
-@task
 def setup_prefs(p):
     prefs = dataHandoffUtils.setup_prefs(p)
     return prefs
 
 
 @task
-def get_data_grouped(prefs):
+def get_data_groups(prefs):
     data = dataHandoffUtils.collect_data_rows(fovids=prefs.get("fovs"))
     log.info("Number of total cell rows: " + str(len(data)))
     # group by fov id
     data_grouped = data.groupby("FOVId")
     total_jobs = len(data_grouped)
     log.info("Number of total FOVs: " + str(total_jobs))
-    return data_grouped
-
-
-@task
-def get_data_groups(data_grouped):
     # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
+    count = 10
     groups = []
     for index, (fovid, group) in enumerate(data_grouped):
         groups.append(group)
+        count = count - 1
+        if count <= 0:
+            break
     return groups
 
 
@@ -75,8 +54,8 @@ def process_fov_row(group, args, prefs):
 
 
 @task
-def validate_fov_rows(data_grouped, args, prefs):
-    validateProcessedImages.validate_rows(data_grouped, args, prefs)
+def validate_fov_rows(groups, args, prefs):
+    validateProcessedImages.validate_rows(groups, args, prefs)
     return True
 
 
@@ -173,8 +152,7 @@ def main():
 
         prefs = setup_prefs(p.prefs)
 
-        data_grouped = get_data_grouped(prefs)
-        groups = get_data_groups(data_grouped)
+        groups = get_data_groups(prefs)
 
         process_fov_row_map = process_fov_row.map(
             group=groups, args=unmapped(p), prefs=unmapped(prefs)
@@ -182,7 +160,7 @@ def main():
         upstream_tasks = [process_fov_row_map]
 
         validate_result = validate_fov_rows(
-            data_grouped, p, prefs, upstream_tasks=upstream_tasks
+            groups, p, prefs, upstream_tasks=upstream_tasks
         )
         # TODO make @task
         my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])

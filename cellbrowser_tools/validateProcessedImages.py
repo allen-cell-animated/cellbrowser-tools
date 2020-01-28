@@ -367,19 +367,19 @@ def build_feature_data(prefs):
         output_file.write(json.dumps(jsondictlist))
 
 
-def validate_rows(data_grouped, args, prefs):
+def validate_rows(groups, args, prefs):
     errorFovs = []
     allfiles = []
     channel_name_list = []
     # process each file
     # run serially
-    for index, (fovid, group) in enumerate(data_grouped):
+    for index, group in enumerate(groups):
         rows = group.to_dict(orient="records")
         filerows, err = do_image(
-            args, prefs, rows, index, len(data_grouped), channel_name_list
+            args, prefs, rows, index, len(groups), channel_name_list
         )
         if err is True:
-            errorFovs.append(str(fovid))
+            errorFovs.append(str(rows[0]["FOVId"]))
         else:
             allfiles.extend(filerows)
 
@@ -426,7 +426,11 @@ def validate_processed_images(args, prefs):
     print("Number of total FOVs: " + str(total_jobs))
     print("VALIDATING " + str(total_jobs) + " JOBS")
 
-    validate_rows(data_grouped, args, prefs)
+    groups = []
+    for index, (fovid, group) in enumerate(data_grouped):
+        groups.append(group)
+
+    validate_rows(groups, args, prefs)
 
     # write out the cell_feature_analysis.json database
     build_feature_data(prefs)
