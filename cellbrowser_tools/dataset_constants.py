@@ -1,4 +1,3 @@
-
 IMAGES_DIR = "Cell-Viewer_Data"
 THUMBNAILS_DIR = "Cell-Viewer_Thumbnails"
 ATLAS_DIR = "Cell-Viewer_Thumbnails"

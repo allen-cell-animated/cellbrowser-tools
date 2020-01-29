@@ -149,9 +149,7 @@ def use_select_rows_cellline_name_to_protein_name(server, prefs):
     log.debug("Row Count {}: ".format(len(rows)))
 
     with open(
-        os.path.join(
-            prefs.get("out_status"), dataset_constants.CELL_LINE_DATA_FILENAME
-        ),
+        os.path.join(prefs.get("out_dir"), dataset_constants.CELL_LINE_DATA_FILENAME),
         "w",
     ) as outfile:
         json.dump(rows, outfile, indent=4)
