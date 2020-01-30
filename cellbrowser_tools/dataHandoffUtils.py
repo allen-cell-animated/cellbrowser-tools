@@ -14,24 +14,27 @@ import sys
 logging.basicConfig(level=logging.INFO)
 
 
+# CAUTION:
+#  if you run this function on a host and pass the result to a different host using a different sys.platform,
+#  then the path will not be properly normalized!
 def normalize_path(path):
     # windows: \\\\allen\\aics
-    windowsroot = '\\\\allen\\'
+    windowsroot = "\\\\allen\\"
     # mac:     /Volumes/aics (???)
-    macroot = '/Volumes/'
+    macroot = "/Volumes/"
     # linux:   /allen/aics
-    linuxroot = '/allen/'
-    linuxroot2 = '//allen/'
+    linuxroot = "/allen/"
+    linuxroot2 = "//allen/"
 
     # 1. strip away the root.
     if path.startswith(windowsroot):
-        path = path[len(windowsroot):]
+        path = path[len(windowsroot) :]
     elif path.startswith(linuxroot):
-        path = path[len(linuxroot):]
+        path = path[len(linuxroot) :]
     elif path.startswith(linuxroot2):
-        path = path[len(linuxroot2):]
+        path = path[len(linuxroot2) :]
     elif path.startswith(macroot):
-        path = path[len(macroot):]
+        path = path[len(macroot) :]
     else:
         # if the path does not reference a known root, don't try to change it.
         # it's probably a local path.
