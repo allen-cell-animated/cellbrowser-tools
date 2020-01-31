@@ -10,7 +10,6 @@ import sys
 from sys import stdout, argv
 from os import path
 from getopt import getopt, GetoptError
-import dataHandoffSpreadsheetUtils
 
 # constants
 BD = "\033[36m" 	# Cyan
@@ -121,15 +120,15 @@ def gather_aics_images(inputdir):
     return filegroups
 
 
-def gather_drug_images(inputcsv):
-    filegroups = {}
-    rows = dataHandoffSpreadsheetUtils.get_rows(inputcsv)
-    for key, group in itertools.groupby(rows, lambda item: item["Drug_name_short"].lower()+'_'+item["Well Type"].lower()):
-        if key in filegroups:
-            filegroups[key].extend([item["Link to input data"] for item in group])
-        else:
-            filegroups[key] = [item["Link to input data"] for item in group]
-    return filegroups
+# def gather_drug_images(inputcsv):
+#     filegroups = {}
+#     rows = dataHandoffSpreadsheetUtils.get_rows(inputcsv)
+#     for key, group in itertools.groupby(rows, lambda item: item["Drug_name_short"].lower()+'_'+item["Well Type"].lower()):
+#         if key in filegroups:
+#             filegroups[key].extend([item["Link to input data"] for item in group])
+#         else:
+#             filegroups[key] = [item["Link to input data"] for item in group]
+#     return filegroups
 
 
 def run(filegroups, outputdir, sorter=None):
@@ -213,8 +212,8 @@ else:
 
 
 # search input dir and group all files by cell line from the filename
-# filegroups = gather_aics_images(inputdir)
-# run(filegroups, outputdir, sorter)
+filegroups = gather_aics_images(inputdir)
+run(filegroups, outputdir, sorter)
 
-filegroups = gather_drug_images(inputdir)
-run(filegroups, outputdir)
+# filegroups = gather_drug_images(inputdir)
+# run(filegroups, outputdir)

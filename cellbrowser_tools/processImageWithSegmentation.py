@@ -11,8 +11,8 @@ from aicsimageio.writers import OmeTiffWriter
 from aicsimageio.writers import PngWriter
 from aicsimageio.vendor.omexml import OMEXML
 from aicsimageio.vendor.omexml import qn
-import cellJob
-import dataHandoffUtils as utils
+from . import cellJob
+from . import dataHandoffUtils as utils
 from aicsimageio import AICSImage
 from aicsimageprocessing import thumbnailGenerator
 from aicsimageprocessing import textureAtlas

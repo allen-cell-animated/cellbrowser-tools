@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
-import json
+from . import dataset_constants
+from . import dataHandoffUtils
 import sys
 import logging
 import os
 import argparse
 import traceback
 import pprint
+
 # LabKey API
 from labkey.utils import create_server_context
 import labkey.query as lk
@@ -15,8 +17,9 @@ import labkey.query as lk
 # Global Objects
 
 log = logging.getLogger()
-logging.basicConfig(level=logging.DEBUG,
-                    format='[%(levelname)4s:%(lineno)4s %(asctime)s] %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG, format="[%(levelname)4s:%(lineno)4s %(asctime)s] %(message)s"
+)
 
 # Set the default log level for other modules used by this script
 logging.getLogger("labkey").setLevel(logging.ERROR)
@@ -27,6 +30,7 @@ PP = pprint.PrettyPrinter(indent=2, width=120)
 
 
 ###############################################################################
+
 
 class Args(object):
     """
@@ -43,6 +47,7 @@ class Args(object):
     def __init__(self, log_cmdline=True):
         self.debug = False
         self.cell_line = None
+        self.prefs = ""
         #
         self.__parse()
         #
@@ -60,10 +65,15 @@ class Args(object):
     def __parse(self):
         p = argparse.ArgumentParser()
         # Add arguments
-        p.add_argument('prefs', nargs='?', default='prefs.json', help='prefs file')
-        p.add_argument('-c', '--cell_line', action='store', dest='cell_line')
-        p.add_argument('-d', '--debug', action='store_true', dest='debug',
-                       help='If set debug log output is enabled')
+        p.add_argument("prefs", nargs="?", default="prefs.json", help="prefs file")
+        p.add_argument("-c", "--cell_line", action="store", dest="cell_line")
+        p.add_argument(
+            "-d",
+            "--debug",
+            action="store_true",
+            dest="debug",
+            help="If set debug log output is enabled",
+        )
         #
         p.parse_args(namespace=self)
 
@@ -79,6 +89,7 @@ class Args(object):
 
 ###############################################################################
 
+
 class LabkeyServer(object):
     LABKEY_CONTEXT = "labkey"
     LABKEY_PROJECT = "/AICS"
@@ -92,7 +103,9 @@ class LabkeyServer(object):
         self.host = host
         self._ensure_netrc()
         # Setup Context
-        self.context = create_server_context(self.host, self.LABKEY_PROJECT, self.LABKEY_CONTEXT, use_ssl=False)
+        self.context = create_server_context(
+            self.host, self.LABKEY_PROJECT, self.LABKEY_CONTEXT, use_ssl=False
+        )
 
     @staticmethod
     def _ensure_netrc():
@@ -101,48 +114,51 @@ class LabkeyServer(object):
         :return:
         """
         # This file must exist for uploads to proceed
-        home = os.path.expanduser('~')
-        netrc = os.path.join(home, '_netrc' if os.name == 'nt' else '.netrc')
+        home = os.path.expanduser("~")
+        netrc = os.path.join(home, "_netrc" if os.name == "nt" else ".netrc")
         if not os.path.exists(netrc):
-            raise Exception("{} was not found. It must exist with appropriate credentials for uploading data to labkey."
-                            .format(netrc))
+            raise Exception(
+                "{} was not found. It must exist with appropriate credentials for uploading data to labkey.".format(
+                    netrc
+                )
+            )
 
 
 ###############################################################################
 
+
 def use_select_rows_cellline_name_to_protein_name(server, prefs):
     import json
-    results = lk.select_rows(server.context, server.SCHEMA_CELLLINES, 'CellLineDefinition',
-                             filter_array=[
-                                 lk.QueryFilter('CellLineId/Name', 'AICS-', lk.QueryFilter.Types.STARTS_WITH),
-                                 lk.QueryFilter('ProteinId/Name', [''], lk.QueryFilter.Types.NOT_IN)
-                             ],
-                             columns=['CellLineId/Name, ProteinId/Name, StructureId/Name, ProteinId/DisplayName']
-                             )
-    rows = results['rows']
+
+    results = lk.select_rows(
+        server.context,
+        server.SCHEMA_CELLLINES,
+        "CellLineDefinition",
+        filter_array=[
+            lk.QueryFilter(
+                "CellLineId/Name", "AICS-", lk.QueryFilter.Types.STARTS_WITH
+            ),
+            lk.QueryFilter("ProteinId/Name", [""], lk.QueryFilter.Types.NOT_IN),
+        ],
+        columns=[
+            "CellLineId/Name, ProteinId/Name, StructureId/Name, ProteinId/DisplayName"
+        ],
+    )
+    rows = results["rows"]
     log.debug(PP.pformat(rows))
     log.debug("Row Count {}: ".format(len(rows)))
-    import json
-    with open(os.path.join(prefs.get("out_status"), 'cell-line-def.json'), 'w') as outfile:
+
+    with open(
+        os.path.join(prefs.get("out_dir"), dataset_constants.CELL_LINE_DATA_FILENAME),
+        "w",
+    ) as outfile:
         json.dump(rows, outfile, indent=4)
 
-def use_execute_sql_cellline_name_to_protein_name(server):
-    sql = """
-SELECT CellLine.Name AS CL_Name, Protein.Name AS P_Name
-FROM CellLine
-JOIN CellLineDefinition ON CellLine.CellLineId = CellLineDefinition.CellLineId
-JOIN Protein ON Protein.ProteinId = CellLineDefinition.ProteinId
-WHERE NOT LOWER(CellLine.Name) LIKE 'drubin%'
-"""
-    results = lk.execute_sql(server.context, server.SCHEMA_CELLLINES, sql)
-    rows = results['rows']
-    log.debug(PP.pformat(rows))
-    log.debug("Row Count {}: ".format(len(rows)))
 
-
-def query_cellline_to_protein(server, prefs):
+def generate_cellline_def(prefs):
+    server = LabkeyServer("aics")
     use_select_rows_cellline_name_to_protein_name(server, prefs)
-    # use_execute_sql_cellline_name_to_protein_name(server)
+
 
 ###############################################################################
 
@@ -151,11 +167,8 @@ if __name__ == "__main__":
     try:
         args = Args()
         dbg = args.debug
-        with open(args.prefs) as f:
-            prefs = json.load(f)
-
-        server = LabkeyServer('aics')
-        query_cellline_to_protein(server, prefs)
+        prefs = dataHandoffUtils.setup_prefs(args.prefs)
+        generate_cellline_def(prefs)
 
     except Exception as e:
         log.error("=============================================")

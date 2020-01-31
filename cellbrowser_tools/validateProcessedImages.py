@@ -4,19 +4,13 @@
 #          Zach Crabtree zacharyc@alleninstitute.org
 
 import argparse
-import cellJob
 from typing import NamedTuple
 import csv
-import dataHandoffUtils as lkutils
-import glob
-import jobScheduler
+from . import dataHandoffUtils as lkutils
+from . import dataset_constants
 import json
-import numpy as np
 import os
 import pandas as pd
-import platform
-import random
-import re
 from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 import sys
 from typing import Union, Dict, List
@@ -40,7 +34,7 @@ DEFAULT_CLUSTER_STEP = 1
 IGNORE_FEATURES_COLUMNS_DURING_CLUSTERING = [
     "Interphase and Mitotic Stages (stage)",
     "Interphase and Mitosis (stage)",
-    "Cell Segmentation (complete)"
+    "Cell Segmentation (complete)",
 ]
 
 # type def
@@ -48,10 +42,12 @@ JSONList = List[Dict[str, Union[int, str, float]]]
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Validate data files and dump aggregate data to json.'
-                                                 'Example: python validateProcessedImages.py')
+    parser = argparse.ArgumentParser(
+        description="Validate data files and dump aggregate data to json."
+        "Example: python validateProcessedImages.py"
+    )
 
-    parser.add_argument('prefs', nargs='?', default='prefs.json', help='prefs file')
+    parser.add_argument("prefs", nargs="?", default="prefs.json", help="prefs file")
 
     args = parser.parse_args()
 
@@ -60,85 +56,92 @@ def parse_args():
 
 def make_path(dir0, dir1, filename):
     # return os.path.join(dir0, dir1, filename)
-    return dir0 + '/' + dir1 + '/' + filename
+    return dir0 + "/" + dir1 + "/" + filename
 
 
 def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
     # use row 0 as the "full field" row
     fovrow = rows[0]
 
-    jobname = fovrow['FOV_3dcv_Name']
+    jobname = fovrow["FOV_3dcv_Name"]
 
     imageName = jobname
 
-    data_dir = prefs['out_ometifroot']
-    thumbs_dir = prefs['out_thumbnailroot']
-    cell_line = fovrow['CellLine']
+    data_dir = prefs["images_dir"]
+    thumbs_dir = prefs["thumbs_dir"]
+    cell_line = fovrow["CellLine"]
 
     names = [imageName]
     for row in rows:
-        seg = row['CellId']
+        seg = row["CellId"]
         n = imageName + "_" + str(int(seg))
         # str(int(seg)) removes leading zeros
         names.append(n)
 
-    exts = ['.ome.tif', '.png']
+    # exts = [".ome.tif", ".png"]
     # check existence of ome.tif and png.
 
     err = False
     for f in names:
         # check for thumbnail
-        fullf = make_path(thumbs_dir, cell_line, f + '.png')
+        fullf = make_path(thumbs_dir, cell_line, f + ".png")
         if not os.path.isfile(fullf):
             err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
         # check for atlas meta
-        fullaj = make_path(thumbs_dir, cell_line, f + '_atlas.json')
+        fullaj = make_path(thumbs_dir, cell_line, f + "_atlas.json")
         if not os.path.isfile(fullaj):
             err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullaj)
         else:
             # load file and look at channel names
-            with open(fullaj, 'r') as json_file:
+            with open(fullaj, "r") as json_file:
                 atlasjsondata = json.load(json_file)
-                for n in atlasjsondata['channel_names']:
+                for n in atlasjsondata["channel_names"]:
                     if n not in channel_name_list:
                         channel_name_list.append(n)
 
-
         # expect 3 atlas png files
-        for i in ['0', '1', '2']:
-            fullat = make_path(thumbs_dir, cell_line, f + '_atlas_'+i+'.png')
+        for i in ["0", "1", "2"]:
+            fullat = make_path(thumbs_dir, cell_line, f + "_atlas_" + i + ".png")
             if not os.path.isfile(fullat):
                 err = True
                 print("ERROR: " + jobname + ": Could not find file: " + fullat)
 
         # check for image
-        fullf = make_path(data_dir, cell_line, f + '.ome.tif')
+        fullf = make_path(data_dir, cell_line, f + ".ome.tif")
         if not os.path.isfile(fullf):
             err = True
             print("ERROR: " + jobname + ": Could not find file: " + fullf)
 
     outrows = []
     if err is not True:
-        outrows.append({
-            "file_id": "F" + str(int(fovrow['FOVId'])),
-            "file_name": imageName + '.ome.tif',
-            "read_path": make_path(data_dir, cell_line, imageName + '.ome.tif'),
-            "file_size": os.path.getsize(make_path(data_dir, cell_line, imageName + '.ome.tif')),
-            "CellLineName": cell_line
-        })
+        outrows.append(
+            {
+                "file_id": "F" + str(int(fovrow["FOVId"])),
+                "file_name": imageName + ".ome.tif",
+                "read_path": make_path(data_dir, cell_line, imageName + ".ome.tif"),
+                "file_size": os.path.getsize(
+                    make_path(data_dir, cell_line, imageName + ".ome.tif")
+                ),
+                "CellLineName": cell_line,
+            }
+        )
         for row in rows:
-            seg = row['CellId']
+            seg = row["CellId"]
             n = imageName + "_" + str(int(seg))
-            outrows.append({
-                "file_id": "C" + str(int(seg)),
-                "file_name": n + '.ome.tif',
-                "read_path": make_path(data_dir, cell_line, n + '.ome.tif'),
-                "file_size": os.path.getsize(make_path(data_dir, cell_line, n + '.ome.tif')),
-                "CellLineName": cell_line
-            })
+            outrows.append(
+                {
+                    "file_id": "C" + str(int(seg)),
+                    "file_name": n + ".ome.tif",
+                    "read_path": make_path(data_dir, cell_line, n + ".ome.tif"),
+                    "file_size": os.path.getsize(
+                        make_path(data_dir, cell_line, n + ".ome.tif")
+                    ),
+                    "CellLineName": cell_line,
+                }
+            )
     return outrows, err
 
 
@@ -146,7 +149,7 @@ def compute_clusters_on_json_handoff(
     handoff: JSONList,
     min_clusters: int = DEFAULT_MIN_CLUSTERS,
     max_clusters: int = DEFAULT_MAX_CLUSTERS,
-    cluster_step: int = DEFAULT_CLUSTER_STEP
+    cluster_step: int = DEFAULT_CLUSTER_STEP,
 ) -> JSONList:
     """
     Generate clustering analysis on a json feature handoff blob.
@@ -255,7 +258,7 @@ def compute_clusters_on_json_handoff(
 
     # split the data into its parts
     meta = pd.DataFrame([row["file_info"] for row in handoff])
-    features = pd.DataFrame([row["measured_features"]for row in handoff])
+    features = pd.DataFrame([row["measured_features"] for row in handoff])
 
     # use only specific clustering features
     # this will return a dataframe that uses features as its base but with the ignore columns dropped
@@ -263,7 +266,9 @@ def compute_clusters_on_json_handoff(
 
     # normalize the features by zscoring every column
     for col in clustering_data:
-        clustering_data[col] = (clustering_data[col] - clustering_data[col].mean()) / clustering_data[col].std(ddof=0)
+        clustering_data[col] = (
+            clustering_data[col] - clustering_data[col].mean()
+        ) / clustering_data[col].std(ddof=0)
 
     # generate kmeans
     kmeans = pd.DataFrame()
@@ -284,7 +289,7 @@ def compute_clusters_on_json_handoff(
             n_clusters=i,
             eigen_solver="arpack",
             affinity="nearest_neighbors",
-            n_neighbors=5
+            n_neighbors=5,
         ).fit(clustering_data)
         spectral["{}".format(i)] = fitted.labels_
 
@@ -306,15 +311,17 @@ def compute_clusters_on_json_handoff(
     # format
     handoff = []
     for i, row in enumerate(meta):
-        handoff.append({
-            "file_info": row,
-            "measured_features": features[i],
-            "clusters": {
-                "KMeans": kmeans[i],
-                "Agglomerative": agglo[i],
-                "Spectral": spectral[i]
+        handoff.append(
+            {
+                "file_info": row,
+                "measured_features": features[i],
+                "clusters": {
+                    "KMeans": kmeans[i],
+                    "Agglomerative": agglo[i],
+                    "Spectral": spectral[i],
+                },
             }
-        })
+        )
 
     return handoff
 
@@ -330,62 +337,100 @@ def build_feature_data(prefs):
         FeatureDataSource("aics-feature", "0.2.0"),
         FeatureDataSource("aics-cell-segmentation", "1.0.0"),
         FeatureDataSource("aics-mitosis-classifier-mitotic", "1.0.0"),
-        FeatureDataSource("aics-mitosis-classifier-four-stage", "1.0.0")
+        FeatureDataSource("aics-mitosis-classifier-four-stage", "1.0.0"),
     ]
     allfeaturedata = None
     for data_source in data_sources:
-        featuredata = fh.get_full_handoff(algorithm_name=data_source.name, algorithm_version=data_source.version, config=configfile)
+        featuredata = fh.get_full_handoff(
+            algorithm_name=data_source.name,
+            algorithm_version=data_source.version,
+            config=configfile,
+        )
         if allfeaturedata is None:
             allfeaturedata = featuredata
         else:
-            allfeaturedata = pd.merge(allfeaturedata, featuredata, how='left', left_on=['CellId', 'CellLineName', 'FOVId'], right_on=['CellId', 'CellLineName', 'FOVId'])
+            allfeaturedata = pd.merge(
+                allfeaturedata,
+                featuredata,
+                how="left",
+                left_on=["CellId", "CellLineName", "FOVId"],
+                right_on=["CellId", "CellLineName", "FOVId"],
+            )
 
     jsondictlist = fh.df_to_json(allfeaturedata)
     jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
-    with open(os.path.join(prefs.get("out_status"), 'cell-feature-analysis.json'), 'w', newline="") as output_file:
+    with open(
+        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
+        "w",
+        newline="",
+    ) as output_file:
         output_file.write(json.dumps(jsondictlist))
 
 
-def do_main(args, prefs):
-    # Read every cell image to be processed
-    data = lkutils.collect_data_rows(fovids=prefs.get('fovs'))
-
-    print('Number of total cell rows: ' + str(len(data)))
-    # group by fov id
-    data_grouped = data.groupby("FOVId")
-    total_jobs = len(data_grouped)
-    print('Number of total FOVs: ' + str(total_jobs))
-    print('VALIDATING ' + str(total_jobs) + ' JOBS')
-
+def validate_rows(groups, args, prefs):
     errorFovs = []
     allfiles = []
     channel_name_list = []
     # process each file
     # run serially
-    for index, (fovid, group) in enumerate(data_grouped):
-        rows = group.to_dict(orient='records')
-        filerows, err = do_image(args, prefs, rows, index, total_jobs, channel_name_list)
+    for index, group in enumerate(groups):
+        rows = group.to_dict(orient="records")
+        filerows, err = do_image(
+            args, prefs, rows, index, len(groups), channel_name_list
+        )
         if err is True:
-            errorFovs.append(str(fovid))
+            errorFovs.append(str(rows[0]["FOVId"]))
         else:
             allfiles.extend(filerows)
 
     # write out all collected channel names
-    with open(os.path.join(prefs.get("out_status"), 'allChannelNames.txt'), 'w', newline="") as channel_names_file:
-        channel_names_file.write('\n'.join(channel_name_list))
+    with open(
+        os.path.join(prefs.get("out_status"), dataset_constants.CHANNEL_NAMES_FILENAME),
+        "w",
+        newline="",
+    ) as channel_names_file:
+        channel_names_file.write("\n".join(channel_name_list))
 
     # write out all FOVs identified with errors
     if len(errorFovs) > 0:
-        with open(os.path.join(prefs.get("out_status"), 'errorFovs.txt'), 'w', newline="") as error_file:
-            error_file.write('\n'.join(errorFovs))
+        with open(
+            os.path.join(
+                prefs.get("out_status"), dataset_constants.ERROR_FOVS_FILENAME
+            ),
+            "w",
+            newline="",
+        ) as error_file:
+            error_file.write("\n".join(errorFovs))
 
     # write out all files for downloader service
     if len(allfiles) > 0:
         keys = allfiles[0].keys()
-        with open(os.path.join(prefs.get("out_status"), 'cellviewer-files.csv'), 'w', newline="") as output_file:
+        with open(
+            os.path.join(prefs.get("out_dir"), dataset_constants.FILE_LIST_FILENAME),
+            "w",
+            newline="",
+        ) as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerows(allfiles)
+
+
+def validate_processed_images(args, prefs):
+    # Read every cell image to be processed
+    data = lkutils.collect_data_rows(fovids=prefs.get("fovs"))
+
+    print("Number of total cell rows: " + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    print("Number of total FOVs: " + str(total_jobs))
+    print("VALIDATING " + str(total_jobs) + " JOBS")
+
+    groups = []
+    for index, (fovid, group) in enumerate(data_grouped):
+        groups.append(group)
+
+    validate_rows(groups, args, prefs)
 
     # write out the cell_feature_analysis.json database
     build_feature_data(prefs)
@@ -393,9 +438,8 @@ def do_main(args, prefs):
 
 def main():
     args = parse_args()
-    with open(args.prefs) as f:
-        prefs = json.load(f)
-    do_main(args, prefs)
+    prefs = lkutils.setup_prefs(args.prefs)
+    validate_processed_images(args, prefs)
 
 
 if __name__ == "__main__":
