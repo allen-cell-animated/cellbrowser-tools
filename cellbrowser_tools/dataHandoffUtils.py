@@ -1,4 +1,5 @@
 from . import dataset_constants
+from .dataset_constants import DataField
 import datasetdatabase as dsdb
 import json
 import labkey
@@ -18,11 +19,8 @@ logging.basicConfig(level=logging.INFO)
 #  if you run this function on a host and pass the result to a different host using a different sys.platform,
 #  then the path will not be properly normalized!
 def normalize_path(path):
-    # windows: \\\\allen\\aics
     windowsroot = "\\\\allen\\"
-    # mac:     /Volumes/aics (???)
     macroot = "/Volumes/"
-    # linux:   /allen/aics
     linuxroot = "/allen/"
     linuxroot2 = "//allen/"
 
@@ -100,7 +98,7 @@ def setup_prefs(json_path):
 
 
 def get_cellline_name_from_row(row):
-    return row["CellLine"]
+    return row[DataField.CellLine]
 
 
 # cellline must be 'AICS-#'
@@ -110,7 +108,7 @@ def get_fov_name(fovid, cellline):
 
 def get_fov_name_from_row(row):
     celllinename = get_cellline_name_from_row(row)
-    fovid = row["FOVId"]
+    fovid = row[DataField.FOVId]
     return get_fov_name(fovid, celllinename)
 
 
@@ -134,6 +132,11 @@ def collect_data_rows(fovids=None, raw_only=False):
     lkdatarows = lk.dataset.get_pipeline_4_production_data()
     df_data_handoff = pd.DataFrame(lkdatarows)
 
+    # TODO verify the expected column names in the above query
+    for field in dataset_constants.DataField:
+        if field.value not in df_data_handoff.columns():
+            raise f"Expected {field.value} to be in labkey dataset results."
+
     if fovids is not None and len(fovids) > 0:
         df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
 
@@ -151,6 +154,17 @@ def collect_data_rows(fovids=None, raw_only=False):
         columns=["CellId", "MitoticStateId/Name"],
     )
     print("GOT MITOTIC ANNOTATIONS")
+
+    extra_columns = [
+        "IsMitotic",
+        "MitoticState",
+        "LegacyCellName",
+        "LegacyFOVName",
+        "Angle",
+        "x",
+        "y",
+        "FOV_3dcv_Name",
+    ]
 
     mitoticdata = pd.DataFrame(mitoticdata)
     mitoticbooldata = mitoticdata[mitoticdata["MitoticStateId/Name"] == "Mitosis"]
@@ -242,16 +256,14 @@ def collect_data_rows(fovids=None, raw_only=False):
         how="left",
     )
 
-    cell_line_protein_results = lk.select_rows_as_list(
-        schema_name="celllines",
-        query_name="CellLineDefinition",
-        columns="CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name",
-    )
-    print("GOT CELL LINE DATA")
-
-    df_cell_line_protein = pd.DataFrame(cell_line_protein_results)
-    # df_cell_lines = df_cell_line_protein.set_index("CellLineId")
-    df_cell_line_protein.set_index("CellLineId")
+    # cell_line_protein_results = lk.select_rows_as_list(
+    #     schema_name="celllines",
+    #     query_name="CellLineDefinition",
+    #     columns="CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name",
+    # )
+    # df_cell_line_protein = pd.DataFrame(cell_line_protein_results)
+    # df_cell_line_protein.set_index("CellLineId")
+    # print("GOT CELL LINE DATA")
 
     # put cell fov name in a new column:
     df_data_handoff["FOV_3dcv_Name"] = df_data_handoff.apply(
@@ -272,6 +284,9 @@ def collect_data_rows(fovids=None, raw_only=False):
     check_dups(df_data_handoff, "CellId")
 
     print("DONE BUILDING TABLES")
+
+    print(list(df_data_handoff.columns))
+
     return df_data_handoff
 
 
