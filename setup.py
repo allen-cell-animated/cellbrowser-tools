@@ -48,6 +48,8 @@ requirements = [
     "prefect",
     "quilt3",
     "jinja2",
+    "urllib3==1.24.3",  # quilt3
+    "python-dateutil==2.8.0",  # quilt3
 ]
 
 extra_requirements = {
