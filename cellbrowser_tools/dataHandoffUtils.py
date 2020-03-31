@@ -134,7 +134,7 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
 
     # verify the expected column names in the above query
     for field in dataset_constants.DataField:
-        if field.value not in df_data_handoff.columns():
+        if field.value not in df_data_handoff.columns:
             raise f"Expected {field.value} to be in labkey dataset results."
 
     if fovids is not None and len(fovids) > 0:
