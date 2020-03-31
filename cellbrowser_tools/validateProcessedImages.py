@@ -8,7 +8,7 @@ from typing import NamedTuple
 import csv
 from . import dataHandoffUtils as lkutils
 from . import dataset_constants
-from .dataset_constants import DataField
+from .dataset_constants import AugmentedDataField, DataField
 import json
 import os
 import pandas as pd
@@ -64,7 +64,7 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
     # use row 0 as the "full field" row
     fovrow = rows[0]
 
-    jobname = fovrow["FOV_3dcv_Name"]
+    jobname = fovrow[AugmentedDataField.FOV_3dcv_Name]
 
     imageName = jobname
 

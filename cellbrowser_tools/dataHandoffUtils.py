@@ -272,20 +272,10 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
 
     print(list(df_data_handoff.columns))
 
-    extra_columns = [
-        "IsMitotic",
-        "MitoticState",
-        "LegacyCellName",
-        "LegacyFOVName",
-        "Angle",
-        "x",
-        "y",
-        "FOV_3dcv_Name",
-    ]
     # verify the expected column names in the above query
-    for field in extra_columns:
-        if field not in df_data_handoff.columns:
-            raise f"Expected {field} to be in cellbrowser-tools dataset results."
+    for field in dataset_constants.AugmentedDataField:
+        if field.value not in df_data_handoff.columns:
+            raise f"Expected {field.value} to be in combined dataset results."
 
     return df_data_handoff
 

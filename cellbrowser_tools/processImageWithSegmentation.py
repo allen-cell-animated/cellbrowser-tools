@@ -13,7 +13,7 @@ from aicsimageio.vendor.omexml import OMEXML
 from aicsimageio.vendor.omexml import qn
 from . import cellJob
 from . import dataHandoffUtils as utils
-from .dataset_constants import DataField
+from .dataset_constants import AugmentedDataField, DataField
 from aicsimageio import AICSImage
 from aicsimageprocessing import thumbnailGenerator
 from aicsimageprocessing import textureAtlas
@@ -140,7 +140,7 @@ class ImageProcessor:
 
         # Setting up directory paths for images
         self.image_file = utils.normalize_path(self.row[DataField.SourceReadPath])
-        self.file_name = self.row["FOV_3dcv_Name"]
+        self.file_name = self.row[AugmentedDataField.FOV_3dcv_Name]
         self._generate_paths()
 
         # Setting up segmentation channels for full image
@@ -396,11 +396,15 @@ class ImageProcessor:
             m["CellId"] = row[DataField.CellId]
             m["source"] = self.job.cbrSourceImageName
             m["isCropped"] = True
-            m["mitoticPhase"] = row["MitoticState"]
-            m["isMitotic"] = row["IsMitotic"]
+            m["mitoticPhase"] = row[AugmentedDataField.MitoticState]
+            m["isMitotic"] = row[AugmentedDataField.IsMitotic]
             m["alignedTransform"] = {
-                "translation": [row["x"], row["y"], 0],
-                "rotation": [0, 0, row["Angle"]],
+                "translation": [
+                    row[AugmentedDataField.MitoticAlignedX],
+                    row[AugmentedDataField.MitoticAlignedY],
+                    0,
+                ],
+                "rotation": [0, 0, row[AugmentedDataField.MitoticAlignedAngle]],
             }
         else:
             m["isCropped"] = False
@@ -468,7 +472,10 @@ class ImageProcessor:
             # aimage.metadata = self.omexml
             print("generating atlas ...")
             atlas = textureAtlas.generate_texture_atlas(
-                aimage, name=self.row["FOV_3dcv_Name"], max_edge=2048, pack_order=None
+                aimage,
+                name=self.row[AugmentedDataField.FOV_3dcv_Name],
+                max_edge=2048,
+                pack_order=None,
             )
             p = self.omexml.image(0).Pixels
             atlas.dims.pixel_size_x = p.get_PhysicalSizeX()
@@ -542,7 +549,7 @@ class ImageProcessor:
             self.job.cbrCellIndex = i
             self.job.cbrSourceImageName = base
             self.job.cbrCellName = base + "_" + str(row[DataField.CellId])
-            self.job.cbrLegacyCellNames = row["LegacyCellName"]
+            self.job.cbrLegacyCellNames = row[AugmentedDataField.LegacyCellName]
 
             # copy self.omexml for output
             copyxml = None

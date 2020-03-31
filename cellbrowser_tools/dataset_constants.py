@@ -74,3 +74,14 @@ class DataField(str, Enum):
     Gene = "Gene"
     ColonyPosition = "ColonyPosition"
     DataSetId = "DataSetId"
+
+
+class AugmentedDataField(str, Enum):
+    IsMitotic = "IsMitotic"
+    MitoticState = "MitoticState"
+    LegacyCellName = "LegacyCellName"
+    LegacyFOVName = "LegacyFOVName"
+    MitoticAlignedAngle = "Angle"
+    MitoticAlignedX = "x"
+    MitoticAlignedY = "y"
+    FOV_3dcv_Name = "FOV_3dcv_Name"
