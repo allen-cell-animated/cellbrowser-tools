@@ -124,7 +124,7 @@ def check_dups(dfr, column, remove=True):
 
 
 # big assumption: any query_name passed in must return data of the same format!
-def collect_data_rows(fovids=None, raw_only=False):
+def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     # lk = LabKey(host="aics")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
 
@@ -139,6 +139,9 @@ def collect_data_rows(fovids=None, raw_only=False):
 
     if fovids is not None and len(fovids) > 0:
         df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
+
+    if max_rows is not None:
+        df_data_handoff = df_data_handoff.head(max_rows)
 
     print("GOT DATA HANDOFF")
 
