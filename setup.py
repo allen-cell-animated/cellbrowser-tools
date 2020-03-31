@@ -41,12 +41,12 @@ dev_requirements = [
 requirements = [
     "aicsimageio",
     "aicsimageprocessing",
-    # "git+https://github.com/AllenCellModeling/datasetdatabase.git",
     "featuredb>=0.3.0",
     "labkey",
     "lkaccess",
     "pandas",
     "prefect",
+    "quilt3",
     "jinja2",
 ]
 
@@ -54,12 +54,7 @@ extra_requirements = {
     "test": test_requirements,
     "setup": setup_requirements,
     "dev": dev_requirements,
-    "all": [
-        *requirements,
-        *test_requirements,
-        *setup_requirements,
-        *dev_requirements,
-    ],
+    "all": [*requirements, *test_requirements, *setup_requirements, *dev_requirements,],
 }
 
 setup(

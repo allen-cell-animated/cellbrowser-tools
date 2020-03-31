@@ -1,6 +1,5 @@
 from . import dataset_constants
 from .dataset_constants import DataField
-import datasetdatabase as dsdb
 import json
 import labkey
 from lkaccess import LabKey
@@ -8,6 +7,7 @@ import lkaccess.contexts
 import logging
 import os
 import pandas as pd
+from quilt3 import Package
 import re
 import shutil
 import sys
@@ -132,7 +132,7 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     lkdatarows = lk.dataset.get_pipeline_4_production_data()
     df_data_handoff = pd.DataFrame(lkdatarows)
 
-    # TODO verify the expected column names in the above query
+    # verify the expected column names in the above query
     for field in dataset_constants.DataField:
         if field.value not in df_data_handoff.columns():
             raise f"Expected {field.value} to be in labkey dataset results."
@@ -243,8 +243,10 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     check_dups(df_data_handoff, "CellId")
 
     # get the aligned mitotic cell data
-    prod = dsdb.DatasetDatabase(config="//allen/aics/animated-cell/Dan/dsdb/prod.json")
-    dataset = prod.get_dataset(name="april-2019-prod-cells")
+    imsc_dataset = Package.browse(
+        "aics/imsc_align_cells", "s3://allencell-internal-quilt"
+    )
+    dataset = imsc_dataset["dataset.csv"]()
     print("GOT INTEGRATED MITOTIC DATA SET")
 
     # assert all the angles and translations are valid production cells
