@@ -250,15 +250,6 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
         how="left",
     )
 
-    # cell_line_protein_results = lk.select_rows_as_list(
-    #     schema_name="celllines",
-    #     query_name="CellLineDefinition",
-    #     columns="CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name",
-    # )
-    # df_cell_line_protein = pd.DataFrame(cell_line_protein_results)
-    # df_cell_line_protein.set_index("CellLineId")
-    # print("GOT CELL LINE DATA")
-
     # put cell fov name in a new column:
     df_data_handoff["FOV_3dcv_Name"] = df_data_handoff.apply(
         lambda row: get_fov_name_from_row(row), axis=1
