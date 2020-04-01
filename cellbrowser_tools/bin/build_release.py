@@ -2,9 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+from datetime import datetime
 import logging
+from pathlib import Path
 
+from dask_jobqueue import SLURMCluster
+from distributed import LocalCluster
 from prefect import task, Flow, unmapped
+from prefect.engine.executors import DaskExecutor, LocalExecutor
 
 # from fov_processing_pipeline import wrappers, utils
 from cellbrowser_tools import createJobsFromCSV
@@ -76,6 +81,57 @@ def str2bool(v):
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
+def select_dask_executor(p, prefs):
+    if p.debug:
+        executor = LocalExecutor()
+        log.info(f"Debug flagged. Will use threads instead of Dask.")
+        return executor
+    else:
+        if p.distributed:
+            # Create or get log dir
+            # Do not include ms
+            log_dir_name = datetime.now().isoformat().split(".")[0]
+            log_dir = Path(f"{prefs.out_status}/{log_dir_name}").expanduser()
+            # Log dir settings
+            log_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create cluster
+            log.info("Creating SLURMCluster")
+            cluster = SLURMCluster(
+                cores=1,
+                memory="4GB",
+                queue="aics_cpu_general",
+                walltime="10:00:00",
+                local_directory=str(log_dir),
+                log_directory=str(log_dir),
+            )
+            log.info("Created SLURMCluster")
+
+            # Set adaptive worker settings
+            cluster.adapt(minimum_jobs=40, maximum_jobs=200)
+
+            # Use the port from the created connector to set executor address
+            distributed_executor_address = cluster.scheduler_address
+
+            # Log dashboard URI
+            log.info(f"Dask dashboard available at: {cluster.dashboard_link}")
+        else:
+            # Create local cluster
+            log.info("Creating LocalCluster")
+            cluster = LocalCluster()
+            log.info("Created LocalCluster")
+
+            # Set distributed_executor_address
+            distributed_executor_address = cluster.scheduler_address
+
+            # Log dashboard URI
+            log.info(f"Dask dashboard available at: {cluster.dashboard_link}")
+
+        # Use dask cluster
+        executor = DaskExecutor(distributed_executor_address)
+        return executor
+
+
 def main():
     """
     Dask/Prefect distributed command for running pipeline
@@ -109,44 +165,20 @@ def main():
         default=False,
         help="Use Prefect/Dask to do distributed compute.",
     )
-    p.add_argument(
-        "--port",
-        type=int,
-        default=99999,
-        help="Port over which to communicate with the Dask scheduler.",
-    )
 
     p = p.parse_args()
     # see createJobsFromCSV.do_image implementation:
     p.run = True
     p.cluster = False
 
-    # save_dir = str(Path(p.save_dir).resolve())
-    # overwrite = p.overwrite
-    # use_current_results = p.use_current_results
+    # read prefs
+    prefs = setup_prefs(p.prefs)
 
-    # log.info("Saving in {}".format(save_dir))
-
-    # if not os.path.exists(p.save_dir):
-    #     os.makedirs(p.save_dir)
-
-    # https://github.com/AllenCellModeling/scheduler_tools/blob/master/remote_job_scheduling.md
-
-    if p.distributed:
-        from prefect.engine.executors import DaskExecutor
-
-        executor = DaskExecutor(
-            address="tcp://localhost:{PORT}".format(**{"PORT": p.port})
-        )
-    else:
-        from prefect.engine.executors import DaskExecutor
-
-        executor = DaskExecutor()
+    # set up execution environment
+    executor = select_dask_executor(p, prefs)
 
     # This is the main function
-    with Flow("FOV_processing_pipeline") as flow:
-
-        prefs = setup_prefs(p.prefs)
+    with Flow("CFE_dataset_pipeline") as flow:
 
         groups = get_data_groups(prefs)
 
