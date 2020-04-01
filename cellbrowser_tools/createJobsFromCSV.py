@@ -6,6 +6,7 @@ import sys
 from . import cellJob
 from . import dataHandoffUtils as lkutils
 from . import jobScheduler
+from .dataset_constants import AugmentedDataField, DataField
 from .processImageWithSegmentation import do_main_image_with_celljob
 
 
@@ -71,11 +72,11 @@ def do_image(args, prefs, rows):
     # use row 0 as the "full field" row
     row = rows[0]
 
-    jobname = row["FOV_3dcv_Name"]
+    jobname = row[AugmentedDataField.FOV_3dcv_Name]
 
     # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
 
-    aicscelllineid = str(row["CellLine"])
+    aicscelllineid = str(row[DataField.CellLine])
     celllinename = aicscelllineid  # 'AICS-' + str(aicscelllineid)
     subdir = celllinename
 

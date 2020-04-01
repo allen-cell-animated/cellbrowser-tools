@@ -37,13 +37,9 @@ def get_data_groups(prefs):
     total_jobs = len(data_grouped)
     log.info("Number of total FOVs: " + str(total_jobs))
     # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
-    count = 10
     groups = []
     for index, (fovid, group) in enumerate(data_grouped):
         groups.append(group)
-        count = count - 1
-        if count <= 0:
-            break
     return groups
 
 

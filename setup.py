@@ -41,25 +41,22 @@ dev_requirements = [
 requirements = [
     "aicsimageio",
     "aicsimageprocessing",
-    # "git+https://github.com/AllenCellModeling/datasetdatabase.git",
     "featuredb>=0.3.0",
     "labkey",
     "lkaccess",
     "pandas",
     "prefect",
+    "quilt3",
     "jinja2",
+    "urllib3==1.24.3",  # quilt3
+    "python-dateutil==2.8.0",  # quilt3
 ]
 
 extra_requirements = {
     "test": test_requirements,
     "setup": setup_requirements,
     "dev": dev_requirements,
-    "all": [
-        *requirements,
-        *test_requirements,
-        *setup_requirements,
-        *dev_requirements,
-    ],
+    "all": [*requirements, *test_requirements, *setup_requirements, *dev_requirements,],
 }
 
 setup(

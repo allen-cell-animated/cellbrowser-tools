@@ -8,6 +8,7 @@ from typing import NamedTuple
 import csv
 from . import dataHandoffUtils as lkutils
 from . import dataset_constants
+from .dataset_constants import AugmentedDataField, DataField
 import json
 import os
 import pandas as pd
@@ -63,17 +64,17 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
     # use row 0 as the "full field" row
     fovrow = rows[0]
 
-    jobname = fovrow["FOV_3dcv_Name"]
+    jobname = fovrow[AugmentedDataField.FOV_3dcv_Name]
 
     imageName = jobname
 
     data_dir = prefs["images_dir"]
     thumbs_dir = prefs["thumbs_dir"]
-    cell_line = fovrow["CellLine"]
+    cell_line = fovrow[DataField.CellLine]
 
     names = [imageName]
     for row in rows:
-        seg = row["CellId"]
+        seg = row[DataField.CellId]
         n = imageName + "_" + str(int(seg))
         # str(int(seg)) removes leading zeros
         names.append(n)
@@ -119,7 +120,7 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
     if err is not True:
         outrows.append(
             {
-                "file_id": "F" + str(int(fovrow["FOVId"])),
+                "file_id": "F" + str(int(fovrow[DataField.FOVId])),
                 "file_name": imageName + ".ome.tif",
                 "read_path": make_path(data_dir, cell_line, imageName + ".ome.tif"),
                 "file_size": os.path.getsize(
@@ -129,7 +130,7 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
             }
         )
         for row in rows:
-            seg = row["CellId"]
+            seg = row[DataField.CellId]
             n = imageName + "_" + str(int(seg))
             outrows.append(
                 {

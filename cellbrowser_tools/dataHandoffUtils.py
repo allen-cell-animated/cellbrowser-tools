@@ -1,5 +1,5 @@
 from . import dataset_constants
-import datasetdatabase as dsdb
+from .dataset_constants import DataField
 import json
 import labkey
 from lkaccess import LabKey
@@ -7,6 +7,7 @@ import lkaccess.contexts
 import logging
 import os
 import pandas as pd
+from quilt3 import Package
 import re
 import shutil
 import sys
@@ -18,11 +19,8 @@ logging.basicConfig(level=logging.INFO)
 #  if you run this function on a host and pass the result to a different host using a different sys.platform,
 #  then the path will not be properly normalized!
 def normalize_path(path):
-    # windows: \\\\allen\\aics
     windowsroot = "\\\\allen\\"
-    # mac:     /Volumes/aics (???)
     macroot = "/Volumes/"
-    # linux:   /allen/aics
     linuxroot = "/allen/"
     linuxroot2 = "//allen/"
 
@@ -100,7 +98,7 @@ def setup_prefs(json_path):
 
 
 def get_cellline_name_from_row(row):
-    return row["CellLine"]
+    return row[DataField.CellLine]
 
 
 # cellline must be 'AICS-#'
@@ -110,7 +108,7 @@ def get_fov_name(fovid, cellline):
 
 def get_fov_name_from_row(row):
     celllinename = get_cellline_name_from_row(row)
-    fovid = row["FOVId"]
+    fovid = row[DataField.FOVId]
     return get_fov_name(fovid, celllinename)
 
 
@@ -126,7 +124,7 @@ def check_dups(dfr, column, remove=True):
 
 
 # big assumption: any query_name passed in must return data of the same format!
-def collect_data_rows(fovids=None, raw_only=False):
+def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     # lk = LabKey(host="aics")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
 
@@ -134,8 +132,16 @@ def collect_data_rows(fovids=None, raw_only=False):
     lkdatarows = lk.dataset.get_pipeline_4_production_data()
     df_data_handoff = pd.DataFrame(lkdatarows)
 
+    # verify the expected column names in the above query
+    for field in dataset_constants.DataField:
+        if field.value not in df_data_handoff.columns:
+            raise f"Expected {field.value} to be in labkey dataset results."
+
     if fovids is not None and len(fovids) > 0:
         df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
+
+    if max_rows is not None:
+        df_data_handoff = df_data_handoff.head(max_rows)
 
     print("GOT DATA HANDOFF")
 
@@ -226,32 +232,23 @@ def collect_data_rows(fovids=None, raw_only=False):
     check_dups(df_data_handoff, "CellId")
 
     # get the aligned mitotic cell data
-    prod = dsdb.DatasetDatabase(config="//allen/aics/animated-cell/Dan/dsdb/prod.json")
-    dataset = prod.get_dataset(name="april-2019-prod-cells")
+    imsc_dataset = Package.browse(
+        "aics/imsc_align_cells", "s3://allencell-internal-quilt"
+    )
+    dataset = imsc_dataset["dataset.csv"]()
     print("GOT INTEGRATED MITOTIC DATA SET")
 
     # assert all the angles and translations are valid production cells
-    # matches = dataset.ds["CellId"].isin(df_data_handoff["CellId"])
+    # matches = dataset["CellId"].isin(df_data_handoff["CellId"])
     # assert(matches.all())
 
     df_data_handoff = pd.merge(
         df_data_handoff,
-        dataset.ds[["CellId", "Angle", "x", "y"]],
+        dataset[["CellId", "Angle", "x", "y"]],
         left_on="CellId",
         right_on="CellId",
         how="left",
     )
-
-    cell_line_protein_results = lk.select_rows_as_list(
-        schema_name="celllines",
-        query_name="CellLineDefinition",
-        columns="CellLineId,CellLineId/Name,ProteinId/DisplayName,StructureId/Name,GeneId/Name",
-    )
-    print("GOT CELL LINE DATA")
-
-    df_cell_line_protein = pd.DataFrame(cell_line_protein_results)
-    # df_cell_lines = df_cell_line_protein.set_index("CellLineId")
-    df_cell_line_protein.set_index("CellLineId")
 
     # put cell fov name in a new column:
     df_data_handoff["FOV_3dcv_Name"] = df_data_handoff.apply(
@@ -272,6 +269,14 @@ def collect_data_rows(fovids=None, raw_only=False):
     check_dups(df_data_handoff, "CellId")
 
     print("DONE BUILDING TABLES")
+
+    print(list(df_data_handoff.columns))
+
+    # verify the expected column names in the above query
+    for field in dataset_constants.AugmentedDataField:
+        if field.value not in df_data_handoff.columns:
+            raise f"Expected {field.value} to be in combined dataset results."
+
     return df_data_handoff
 
 
