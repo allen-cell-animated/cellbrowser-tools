@@ -27,7 +27,6 @@ logging.basicConfig(
 ###############################################################################
 
 
-@task
 def setup_prefs(p):
     prefs = dataHandoffUtils.setup_prefs(p)
     return prefs
@@ -91,7 +90,8 @@ def select_dask_executor(p, prefs):
             # Create or get log dir
             # Do not include ms
             log_dir_name = datetime.now().isoformat().split(".")[0]
-            log_dir = Path(f"{prefs.out_status}/{log_dir_name}").expanduser()
+            statusdir = prefs["out_status"]
+            log_dir = Path(f"{statusdir}/{log_dir_name}").expanduser()
             # Log dir settings
             log_dir.mkdir(parents=True, exist_ok=True)
 
