@@ -41,6 +41,7 @@ dev_requirements = [
 requirements = [
     "aicsimageio",
     "aicsimageprocessing",
+    "dask[bag]",
     "dask_jobqueue>=0.7.0",
     "distributed>=2.12.0",
     "featuredb>=0.3.0",
