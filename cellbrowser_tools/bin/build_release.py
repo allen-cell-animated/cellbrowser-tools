@@ -201,10 +201,16 @@ def main():
 
         groups = get_data_groups(prefs)
 
+        #####################################
+        # in a perfect world, I just do this:
+        #####################################
         # process_fov_row_map = process_fov_row.map(
         #     group=groups, args=unmapped(p), prefs=unmapped(prefs)
         # )
-        batch_size = 20
+        #####################################
+        # but the world is not perfect:
+        #####################################
+        batch_size = 10
         process_fov_row_map = []
         for i in range(0, len(groups), batch_size):
             batch = groups[i : i + batch_size]
