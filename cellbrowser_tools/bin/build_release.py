@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 import traceback
 
+import dask
 from dask_jobqueue import SLURMCluster
 from distributed import LocalCluster
 from prefect import task, Flow, unmapped
