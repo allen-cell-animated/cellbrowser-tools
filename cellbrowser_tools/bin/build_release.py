@@ -211,7 +211,7 @@ def main():
             futures = process_fov_row.map(
                 group=batch, args=unmapped(p), prefs=unmapped(prefs)
             )
-            process_fov_row_map.extend(futures)
+            process_fov_row_map += futures
 
         validate_result = validate_fov_rows(
             groups, p, prefs, upstream_tasks=[process_fov_row_map]
