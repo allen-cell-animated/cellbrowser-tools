@@ -95,11 +95,19 @@ def select_dask_executor(p, prefs):
             # Log dir settings
             log_dir.mkdir(parents=True, exist_ok=True)
 
+            # Configure dask config
+            dask.config.set(
+                {
+                    "scheduler.work-stealing": False,
+                    "logging.distributed.worker": "info",
+                }
+            )
+
             # Create cluster
             log.info("Creating SLURMCluster")
             cluster = SLURMCluster(
-                cores=1,
-                memory="6GB",
+                cores=4,
+                memory="20GB",
                 queue="aics_cpu_general",
                 walltime="10:00:00",
                 local_directory=str(log_dir),
