@@ -42,7 +42,7 @@ requirements = [
     "aicsimageio==3.1.4",
     "aicsimageprocessing==0.7.3",
     "dask[bag]==2.12.0",
-    "dask_jobqueue-=0.7.0",
+    "dask_jobqueue==0.7.0",
     "distributed==2.12.0",
     "featuredb>=0.3.0",
     "labkey",
