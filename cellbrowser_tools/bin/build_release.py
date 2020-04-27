@@ -50,7 +50,16 @@ def get_data_groups(prefs):
 @task
 def process_fov_row(group, args, prefs):
     rows = group.to_dict(orient="records")
-    createJobsFromCSV.do_image(args, prefs, rows)
+    try:
+        createJobsFromCSV.do_image(args, prefs, rows)
+    except Exception as e:
+        log.error("=============================================")
+        if args.debug:
+            log.error("\n\n" + traceback.format_exc())
+            log.error("=============================================")
+        log.error("\n\n" + str(e) + "\n")
+        log.error("=============================================")
+        raise
 
 
 @task
@@ -116,7 +125,7 @@ def select_dask_executor(p, prefs):
             log.info("Created SLURMCluster")
 
             # Set worker scaling settings
-            cluster.scale_up(80)
+            cluster.scale(60)
 
             # Use the port from the created connector to set executor address
             distributed_executor_address = cluster.scheduler_address
