@@ -5,6 +5,7 @@ import argparse
 from datetime import datetime
 import logging
 from pathlib import Path
+import traceback
 
 from dask_jobqueue import SLURMCluster
 from distributed import LocalCluster
@@ -199,9 +200,15 @@ def main():
 
         groups = get_data_groups(prefs)
 
-        process_fov_row_map = process_fov_row.map(
-            group=groups, args=unmapped(p), prefs=unmapped(prefs)
-        )
+        # process_fov_row_map = process_fov_row.map(
+        #     group=groups, args=unmapped(p), prefs=unmapped(prefs)
+        # )
+        batch_size = 20
+        process_fov_row_map = []
+        for i in range(0, len(groups), batch_size):
+            batch = groups[i : i + batch_size]
+            futures = process_fov_row.map(group=batch, args=unmapped(p), prefs=unmapped(prefs)
+            process_fov_row_map.append(futures)
 
         validate_result = validate_fov_rows(
             groups, p, prefs, upstream_tasks=[process_fov_row_map]
