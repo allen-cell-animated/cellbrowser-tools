@@ -34,7 +34,7 @@ def setup_prefs(p):
     return prefs
 
 
-@task
+# @task
 def get_data_groups(prefs):
     data = dataHandoffUtils.collect_data_rows(fovids=prefs.get("fovs"))
     log.info("Number of total cell rows: " + str(len(data)))
