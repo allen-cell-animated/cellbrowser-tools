@@ -375,7 +375,7 @@ def validate_rows(groups, args, prefs):
     # process each file
     # run serially
     for index, group in enumerate(groups):
-        rows = group.to_dict(orient="records")
+        rows = group  # .to_dict(orient="records")
         filerows, err = do_image(
             args, prefs, rows, index, len(groups), channel_name_list
         )
