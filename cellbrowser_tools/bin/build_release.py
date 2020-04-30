@@ -126,7 +126,6 @@ def select_dask_executor(p, prefs):
                 memory="20GB",
                 queue="aics_cpu_general",
                 walltime="10:00:00",
-                death_timeout=300,
                 local_directory=str(log_dir),
                 log_directory=str(log_dir),
             )
