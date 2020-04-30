@@ -220,7 +220,7 @@ def main():
                 group=batch,
                 args=unmapped(p),
                 prefs=unmapped(prefs),
-                upstream_tasks=None if i == 0 else last_batch_result,
+                upstream_tasks=None if i == 0 else [last_batch_result],
             )
             last_batch_result = batch_result
             # process_fov_row_map += futures
