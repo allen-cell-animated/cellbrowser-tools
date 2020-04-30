@@ -230,16 +230,22 @@ def main():
             last_batch_result = batch_result
             nbatches = nbatches + 1
             # process_fov_row_map += futures
+            if nbatches == 2:
+                break
 
         print(f"{nbatches} batches submitted")
         validate_result = validate_fov_rows(
             groups, p, prefs, upstream_tasks=[last_batch_result]
         )
-
+        print("validate_fov_rows submitted")
         my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
-
+        print("build_feature_data submitted")
         generate_cellline_def(prefs, upstream_tasks=[my_return_value])
+        print("generate_cellline_def submitted")
 
+    print("************************************************")
+    print("***Submission complete.  Beginning execution.***")
+    print("************************************************")
     # flow.run can return a state object to be used to get results
     flow.run(executor=executor)
 
