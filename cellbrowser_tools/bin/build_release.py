@@ -216,6 +216,8 @@ def main():
         last_batch_result = []
         for i in range(0, len(groups), batch_size):
             batch = groups[i : i + batch_size]
+            print(batch)
+            print("***END BATCH***")
             batch_result = process_fov_row.map(
                 group=batch,
                 args=unmapped(p),
