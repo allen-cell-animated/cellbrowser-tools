@@ -213,18 +213,21 @@ def main():
         #####################################
         batch_size = 10
         # process_fov_row_map = []
-        futures = []
+        last_batch_result = []
         for i in range(0, len(groups), batch_size):
             batch = groups[i : i + batch_size]
-            futures = process_fov_row.map(
+            batch_result = process_fov_row.map(
                 group=batch,
                 args=unmapped(p),
                 prefs=unmapped(prefs),
-                upstream_tasks=None if i == 0 else unmapped(futures),
+                upstream_tasks=None if i == 0 else last_batch_result,
             )
+            last_batch_result = batch_result
             # process_fov_row_map += futures
 
-        validate_result = validate_fov_rows(groups, p, prefs, upstream_tasks=[futures])
+        validate_result = validate_fov_rows(
+            groups, p, prefs, upstream_tasks=[last_batch_result]
+        )
 
         my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
 
