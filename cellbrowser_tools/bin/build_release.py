@@ -52,6 +52,8 @@ def get_data_groups(prefs):
 @task
 def process_fov_row(group, args, prefs):
     rows = group.to_dict(orient="records")
+    print("STARTING FOV")
+    log.debug("LOG STARTING FOV")
     try:
         createJobsFromCSV.do_image(args, prefs, rows)
     except Exception as e:
@@ -62,6 +64,8 @@ def process_fov_row(group, args, prefs):
         log.error("\n\n" + str(e) + "\n")
         log.error("=============================================")
         raise
+    print("COMPLETED FOV")
+    log.debug("LOG COMPLETED FOV")
 
 
 @task
