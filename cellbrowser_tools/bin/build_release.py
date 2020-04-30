@@ -218,10 +218,9 @@ def main():
         batch_size = 10
         # process_fov_row_map = []
         last_batch_result = []
+        nbatches = 0
         for i in range(0, len(groups), batch_size):
             batch = groups[i : i + batch_size]
-            print(batch)
-            print("***END BATCH***")
             batch_result = process_fov_row.map(
                 group=batch,
                 args=unmapped(p),
@@ -229,8 +228,10 @@ def main():
                 upstream_tasks=None if i == 0 else [last_batch_result],
             )
             last_batch_result = batch_result
+            nbatches = nbatches + 1
             # process_fov_row_map += futures
 
+        print(f"{nbatches} batches submitted")
         validate_result = validate_fov_rows(
             groups, p, prefs, upstream_tasks=[last_batch_result]
         )
