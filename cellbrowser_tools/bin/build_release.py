@@ -46,6 +46,7 @@ def get_data_groups(prefs):
     groups = []
     for index, (fovid, group) in enumerate(data_grouped):
         groups.append(group.to_dict(orient="records"))
+    log.info("Converted groups to lists of dicts")
 
     return groups
 
@@ -53,8 +54,7 @@ def get_data_groups(prefs):
 @task
 def process_fov_row(group, args, prefs):
     rows = group  # .to_dict(orient="records")
-    print("STARTING FOV")
-    log.info("LOG STARTING FOV")
+    log.info("STARTING FOV")
     try:
         createJobsFromCSV.do_image(args, prefs, rows)
     except Exception as e:
@@ -65,8 +65,7 @@ def process_fov_row(group, args, prefs):
         log.error("\n\n" + str(e) + "\n")
         log.error("=============================================")
         raise
-    print("COMPLETED FOV")
-    log.info("LOG COMPLETED FOV")
+    log.info("COMPLETED FOV")
 
 
 @task
@@ -215,7 +214,7 @@ def main():
         #####################################
         # but the world is not perfect:
         #####################################
-        batch_size = 10
+        batch_size = 20
         # process_fov_row_map = []
         last_batch_result = []
         nbatches = 0
@@ -230,10 +229,14 @@ def main():
             last_batch_result = batch_result
             nbatches = nbatches + 1
             # process_fov_row_map += futures
-            if nbatches == 2:
+            if nbatches == 20:
                 break
 
-        # print(f"{nbatches} batches submitted")
+        #####################################
+        # TODO : REINSTATE THE FOLLOWING CODE
+        #####################################
+
+        print(f"{nbatches} batches submitted")
         # validate_result = validate_fov_rows(
         #     groups, p, prefs, upstream_tasks=[last_batch_result]
         # )
