@@ -366,12 +366,12 @@ class ImageProcessor:
             image = np.append(image, [seg], axis=0)
             self.seg_indices.append(image.shape[0] - 1)
             reader.close()
-            os.remove(f)
+            unretrieve_file(f)
             i += 1
 
         print("done")
         cr.close()
-        os.remove(image_file)
+        unretrieve_file(image_file)
         return image
 
     def generate_meta(self, metadata, row):
