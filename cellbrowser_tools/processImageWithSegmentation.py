@@ -37,13 +37,19 @@ def retrieve_file(read_path, file_name):
     """
     Copy a file to a temporary directory, assign it the given name, and return the full destination path.
     """
-    output_directory = Path(tempfile.gettempdir())
-    if not output_directory.is_dir():
-        raise Exception(f"Output directory {output_directory} does not exist!")
+    return read_path
+    # output_directory = Path(tempfile.gettempdir())
+    # if not output_directory.is_dir():
+    #     raise Exception(f"Output directory {output_directory} does not exist!")
 
-    destination = output_directory / file_name
-    shutil.copyfile(read_path, destination)
-    return destination
+    # destination = output_directory / file_name
+    # shutil.copyfile(read_path, destination)
+    # return destination
+
+
+def unretrieve_file(localpath):
+    # os.remove(localpath)
+    return
 
 
 def _int32(x):
