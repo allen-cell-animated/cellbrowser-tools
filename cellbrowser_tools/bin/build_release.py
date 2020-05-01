@@ -233,15 +233,15 @@ def main():
             if nbatches == 2:
                 break
 
-        print(f"{nbatches} batches submitted")
-        validate_result = validate_fov_rows(
-            groups, p, prefs, upstream_tasks=[last_batch_result]
-        )
-        print("validate_fov_rows submitted")
-        my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
-        print("build_feature_data submitted")
-        generate_cellline_def(prefs, upstream_tasks=[my_return_value])
-        print("generate_cellline_def submitted")
+        # print(f"{nbatches} batches submitted")
+        # validate_result = validate_fov_rows(
+        #     groups, p, prefs, upstream_tasks=[last_batch_result]
+        # )
+        # print("validate_fov_rows submitted")
+        # my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
+        # print("build_feature_data submitted")
+        # generate_cellline_def(prefs, upstream_tasks=[my_return_value])
+        # print("generate_cellline_def submitted")
 
     print("************************************************")
     print("***Submission complete.  Beginning execution.***")
