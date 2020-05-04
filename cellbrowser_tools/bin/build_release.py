@@ -9,7 +9,7 @@ from pathlib import Path
 
 import dask
 from aics_dask_utils import DistributedHandler
-from distributed import LocalCluster
+from distributed import Client, LocalCluster
 
 # from fov_processing_pipeline import wrappers, utils
 from cellbrowser_tools import (createJobsFromCSV, dataHandoffUtils,
@@ -148,7 +148,8 @@ def select_dask_executor(p, prefs):
 
             # Set worker scaling settings
             cluster.scale(BATCH_AND_CLUSTER_SIZE)
-            cluster.wait_for_workers(BATCH_AND_CLUSTER_SIZE)
+            client = Client(cluster)
+            client.wait_for_workers(BATCH_AND_CLUSTER_SIZE)
 
             # Use the port from the created connector to set executor address
             distributed_executor_address = cluster.scheduler_address
