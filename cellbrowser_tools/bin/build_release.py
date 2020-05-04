@@ -84,19 +84,16 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
     return "Done"
 
 
-@task
 def validate_fov_rows(groups, args, prefs):
     validateProcessedImages.validate_rows(groups, args, prefs)
     return True
 
 
-@task
 def build_feature_data(prefs):
     validateProcessedImages.build_feature_data(prefs)
     return True
 
 
-@task
 def generate_cellline_def(prefs):
     generateCellLineDef.generate_cellline_def(prefs)
     return True
