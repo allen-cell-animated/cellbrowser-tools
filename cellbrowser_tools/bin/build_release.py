@@ -9,14 +9,17 @@ from pathlib import Path
 
 import dask
 from aics_dask_utils import DistributedHandler
-from distributed import Client, LocalCluster
+from distributed import LocalCluster
 
 # from fov_processing_pipeline import wrappers, utils
-from cellbrowser_tools import (createJobsFromCSV, dataHandoffUtils,
-                               generateCellLineDef, validateProcessedImages)
+from cellbrowser_tools import (
+    createJobsFromCSV,
+    dataHandoffUtils,
+    generateCellLineDef,
+    validateProcessedImages,
+)
 from dask_jobqueue import SLURMCluster
 from prefect import Flow, task
-from prefect.engine.executors import DaskExecutor, LocalExecutor
 
 ###############################################################################
 
@@ -70,14 +73,13 @@ def process_fov_row(group, args, prefs):
 def process_fov_rows(groups, args, prefs, distributed_executor_address):
     # Batch process the FOVs
     with DistributedHandler(distributed_executor_address) as handler:
-        results = handler.batched_map(
+        handler.batched_map(
             process_fov_row,
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
             batch_size=30,
         )
-
     return "Done"
 
 
@@ -211,10 +213,13 @@ def main():
     # set up execution environment
     distributed_executor_address = select_dask_executor(p, prefs)
 
+    # gather data set
+    groups = get_data_groups(prefs)
+    # run on a limited set of groups
+    groups = groups[0:50]
+
     # This is the main function
     with Flow("CFE_dataset_pipeline") as flow:
-
-        groups = get_data_groups(prefs)
 
         #####################################
         # in a perfect world, I just do this:
@@ -225,26 +230,23 @@ def main():
         #####################################
         # but the world is not perfect:
         #####################################
-        done = process_fov_rows(groups, p, prefs, distributed_executor_address)
-
-        #####################################
-        # TODO : REINSTATE THE FOLLOWING CODE
-        #####################################
-
-        # validate_result = validate_fov_rows(
-        #     groups, p, prefs, upstream_tasks=[last_batch_result]
-        # )
-        # print("validate_fov_rows submitted")
-        # my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
-        # print("build_feature_data submitted")
-        # generate_cellline_def(prefs, upstream_tasks=[my_return_value])
-        # print("generate_cellline_def submitted")
+        process_fov_rows(groups, p, prefs, distributed_executor_address)
 
     print("************************************************")
     print("***Submission complete.  Beginning execution.***")
     print("************************************************")
     # flow.run can return a state object to be used to get results
     flow.run()
+
+    print("************************************************")
+    print("***Flow execution complete.                  ***")
+    print("************************************************")
+    validate_result = validate_fov_rows(groups, p, prefs)
+    print("validate_fov_rows done")
+    my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
+    print("build_feature_data done")
+    generate_cellline_def(prefs, upstream_tasks=[my_return_value])
+    print("generate_cellline_def done")
 
     # pull some result data (return values) back into this host's process
     # df_stats = state.result[flow.get_tasks(name="load_stats")[0]].result
