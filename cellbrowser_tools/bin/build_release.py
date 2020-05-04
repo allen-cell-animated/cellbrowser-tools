@@ -27,6 +27,10 @@ logging.basicConfig(
 
 ###############################################################################
 
+BATCH_AND_CLUSTER_SIZE = 60
+
+###############################################################################
+
 
 def setup_prefs(p):
     prefs = dataHandoffUtils.setup_prefs(p)
@@ -75,6 +79,7 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
+            batch_size=BATCH_AND_CLUSTER_SIZE,
         )
 
     return "Done"
@@ -132,8 +137,8 @@ def select_dask_executor(p, prefs):
             # Create cluster
             log.info("Creating SLURMCluster")
             cluster = SLURMCluster(
-                cores=4,
-                memory="20GB",
+                cores=2,
+                memory="10GB",
                 queue="aics_cpu_general",
                 walltime="10:00:00",
                 local_directory=str(log_dir),
@@ -142,7 +147,8 @@ def select_dask_executor(p, prefs):
             log.info("Created SLURMCluster")
 
             # Set worker scaling settings
-            cluster.scale(60)
+            cluster.scale(BATCH_AND_CLUSTER_SIZE)
+            cluster.wait_for_workers(BATCH_AND_CLUSTER_SIZE)
 
             # Use the port from the created connector to set executor address
             distributed_executor_address = cluster.scheduler_address
