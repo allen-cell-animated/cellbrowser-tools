@@ -224,7 +224,7 @@ def main():
         #####################################
         # but the world is not perfect:
         #####################################
-        done = process_fov_rows(groups, p, prefs)
+        done = process_fov_rows(groups, p, prefs, distributed_executor_address)
 
         #####################################
         # TODO : REINSTATE THE FOLLOWING CODE
