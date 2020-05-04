@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-from datetime import datetime
 import logging
-from pathlib import Path
 import traceback
+from datetime import datetime
+from pathlib import Path
 
 import dask
-from dask_jobqueue import SLURMCluster
-from distributed import LocalCluster
-from prefect import task, Flow, unmapped
-from prefect.engine.executors import DaskExecutor, LocalExecutor
+from aics_dask_utils import DistributedHandler
+from distributed import Client, LocalCluster
 
 # from fov_processing_pipeline import wrappers, utils
-from cellbrowser_tools import createJobsFromCSV
-from cellbrowser_tools import dataHandoffUtils
-from cellbrowser_tools import generateCellLineDef
-from cellbrowser_tools import validateProcessedImages
+from cellbrowser_tools import (createJobsFromCSV, dataHandoffUtils,
+                               generateCellLineDef, validateProcessedImages)
+from dask_jobqueue import SLURMCluster
+from prefect import Flow, task
+from prefect.engine.executors import DaskExecutor, LocalExecutor
 
 ###############################################################################
 
@@ -51,7 +50,6 @@ def get_data_groups(prefs):
     return groups
 
 
-@task
 def process_fov_row(group, args, prefs):
     rows = group  # .to_dict(orient="records")
     log.info("STARTING FOV")
@@ -66,6 +64,21 @@ def process_fov_row(group, args, prefs):
         log.error("=============================================")
         raise
     log.info("COMPLETED FOV")
+
+
+@task
+def process_fov_rows(groups, args, prefs, distributed_executor_address):
+    # Batch process the FOVs
+    with DistributedHandler(distributed_executor_address) as handler:
+        results = handler.batched_map(
+            process_fov_row,
+            [g for g in groups],
+            [args for g in groups],
+            [prefs for g in groups],
+            batch_size=30,
+        )
+
+    return "Done"
 
 
 @task
@@ -97,9 +110,8 @@ def str2bool(v):
 
 def select_dask_executor(p, prefs):
     if p.debug:
-        executor = LocalExecutor()
         log.info(f"Debug flagged. Will use threads instead of Dask.")
-        return executor
+        return None
     else:
         if p.distributed:
             # Create or get log dir
@@ -151,8 +163,7 @@ def select_dask_executor(p, prefs):
             log.info(f"Dask dashboard available at: {cluster.dashboard_link}")
 
         # Use dask cluster
-        executor = DaskExecutor(distributed_executor_address)
-        return executor
+        return distributed_executor_address
 
 
 def main():
@@ -198,7 +209,7 @@ def main():
     prefs = setup_prefs(p.prefs)
 
     # set up execution environment
-    executor = select_dask_executor(p, prefs)
+    distributed_executor_address = select_dask_executor(p, prefs)
 
     # This is the main function
     with Flow("CFE_dataset_pipeline") as flow:
@@ -214,29 +225,12 @@ def main():
         #####################################
         # but the world is not perfect:
         #####################################
-        batch_size = 20
-        # process_fov_row_map = []
-        last_batch_result = []
-        nbatches = 0
-        for i in range(0, len(groups), batch_size):
-            batch = groups[i : i + batch_size]
-            batch_result = process_fov_row.map(
-                group=batch,
-                args=unmapped(p),
-                prefs=unmapped(prefs),
-                upstream_tasks=None if i == 0 else [last_batch_result],
-            )
-            last_batch_result = batch_result
-            nbatches = nbatches + 1
-            # process_fov_row_map += futures
-            if nbatches == 20:
-                break
+        done = process_fov_rows(groups, p, prefs, distributed_executor_address)
 
         #####################################
         # TODO : REINSTATE THE FOLLOWING CODE
         #####################################
 
-        print(f"{nbatches} batches submitted")
         # validate_result = validate_fov_rows(
         #     groups, p, prefs, upstream_tasks=[last_batch_result]
         # )
@@ -250,7 +244,7 @@ def main():
     print("***Submission complete.  Beginning execution.***")
     print("************************************************")
     # flow.run can return a state object to be used to get results
-    flow.run(executor=executor)
+    flow.run()
 
     # pull some result data (return values) back into this host's process
     # df_stats = state.result[flow.get_tasks(name="load_stats")[0]].result

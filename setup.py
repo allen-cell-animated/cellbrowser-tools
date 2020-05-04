@@ -39,8 +39,10 @@ dev_requirements = [
 ]
 
 requirements = [
+    "aics_dask_utils==0.1.0",
     "aicsimageio==3.1.4",
     "aicsimageprocessing==0.7.3",
+    "bokeh==2.0.2",
     "dask[bag]==2.12.0",
     "dask_jobqueue==0.7.0",
     "distributed==2.12.0",
@@ -53,6 +55,7 @@ requirements = [
     "jinja2",
     "urllib3==1.24.3",  # quilt3
     "python-dateutil==2.8.0",  # quilt3
+    "cloudpickle==1.3.0",  # prefect
 ]
 
 extra_requirements = {
