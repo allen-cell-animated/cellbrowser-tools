@@ -6,6 +6,7 @@ import logging
 import traceback
 from datetime import datetime
 from pathlib import Path
+import smtplib
 
 import dask
 from aics_dask_utils import DistributedHandler
@@ -248,8 +249,18 @@ def main():
     generate_cellline_def(prefs, upstream_tasks=[my_return_value])
     print("generate_cellline_def done")
 
-    # pull some result data (return values) back into this host's process
-    # df_stats = state.result[flow.get_tasks(name="load_stats")[0]].result
+    # send a notification that the data set is complete
+    message = """
+Subject: Dataset build complete
+
+dataset build complete
+"""
+    with smtplib.SMTP("aicas-1.corp.alleninstitute.org") as s:
+        s.sendmail(
+            "cellbrowsertools@alleninstitute.org",
+            "danielt@alleninstitute.org",
+            message,
+        )
 
     log.info("Done!")
 
