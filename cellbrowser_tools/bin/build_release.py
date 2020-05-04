@@ -239,11 +239,11 @@ def main():
     print("************************************************")
     print("***Flow execution complete.                  ***")
     print("************************************************")
-    validate_result = validate_fov_rows(groups, p, prefs)
+    validate_fov_rows(groups, p, prefs)
     print("validate_fov_rows done")
-    my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
+    build_feature_data(prefs)
     print("build_feature_data done")
-    generate_cellline_def(prefs, upstream_tasks=[my_return_value])
+    generate_cellline_def(prefs)
     print("generate_cellline_def done")
 
     # send a notification that the data set is complete
