@@ -230,7 +230,6 @@ def main():
         # TODO : REINSTATE THE FOLLOWING CODE
         #####################################
 
-        print(f"{nbatches} batches submitted")
         # validate_result = validate_fov_rows(
         #     groups, p, prefs, upstream_tasks=[last_batch_result]
         # )
