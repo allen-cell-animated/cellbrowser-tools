@@ -79,7 +79,7 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
-            batch_size=30,
+            batch_size=60,
         )
     return "Done"
 
@@ -134,8 +134,8 @@ def select_dask_executor(p, prefs):
             # Create cluster
             log.info("Creating SLURMCluster")
             cluster = SLURMCluster(
-                cores=4,
-                memory="20GB",
+                cores=1,
+                memory="8GB",
                 queue="aics_cpu_general",
                 walltime="10:00:00",
                 local_directory=str(log_dir),
@@ -144,7 +144,7 @@ def select_dask_executor(p, prefs):
             log.info("Created SLURMCluster")
 
             # Set worker scaling settings
-            cluster.scale(60)
+            cluster.adapt(minimum_jobs=60, maximum_jobs=600)
 
             # Use the port from the created connector to set executor address
             distributed_executor_address = cluster.scheduler_address
@@ -215,7 +215,7 @@ def main():
     # gather data set
     groups = get_data_groups(prefs)
     # run on a limited set of groups
-    groups = groups[0:10]
+    groups = groups[0:120]
 
     # This is the main function
     with Flow("CFE_dataset_pipeline") as flow:
