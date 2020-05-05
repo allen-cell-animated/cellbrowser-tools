@@ -11,6 +11,7 @@ import traceback
 import pprint
 
 # LabKey API
+import labkey
 from lkaccess import LabKey
 import lkaccess.contexts
 
@@ -100,10 +101,12 @@ def generate_cellline_def(prefs):
         query_name="CellLineDefinition",
         columns="CellLineId/Name, ProteinId/Name, StructureId/Name, ProteinId/DisplayName",
         filter_array=[
-            lk.QueryFilter(
-                "CellLineId/Name", "AICS-", lk.QueryFilter.Types.STARTS_WITH
+            labkey.query.QueryFilter(
+                "CellLineId/Name", "AICS-", labkey.query.QueryFilter.Types.STARTS_WITH
             ),
-            lk.QueryFilter("ProteinId/Name", [""], lk.QueryFilter.Types.NOT_IN),
+            labkey.query.QueryFilter(
+                "ProteinId/Name", [""], labkey.query.QueryFilter.Types.NOT_IN
+            ),
         ],
     )
     rows = results["rows"]
