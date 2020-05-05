@@ -91,7 +91,7 @@ class Args(object):
 ###############################################################################
 
 
-def use_select_rows_cellline_name_to_protein_name(server, prefs):
+def generate_cellline_def(prefs):
     print("init labkey connection")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
     print("issue celllines query")
@@ -116,10 +116,6 @@ def use_select_rows_cellline_name_to_protein_name(server, prefs):
         "w",
     ) as outfile:
         json.dump(rows, outfile, indent=4)
-
-
-def generate_cellline_def(prefs):
-    use_select_rows_cellline_name_to_protein_name(prefs)
 
 
 ###############################################################################
