@@ -134,7 +134,7 @@ def select_dask_executor(p, prefs):
             # Create cluster
             log.info("Creating SLURMCluster")
             cluster = SLURMCluster(
-                cores=4,
+                cores=2,
                 memory="40GB",
                 queue="aics_cpu_general",
                 walltime="10:00:00",
@@ -144,7 +144,7 @@ def select_dask_executor(p, prefs):
             log.info("Created SLURMCluster")
 
             # Set worker scaling settings
-            cluster.scale(20)
+            cluster.scale(100)
 
             # Use the port from the created connector to set executor address
             distributed_executor_address = cluster.scheduler_address
