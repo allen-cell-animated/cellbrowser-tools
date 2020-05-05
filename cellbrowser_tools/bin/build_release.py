@@ -215,7 +215,7 @@ def main():
     # gather data set
     groups = get_data_groups(prefs)
     # run on a limited set of groups
-    groups = groups[0:50]
+    groups = groups[0:10]
 
     # This is the main function
     with Flow("CFE_dataset_pipeline") as flow:
