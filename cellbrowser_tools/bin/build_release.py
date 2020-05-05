@@ -144,7 +144,7 @@ def select_dask_executor(p, prefs):
             log.info("Created SLURMCluster")
 
             # Set worker scaling settings
-            cluster.adapt(minimum_jobs=100, maximum_jobs=300)
+            cluster.scale(100)
 
             # Use the port from the created connector to set executor address
             distributed_executor_address = cluster.scheduler_address
