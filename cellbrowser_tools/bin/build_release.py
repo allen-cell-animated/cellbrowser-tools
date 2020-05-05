@@ -108,10 +108,11 @@ def str2bool(v):
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
+# return address and cluster
 def select_dask_executor(p, prefs):
     if p.debug:
         log.info(f"Debug flagged. Will use threads instead of Dask.")
-        return None
+        return None, None
     else:
         if p.distributed:
             # Create or get log dir
@@ -163,7 +164,7 @@ def select_dask_executor(p, prefs):
             log.info(f"Dask dashboard available at: {cluster.dashboard_link}")
 
         # Use dask cluster
-        return distributed_executor_address
+        return distributed_executor_address, cluster
 
 
 def main():
@@ -209,7 +210,7 @@ def main():
     prefs = setup_prefs(p.prefs)
 
     # set up execution environment
-    distributed_executor_address = select_dask_executor(p, prefs)
+    distributed_executor_address, cluster = select_dask_executor(p, prefs)
 
     # gather data set
     groups = get_data_groups(prefs)
@@ -239,6 +240,9 @@ def main():
     print("************************************************")
     print("***Flow execution complete.                  ***")
     print("************************************************")
+    if cluster is not None:
+        cluster.close()
+
     validate_fov_rows(groups, p, prefs)
     print("validate_fov_rows done")
     build_feature_data(prefs)
