@@ -2,6 +2,7 @@
 
 from . import dataset_constants
 from . import dataHandoffUtils
+import json
 import sys
 import logging
 import os
@@ -91,10 +92,9 @@ class Args(object):
 
 
 def use_select_rows_cellline_name_to_protein_name(server, prefs):
-    import json
-
+    print("init labkey connection")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
-
+    print("issue celllines query")
     results = lk.select_rows_as_list(
         schema_name="celllines",
         query_name="CellLineDefinition",
@@ -110,6 +110,7 @@ def use_select_rows_cellline_name_to_protein_name(server, prefs):
     log.debug(PP.pformat(rows))
     log.debug("Row Count {}: ".format(len(rows)))
 
+    print("saving cellline results")
     with open(
         os.path.join(prefs.get("out_dir"), dataset_constants.CELL_LINE_DATA_FILENAME),
         "w",
