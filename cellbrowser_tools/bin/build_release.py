@@ -79,7 +79,7 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
-            batch_size=10,
+            batch_size=30,
         )
     return "Done"
 
@@ -144,7 +144,7 @@ def select_dask_executor(p, prefs):
             log.info("Created SLURMCluster")
 
             # Set worker scaling settings
-            cluster.scale(100)
+            cluster.scale(200)
 
             # Use the port from the created connector to set executor address
             distributed_executor_address = cluster.scheduler_address
