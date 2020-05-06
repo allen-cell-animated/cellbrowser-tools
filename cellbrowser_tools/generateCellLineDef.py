@@ -109,7 +109,7 @@ def generate_cellline_def(prefs):
             ),
         ],
     )
-    rows = results["rows"]
+    rows = results
     log.debug(PP.pformat(rows))
     log.debug("Row Count {}: ".format(len(rows)))
 
