@@ -79,7 +79,7 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
-            batch_size=40,
+            batch_size=60,
         )
     return "Done"
 
@@ -135,7 +135,7 @@ def select_dask_executor(p, prefs):
             log.info("Creating SLURMCluster")
             cluster = SLURMCluster(
                 cores=4,
-                memory="40GB",
+                memory="60GB",
                 queue="aics_cpu_general",
                 walltime="10:00:00",
                 local_directory=str(log_dir),
