@@ -134,7 +134,7 @@ def select_dask_executor(p, prefs):
             # Create cluster
             log.info("Creating SLURMCluster")
             cluster = SLURMCluster(
-                cores=1,
+                cores=2,
                 memory="20GB",
                 queue="aics_cpu_general",
                 walltime="10:00:00",
@@ -144,7 +144,7 @@ def select_dask_executor(p, prefs):
             log.info("Created SLURMCluster")
 
             # Set worker scaling settings
-            cluster.scale(400)
+            cluster.scale(200)
 
             # Use the port from the created connector to set executor address
             distributed_executor_address = cluster.scheduler_address
@@ -215,7 +215,7 @@ def main():
     # gather data set
     groups = get_data_groups(prefs)
     # run on a limited set of groups
-    groups = groups[0:120]
+    groups = groups[0:100]
 
     # This is the main function
     with Flow("CFE_dataset_pipeline") as flow:
