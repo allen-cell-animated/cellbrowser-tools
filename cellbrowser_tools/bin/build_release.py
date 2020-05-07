@@ -66,7 +66,7 @@ def process_fov_row(group, args, prefs):
             log.error("=============================================")
         log.error("\n\n" + str(e) + "\n")
         log.error("=============================================")
-        raise
+        return
     log.info("COMPLETED FOV")
 
 
@@ -79,7 +79,7 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
-            batch_size=50,
+            batch_size=100,
         )
     return "Done"
 
@@ -215,7 +215,7 @@ def main():
     # gather data set
     groups = get_data_groups(prefs)
     # run on a limited set of groups
-    groups = groups[0:100]
+    groups = groups[0:200]
 
     # This is the main function
     with Flow("CFE_dataset_pipeline") as flow:
