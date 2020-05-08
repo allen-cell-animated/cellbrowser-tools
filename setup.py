@@ -39,7 +39,7 @@ dev_requirements = [
 ]
 
 requirements = [
-    "aics_dask_utils==0.1.0",
+    "aics_dask_utils==0.2.0",
     "aicsimageio==3.1.4",
     "aicsimageprocessing==0.7.3",
     "bokeh==2.0.2",
