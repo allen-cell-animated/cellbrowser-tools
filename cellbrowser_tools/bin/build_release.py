@@ -134,7 +134,7 @@ def select_dask_executor(p, prefs):
             # Create cluster
             log.info("Creating SLURMCluster")
             cluster = SLURMCluster(
-                cores=2,
+                cores=1,
                 memory="20GB",
                 queue="aics_cpu_general",
                 walltime="10:00:00",
