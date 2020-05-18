@@ -108,6 +108,21 @@ def str2bool(v):
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
+def send_done_email():
+    # send a notification that the data set is complete
+    message = """
+Subject: Dataset build complete
+
+dataset build complete
+"""
+    with smtplib.SMTP("aicas-1.corp.alleninstitute.org") as s:
+        s.sendmail(
+            "cellbrowsertools@alleninstitute.org",
+            "danielt@alleninstitute.org",
+            message,
+        )
+
+
 # return address and cluster
 def select_dask_executor(p, prefs):
     if p.debug:
@@ -250,18 +265,7 @@ def main():
     generate_cellline_def(prefs)
     print("generate_cellline_def done")
 
-    # send a notification that the data set is complete
-    message = """
-Subject: Dataset build complete
-
-dataset build complete
-"""
-    with smtplib.SMTP("aicas-1.corp.alleninstitute.org") as s:
-        s.sendmail(
-            "cellbrowsertools@alleninstitute.org",
-            "danielt@alleninstitute.org",
-            message,
-        )
+    send_done_email()
 
     log.info("Done!")
 
