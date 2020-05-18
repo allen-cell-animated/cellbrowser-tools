@@ -89,8 +89,8 @@ def validate_fov_rows(groups, args, prefs):
     return True
 
 
-def build_feature_data(prefs):
-    validateProcessedImages.build_feature_data(prefs)
+def build_feature_data(prefs, groups):
+    validateProcessedImages.build_feature_data(prefs, groups)
     return True
 
 
@@ -245,7 +245,7 @@ def main():
 
     validate_fov_rows(groups, p, prefs)
     print("validate_fov_rows done")
-    build_feature_data(prefs)
+    build_feature_data(prefs, groups)
     print("build_feature_data done")
     generate_cellline_def(prefs)
     print("generate_cellline_def done")
