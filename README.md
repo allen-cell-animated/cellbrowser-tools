@@ -29,10 +29,11 @@ Workflow:
    create a virtualenv and pip install cellbrowser-tools
    or
    git clone cellbrowser-tools and pip install .
+   This should result in all necessary dependencies being installed.
 
-2. On data handoff, modify a copy of prefs.json to have the proper parameters inside. You can omit prefs.json and it will use the existing prefs.json file or modify in-place but then you have to remember if you changed anything.
+2. Modify a copy of prefs.json to have the proper parameters inside. The most important parameters are the output directories to prevent overwriting old data sets.
 
-3. Generate image data:
+3. Generate dataset:
    run:
 
    ```
