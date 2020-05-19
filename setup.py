@@ -39,24 +39,30 @@ dev_requirements = [
 ]
 
 requirements = [
-    "aicsimageio",
-    "aicsimageprocessing",
+    "aics_dask_utils==0.2.0",
+    "aicsimageio==3.2.0",
+    "aicsimageprocessing==0.7.3",
+    "bokeh==2.0.2",
+    "dask[bag]==2.12.0",
+    "dask_jobqueue==0.7.0",
+    "distributed==2.12.0",
     "featuredb>=0.3.0",
     "labkey",
     "lkaccess",
-    "pandas",
-    "prefect",
+    "pandas==1.0.3",
+    "prefect==0.9.7",
     "quilt3",
     "jinja2",
     "urllib3==1.24.3",  # quilt3
     "python-dateutil==2.8.0",  # quilt3
+    "cloudpickle==1.3.0",  # prefect
 ]
 
 extra_requirements = {
     "test": test_requirements,
     "setup": setup_requirements,
     "dev": dev_requirements,
-    "all": [*requirements, *test_requirements, *setup_requirements, *dev_requirements,],
+    "all": [*requirements, *test_requirements, *setup_requirements, *dev_requirements],
 }
 
 setup(

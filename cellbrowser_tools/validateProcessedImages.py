@@ -327,7 +327,7 @@ def compute_clusters_on_json_handoff(
     return handoff
 
 
-def build_feature_data(prefs):
+def build_feature_data(prefs, groups):
     configfile = "//allen/aics/animated-cell/Dan/featurehandoff/prod.json"
 
     class FeatureDataSource(NamedTuple):
@@ -375,7 +375,7 @@ def validate_rows(groups, args, prefs):
     # process each file
     # run serially
     for index, group in enumerate(groups):
-        rows = group.to_dict(orient="records")
+        rows = group  # .to_dict(orient="records")
         filerows, err = do_image(
             args, prefs, rows, index, len(groups), channel_name_list
         )
@@ -434,7 +434,7 @@ def validate_processed_images(args, prefs):
     validate_rows(groups, args, prefs)
 
     # write out the cell_feature_analysis.json database
-    build_feature_data(prefs)
+    build_feature_data(prefs, groups)
 
 
 def main():

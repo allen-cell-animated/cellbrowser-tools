@@ -9,7 +9,6 @@ from . import jobScheduler
 from .dataset_constants import AugmentedDataField, DataField
 from .processImageWithSegmentation import do_main_image_with_celljob
 
-
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
 # cbrThumbnailURL file:// uri to cellbrowser thumbnail
@@ -58,8 +57,8 @@ def make_json(jobname, info, prefs):
         prefs["out_status"], prefs["script_dir"]
     )  # os.path.join(os.getcwd(), outdir)
     dest_dir = os.path.join(current_dir, cellline)
-    if not os.path.exists(dest_dir):
-        os.makedirs(dest_dir)
+
+    os.makedirs(dest_dir, exist_ok=True)
 
     jsonname = os.path.join(dest_dir, f"FOV_{cell_job_postfix}.json")
     with open(jsonname, "w") as fp:
@@ -101,10 +100,8 @@ def do_image(args, prefs, rows):
 
     info.cbrThumbnailSize = 128
 
-    if not os.path.exists(info.cbrImageLocation):
-        os.makedirs(info.cbrImageLocation)
-    if not os.path.exists(info.cbrThumbnailLocation):
-        os.makedirs(info.cbrThumbnailLocation)
+    os.makedirs(info.cbrImageLocation, exist_ok=True)
+    os.makedirs(info.cbrThumbnailLocation, exist_ok=True)
 
     if args.run:
         do_main_image_with_celljob(info)

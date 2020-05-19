@@ -37,13 +37,19 @@ def retrieve_file(read_path, file_name):
     """
     Copy a file to a temporary directory, assign it the given name, and return the full destination path.
     """
-    output_directory = Path(tempfile.gettempdir())
-    if not output_directory.is_dir():
-        raise Exception(f"Output directory {output_directory} does not exist!")
+    return read_path
+    # output_directory = Path(tempfile.gettempdir())
+    # if not output_directory.is_dir():
+    #     raise Exception(f"Output directory {output_directory} does not exist!")
 
-    destination = output_directory / file_name
-    shutil.copyfile(read_path, destination)
-    return destination
+    # destination = output_directory / file_name
+    # shutil.copyfile(read_path, destination)
+    # return destination
+
+
+def unretrieve_file(localpath):
+    # os.remove(localpath)
+    return
 
 
 def _int32(x):
@@ -360,12 +366,12 @@ class ImageProcessor:
             image = np.append(image, [seg], axis=0)
             self.seg_indices.append(image.shape[0] - 1)
             reader.close()
-            os.remove(f)
+            unretrieve_file(f)
             i += 1
 
         print("done")
         cr.close()
-        os.remove(image_file)
+        unretrieve_file(image_file)
         return image
 
     def generate_meta(self, metadata, row):

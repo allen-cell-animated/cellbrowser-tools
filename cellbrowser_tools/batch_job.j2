@@ -9,14 +9,10 @@
 {#- See https://slurm.schedmd.com/sbatch.html#OPT_array for further details #}
 #SBATCH --array 0-{{ (mybatchsize) }}%{{ max_simultaneous_jobs | default(32) }}
 
-# set anaconda install path.
 # enable locating the source code of these scripts
-export PATH=/bin:$PATH
-# TODO templatize/parameterize python path, virtual env path?
-export PATH=/allen/aics/animated-cell/Dan/anaconda3/bin:$PATH
-export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools
-
-source activate /allen/aics/animated-cell/Dan/venvs/ace
+module add anaconda3
+conda activate cellbrowser-tools
+# export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools/cellbrowser_tools
 
 {# srun the script, and add the item to the end of the script call #}
 srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID {{mybatchdatafilename}} | tail -n 1)"

@@ -3,14 +3,24 @@
 
 import argparse
 import logging
+import traceback
+from datetime import datetime
+from pathlib import Path
+import smtplib
 
-from prefect import task, Flow, unmapped
+import dask
+from aics_dask_utils import DistributedHandler
+from distributed import LocalCluster
 
 # from fov_processing_pipeline import wrappers, utils
-from cellbrowser_tools import createJobsFromCSV
-from cellbrowser_tools import dataHandoffUtils
-from cellbrowser_tools import generateCellLineDef
-from cellbrowser_tools import validateProcessedImages
+from cellbrowser_tools import (
+    createJobsFromCSV,
+    dataHandoffUtils,
+    generateCellLineDef,
+    validateProcessedImages,
+)
+from dask_jobqueue import SLURMCluster
+from prefect import Flow, task
 
 ###############################################################################
 
@@ -22,13 +32,11 @@ logging.basicConfig(
 ###############################################################################
 
 
-@task
 def setup_prefs(p):
     prefs = dataHandoffUtils.setup_prefs(p)
     return prefs
 
 
-@task
 def get_data_groups(prefs):
     data = dataHandoffUtils.collect_data_rows(fovids=prefs.get("fovs"))
     log.info("Number of total cell rows: " + str(len(data)))
@@ -39,29 +47,51 @@ def get_data_groups(prefs):
     # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
     groups = []
     for index, (fovid, group) in enumerate(data_grouped):
-        groups.append(group)
+        groups.append(group.to_dict(orient="records"))
+    log.info("Converted groups to lists of dicts")
+
     return groups
 
 
-@task
 def process_fov_row(group, args, prefs):
-    rows = group.to_dict(orient="records")
-    createJobsFromCSV.do_image(args, prefs, rows)
+    rows = group  # .to_dict(orient="records")
+    log.info("STARTING FOV")
+    try:
+        createJobsFromCSV.do_image(args, prefs, rows)
+    except Exception as e:
+        log.error("=============================================")
+        if args.debug:
+            log.error("\n\n" + traceback.format_exc())
+            log.error("=============================================")
+        log.error("\n\n" + str(e) + "\n")
+        log.error("=============================================")
+        raise
+    log.info("COMPLETED FOV")
 
 
 @task
+def process_fov_rows(groups, args, prefs, distributed_executor_address):
+    # Batch process the FOVs
+    with DistributedHandler(distributed_executor_address) as handler:
+        handler.batched_map(
+            process_fov_row,
+            [g for g in groups],
+            [args for g in groups],
+            [prefs for g in groups],
+        )
+    return "Done"
+
+
 def validate_fov_rows(groups, args, prefs):
     validateProcessedImages.validate_rows(groups, args, prefs)
     return True
 
 
-@task
-def build_feature_data(prefs):
-    validateProcessedImages.build_feature_data(prefs)
+def build_feature_data(prefs, groups):
+    validateProcessedImages.build_feature_data(prefs, groups)
     return True
 
 
-@task
 def generate_cellline_def(prefs):
     generateCellLineDef.generate_cellline_def(prefs)
     return True
@@ -74,6 +104,80 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
+def send_done_email():
+    # send a notification that the data set is complete
+    message = """
+Subject: Dataset build complete
+
+dataset build complete
+"""
+    with smtplib.SMTP("aicas-1.corp.alleninstitute.org") as s:
+        s.sendmail(
+            "cellbrowsertools@alleninstitute.org",
+            "danielt@alleninstitute.org",
+            message,
+        )
+
+
+# return address and cluster
+def select_dask_executor(p, prefs):
+    if p.debug:
+        log.info(f"Debug flagged. Will use threads instead of Dask.")
+        return None, None
+    else:
+        if p.distributed:
+            # Create or get log dir
+            # Do not include ms
+            log_dir_name = datetime.now().isoformat().split(".")[0]
+            statusdir = prefs["out_status"]
+            log_dir = Path(f"{statusdir}/{log_dir_name}").expanduser()
+            # Log dir settings
+            log_dir.mkdir(parents=True, exist_ok=True)
+
+            # Configure dask config
+            dask.config.set(
+                {
+                    "scheduler.work-stealing": False,
+                    "logging.distributed.worker": "info",
+                }
+            )
+
+            # Create cluster
+            log.info("Creating SLURMCluster")
+            cluster = SLURMCluster(
+                cores=2,
+                memory="20GB",
+                queue="aics_cpu_general",
+                walltime="10:00:00",
+                local_directory=str(log_dir),
+                log_directory=str(log_dir),
+            )
+            log.info("Created SLURMCluster")
+
+            # Set worker scaling settings
+            cluster.scale(100)
+
+            # Use the port from the created connector to set executor address
+            distributed_executor_address = cluster.scheduler_address
+
+            # Log dashboard URI
+            log.info(f"Dask dashboard available at: {cluster.dashboard_link}")
+        else:
+            # Create local cluster
+            log.info("Creating LocalCluster")
+            cluster = LocalCluster()
+            log.info("Created LocalCluster")
+
+            # Set distributed_executor_address
+            distributed_executor_address = cluster.scheduler_address
+
+            # Log dashboard URI
+            log.info(f"Dask dashboard available at: {cluster.dashboard_link}")
+
+        # Use dask cluster
+        return distributed_executor_address, cluster
 
 
 def main():
@@ -109,64 +213,58 @@ def main():
         default=False,
         help="Use Prefect/Dask to do distributed compute.",
     )
-    p.add_argument(
-        "--port",
-        type=int,
-        default=99999,
-        help="Port over which to communicate with the Dask scheduler.",
-    )
 
     p = p.parse_args()
     # see createJobsFromCSV.do_image implementation:
     p.run = True
     p.cluster = False
 
-    # save_dir = str(Path(p.save_dir).resolve())
-    # overwrite = p.overwrite
-    # use_current_results = p.use_current_results
+    # read prefs
+    prefs = setup_prefs(p.prefs)
 
-    # log.info("Saving in {}".format(save_dir))
+    # set up execution environment
+    distributed_executor_address, cluster = select_dask_executor(p, prefs)
 
-    # if not os.path.exists(p.save_dir):
-    #     os.makedirs(p.save_dir)
+    # gather data set
+    groups = get_data_groups(prefs)
 
-    # https://github.com/AllenCellModeling/scheduler_tools/blob/master/remote_job_scheduling.md
-
-    if p.distributed:
-        from prefect.engine.executors import DaskExecutor
-
-        executor = DaskExecutor(
-            address="tcp://localhost:{PORT}".format(**{"PORT": p.port})
-        )
-    else:
-        from prefect.engine.executors import DaskExecutor
-
-        executor = DaskExecutor()
+    # for debugging/testing, uncomment this to run on a limited set of groups
+    # groups = groups[0:10]
 
     # This is the main function
-    with Flow("FOV_processing_pipeline") as flow:
+    with Flow("CFE_dataset_pipeline") as flow:
 
-        prefs = setup_prefs(p.prefs)
+        #####################################
+        # in a perfect world, I just do this:
+        #####################################
+        # process_fov_row_map = process_fov_row.map(
+        #     group=groups, args=unmapped(p), prefs=unmapped(prefs)
+        # )
+        #####################################
+        # but the world is not perfect:
+        #####################################
+        process_fov_rows(groups, p, prefs, distributed_executor_address)
 
-        groups = get_data_groups(prefs)
-
-        process_fov_row_map = process_fov_row.map(
-            group=groups, args=unmapped(p), prefs=unmapped(prefs)
-        )
-
-        validate_result = validate_fov_rows(
-            groups, p, prefs, upstream_tasks=[process_fov_row_map]
-        )
-
-        my_return_value = build_feature_data(prefs, upstream_tasks=[validate_result])
-
-        generate_cellline_def(prefs, upstream_tasks=[my_return_value])
-
+    print("************************************************")
+    print("***Submission complete.  Beginning execution.***")
+    print("************************************************")
     # flow.run can return a state object to be used to get results
-    flow.run(executor=executor)
+    flow.run()
 
-    # pull some result data (return values) back into this host's process
-    # df_stats = state.result[flow.get_tasks(name="load_stats")[0]].result
+    print("************************************************")
+    print("***Flow execution complete.                  ***")
+    print("************************************************")
+    if cluster is not None:
+        cluster.close()
+
+    validate_fov_rows(groups, p, prefs)
+    print("validate_fov_rows done")
+    build_feature_data(prefs, groups)
+    print("build_feature_data done")
+    generate_cellline_def(prefs)
+    print("generate_cellline_def done")
+
+    send_done_email()
 
     log.info("Done!")
 

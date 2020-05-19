@@ -2,6 +2,7 @@
 
 from . import dataset_constants
 from . import dataHandoffUtils
+import json
 import sys
 import logging
 import os
@@ -10,8 +11,9 @@ import traceback
 import pprint
 
 # LabKey API
-from labkey.utils import create_server_context
-import labkey.query as lk
+import labkey
+from lkaccess import LabKey
+import lkaccess.contexts
 
 ###############################################################################
 # Global Objects
@@ -90,74 +92,33 @@ class Args(object):
 ###############################################################################
 
 
-class LabkeyServer(object):
-    LABKEY_CONTEXT = "labkey"
-    LABKEY_PROJECT = "/AICS"
-
-    SCHEMA_CELLLINES = "celllines"
-    SCHEMA_FMS = "fms"
-
-    CONTAINER_MIC_HANDOFFS = LABKEY_PROJECT + "/MicroscopyHandoffs"
-
-    def __init__(self, host):
-        self.host = host
-        self._ensure_netrc()
-        # Setup Context
-        self.context = create_server_context(
-            self.host, self.LABKEY_PROJECT, self.LABKEY_CONTEXT, use_ssl=False
-        )
-
-    @staticmethod
-    def _ensure_netrc():
-        """
-        Eventually we need to allow creation/update of this file to simplify setup for users.
-        :return:
-        """
-        # This file must exist for uploads to proceed
-        home = os.path.expanduser("~")
-        netrc = os.path.join(home, "_netrc" if os.name == "nt" else ".netrc")
-        if not os.path.exists(netrc):
-            raise Exception(
-                "{} was not found. It must exist with appropriate credentials for uploading data to labkey.".format(
-                    netrc
-                )
-            )
-
-
-###############################################################################
-
-
-def use_select_rows_cellline_name_to_protein_name(server, prefs):
-    import json
-
-    results = lk.select_rows(
-        server.context,
-        server.SCHEMA_CELLLINES,
-        "CellLineDefinition",
+def generate_cellline_def(prefs):
+    print("init labkey connection")
+    lk = LabKey(server_context=lkaccess.contexts.PROD)
+    print("issue celllines query")
+    results = lk.select_rows_as_list(
+        schema_name="celllines",
+        query_name="CellLineDefinition",
+        columns="CellLineId/Name, ProteinId/Name, StructureId/Name, ProteinId/DisplayName",
         filter_array=[
-            lk.QueryFilter(
-                "CellLineId/Name", "AICS-", lk.QueryFilter.Types.STARTS_WITH
+            labkey.query.QueryFilter(
+                "CellLineId/Name", "AICS-", labkey.query.QueryFilter.Types.STARTS_WITH
             ),
-            lk.QueryFilter("ProteinId/Name", [""], lk.QueryFilter.Types.NOT_IN),
-        ],
-        columns=[
-            "CellLineId/Name, ProteinId/Name, StructureId/Name, ProteinId/DisplayName"
+            labkey.query.QueryFilter(
+                "ProteinId/Name", [""], labkey.query.QueryFilter.Types.NOT_IN
+            ),
         ],
     )
-    rows = results["rows"]
+    rows = results
     log.debug(PP.pformat(rows))
     log.debug("Row Count {}: ".format(len(rows)))
 
+    print("saving cellline results")
     with open(
         os.path.join(prefs.get("out_dir"), dataset_constants.CELL_LINE_DATA_FILENAME),
         "w",
     ) as outfile:
         json.dump(rows, outfile, indent=4)
-
-
-def generate_cellline_def(prefs):
-    server = LabkeyServer("aics")
-    use_select_rows_cellline_name_to_protein_name(server, prefs)
 
 
 ###############################################################################
