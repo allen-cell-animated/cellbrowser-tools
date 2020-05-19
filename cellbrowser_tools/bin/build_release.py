@@ -37,7 +37,6 @@ def setup_prefs(p):
     return prefs
 
 
-# @task
 def get_data_groups(prefs):
     data = dataHandoffUtils.collect_data_rows(fovids=prefs.get("fovs"))
     log.info("Number of total cell rows: " + str(len(data)))
@@ -79,7 +78,6 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
-            batch_size=30,
         )
     return "Done"
 
@@ -229,8 +227,9 @@ def main():
 
     # gather data set
     groups = get_data_groups(prefs)
-    # run on a limited set of groups
-    groups = groups[0:10]
+
+    # for debugging/testing, uncomment this to run on a limited set of groups
+    # groups = groups[0:10]
 
     # This is the main function
     with Flow("CFE_dataset_pipeline") as flow:

@@ -39,8 +39,8 @@ dev_requirements = [
 ]
 
 requirements = [
-    "aics_dask_utils==0.1.0",
-    "aicsimageio==3.1.4",
+    "aics_dask_utils==0.2.0",
+    "aicsimageio==3.2.0",
     "aicsimageprocessing==0.7.3",
     "bokeh==2.0.2",
     "dask[bag]==2.12.0",
@@ -62,7 +62,7 @@ extra_requirements = {
     "test": test_requirements,
     "setup": setup_requirements,
     "dev": dev_requirements,
-    "all": [*requirements, *test_requirements, *setup_requirements, *dev_requirements,],
+    "all": [*requirements, *test_requirements, *setup_requirements, *dev_requirements],
 }
 
 setup(
