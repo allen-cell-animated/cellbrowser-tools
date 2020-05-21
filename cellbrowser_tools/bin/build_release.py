@@ -9,6 +9,7 @@ import traceback
 from datetime import datetime
 import os
 from pathlib import Path
+import shutil
 import smtplib
 
 import dask
@@ -140,8 +141,8 @@ def validate_fov_rows(groups, args, prefs):
     return True
 
 
-def submit_validate_rows(prefs, job_ids):
-    command = "build_release --step validate"
+def submit_validate_rows(prefs, prefspath, job_ids):
+    command = f"build_release {prefspath} --step validate"
     deps = job_ids
     new_job_ids = jobScheduler.slurp_commands(
         [command], prefs, name="validate", deps=deps
@@ -149,8 +150,8 @@ def submit_validate_rows(prefs, job_ids):
     return new_job_ids
 
 
-def submit_build_feature_data(prefs, job_ids):
-    command = "build_release --step featuredata"
+def submit_build_feature_data(prefs, prefspath, job_ids):
+    command = f"build_release {prefspath} --step featuredata"
     deps = job_ids
     new_job_ids = jobScheduler.slurp_commands(
         [command], prefs, name="featuredata", deps=deps
@@ -158,8 +159,8 @@ def submit_build_feature_data(prefs, job_ids):
     return new_job_ids
 
 
-def submit_generate_celline_defs(prefs, job_ids):
-    command = "build_release --step celllines"
+def submit_generate_celline_defs(prefs, prefspath, job_ids):
+    command = f"build_release {prefspath} --step celllines"
     deps = job_ids
     new_job_ids = jobScheduler.slurp_commands(
         [command], prefs, name="celllines", deps=deps
@@ -167,8 +168,8 @@ def submit_generate_celline_defs(prefs, job_ids):
     return new_job_ids
 
 
-def submit_done(prefs, job_ids):
-    command = "build_release --step done"
+def submit_done(prefs, prefspath, job_ids):
+    command = f"build_release {prefspath} --step done"
     deps = job_ids
     new_job_ids = jobScheduler.slurp_commands([command], prefs, name="done", deps=deps)
     return new_job_ids
@@ -316,13 +317,18 @@ def build_release_async(p, prefs):
     # gather data set
     groups = get_data_groups(prefs)
 
+    # copy the prefs file to a location where it can be found for all steps.
+    statusdir = prefs["out_status"]
+    prefspath = Path(f"{statusdir}/prefs.json").expanduser()
+    shutil.copyfile(p.prefs, prefspath)
+
     # use SLURM sbatch submission to schedule all the steps
     # each step will run build_release.py with a step id
     job_ids = submit_fov_rows(p, prefs, groups)
-    job_ids = submit_validate_rows(prefs, job_ids)
-    job_ids = submit_build_feature_data(prefs, job_ids)
-    job_ids = submit_generate_celline_defs(prefs, job_ids)
-    job_ids = submit_done(prefs, job_ids)
+    job_ids = submit_validate_rows(prefs, prefspath, job_ids)
+    job_ids = submit_build_feature_data(prefs, prefspath, job_ids)
+    job_ids = submit_generate_celline_defs(prefs, prefspath, job_ids)
+    job_ids = submit_done(prefs, prefspath, job_ids)
     log.info("All Jobs Submitted!")
 
 
@@ -348,6 +354,13 @@ def parse_args():
         help="Use Prefect/Dask to do distributed compute.",
     )
 
+    p.add_argument(
+        "--sbatch",
+        type=str2bool,
+        default=False,
+        help="Use SBATCH to submit computation graph.",
+    )
+
     # internal use
     p.add_argument("step", type=BuildStep, choices=list(BuildStep))
 
@@ -371,6 +384,9 @@ def main():
     if p.distributed:
         # use Dask/Prefect distributed build
         build_release_sync(p, prefs)
+    elif p.sbatch:
+        # use SBATCH submission
+        build_release_async(p, prefs)
     else:
         # if a step was passed in, then we need to run that step!
         if p.step == BuildStep.VALIDATE:
@@ -387,9 +403,6 @@ def main():
         elif p.step == BuildStep.DONE:
             send_done_email()
             log.info("Done!")
-        else:
-            # use SBATCH submission
-            build_release_async(p, prefs)
 
     return
 
