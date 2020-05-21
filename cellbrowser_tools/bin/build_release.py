@@ -141,7 +141,7 @@ def validate_fov_rows(groups, args, prefs):
 
 
 def submit_validate_rows(prefs, job_ids):
-    command = "python build_release.py --step validate"
+    command = "build_release --step validate"
     deps = job_ids
     new_job_ids = jobScheduler.slurp_commands(
         [command], prefs, name="validate", deps=deps
@@ -150,7 +150,7 @@ def submit_validate_rows(prefs, job_ids):
 
 
 def submit_build_feature_data(prefs, job_ids):
-    command = "python build_release.py --step featuredata"
+    command = "build_release --step featuredata"
     deps = job_ids
     new_job_ids = jobScheduler.slurp_commands(
         [command], prefs, name="featuredata", deps=deps
@@ -159,7 +159,7 @@ def submit_build_feature_data(prefs, job_ids):
 
 
 def submit_generate_celline_defs(prefs, job_ids):
-    command = "python build_release.py --step celllines"
+    command = "build_release --step celllines"
     deps = job_ids
     new_job_ids = jobScheduler.slurp_commands(
         [command], prefs, name="celllines", deps=deps
@@ -168,7 +168,7 @@ def submit_generate_celline_defs(prefs, job_ids):
 
 
 def submit_done(prefs, job_ids):
-    command = "python build_release.py --step done"
+    command = "build_release --step done"
     deps = job_ids
     new_job_ids = jobScheduler.slurp_commands([command], prefs, name="done", deps=deps)
     return new_job_ids
