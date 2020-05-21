@@ -1,5 +1,5 @@
 {
-  "out_status": "//allen/aics/animated-cell/Dan/cellbrowser-tools/processing",
+  "out_status": "//allen/aics/animated-cell/Dan/cellbrowser-tools/processing/dataset_1.5",
   "out_dir": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_1.5.0",
 
   "script_dir": "scripts_slurm",
@@ -9,7 +9,7 @@
     "partition": "aics_cpu_general",
     "time": "03:00:00",
     "cpus-per-task": 1,
-    "output": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/out/FOV-%A_%a.out",
-    "error": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/err/FOV-%A_%a.err"
+    "output": "out/FOV-%A_%a.out",
+    "error": "err/FOV-%A_%a.err"
   }
 }
