@@ -12,7 +12,7 @@ import jinja2
 # srun $(sed -n ${SLURM_ARRAY_TASK_ID}p cmds.txt)
 # or:
 # srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID cmds.txt | tail -n 1)"
-def slurp_commands(commandlist, prefs, name="", do_run=True):
+def slurp_commands(commandlist, prefs, name="", do_run=True, deps=[]):
     # adding this unique id lets me submit over and over and know that i'm not overwriting a key data file
     unique_id = "%08x" % random.randrange(16 ** 8)
 
@@ -59,9 +59,15 @@ def slurp_commands(commandlist, prefs, name="", do_run=True):
 
     jobids = []
     if do_run or len(scripts) == 1:
+        depstring = ""
+        if len(deps) > 0:
+            depliststring = ":".join([str(x) for x in deps])
+            depstring = f"-d=afterany:{depliststring}"
         for script in scripts:
             result = subprocess.run(
-                ["sbatch", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+                ["sbatch", depstring, script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
             )
             output = result.stdout.decode("utf-8")
             code = result.returncode

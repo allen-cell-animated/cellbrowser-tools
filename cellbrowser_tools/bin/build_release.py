@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+from enum import Enum
+import json
 import logging
 import traceback
 from datetime import datetime
+import os
 from pathlib import Path
 import smtplib
 
@@ -16,7 +19,9 @@ from distributed import LocalCluster
 from cellbrowser_tools import (
     createJobsFromCSV,
     dataHandoffUtils,
+    dataset_constants,
     generateCellLineDef,
+    jobScheduler,
     validateProcessedImages,
 )
 from dask_jobqueue import SLURMCluster
@@ -30,6 +35,16 @@ logging.basicConfig(
 )
 
 ###############################################################################
+
+
+class BuildStep(Enum):
+    VALIDATE = "validate"
+    FEATUREDATA = "featuredata"
+    CELLLINES = "celllines"
+    DONE = "done"
+
+    def __str__(self):
+        return self.value
 
 
 def setup_prefs(p):
@@ -49,6 +64,12 @@ def get_data_groups(prefs):
     for index, (fovid, group) in enumerate(data_grouped):
         groups.append(group.to_dict(orient="records"))
     log.info("Converted groups to lists of dicts")
+
+    with open(
+        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "w"
+    ) as savefile:
+        json.dump(groups, savefile)
+    log.info("Saved dataset to json")
 
     return groups
 
@@ -82,9 +103,58 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
     return "Done"
 
 
+def submit_fov_rows(args, prefs, groups):
+    # gather cluster commands and submit in batch
+    jobdata_list = []
+    for index, rows in enumerate(groups):
+        # print(
+        #     "(" + str(index) + "/" + str(total_jobs) + ") : Processing " + " : " + fovid
+        # )
+        jobdata = createJobsFromCSV.do_image(args, prefs, rows)
+        jobdata_list.append(jobdata)
+
+    print("SUBMITTING " + str(len(groups)) + " JOBS")
+    job_ids = jobScheduler.slurp_commands(jobdata_list, prefs, name="fovs")
+    return job_ids
+
+
 def validate_fov_rows(groups, args, prefs):
     validateProcessedImages.validate_rows(groups, args, prefs)
     return True
+
+
+def submit_validate_rows(prefs, job_ids):
+    command = "python build_release.py --step validate"
+    deps = job_ids
+    new_job_ids = jobScheduler.slurp_commands(
+        [command], prefs, name="validate", deps=deps
+    )
+    return new_job_ids
+
+
+def submit_build_feature_data(prefs, job_ids):
+    command = "python build_release.py --step featuredata"
+    deps = job_ids
+    new_job_ids = jobScheduler.slurp_commands(
+        [command], prefs, name="featuredata", deps=deps
+    )
+    return new_job_ids
+
+
+def submit_generate_celline_defs(prefs, job_ids):
+    command = "python build_release.py --step celllines"
+    deps = job_ids
+    new_job_ids = jobScheduler.slurp_commands(
+        [command], prefs, name="celllines", deps=deps
+    )
+    return new_job_ids
+
+
+def submit_done(prefs, job_ids):
+    command = "python build_release.py --step done"
+    deps = job_ids
+    new_job_ids = jobScheduler.slurp_commands([command], prefs, name="done", deps=deps)
+    return new_job_ids
 
 
 def build_feature_data(prefs, groups):
@@ -180,56 +250,15 @@ def select_dask_executor(p, prefs):
         return distributed_executor_address, cluster
 
 
-def main():
-    """
-    Dask/Prefect distributed command for running pipeline
-    """
-
-    p = argparse.ArgumentParser(prog="process", description="Process the FOV pipeline")
-
-    p.add_argument("prefs", nargs="?", default="prefs.json", help="prefs file")
-
-    p.add_argument(
-        "-s",
-        "--save_dir",
-        action="store",
-        default="./results/",
-        help="Save directory for results",
-    )
-
-    p.add_argument(
-        "--n_fovs", type=int, default=100, help="Number of fov's per cell line to use."
-    )
-    p.add_argument(
-        "--debug",
-        type=str2bool,
-        default=False,
-        help="Do debugging things (currently applies only to distributed)",
-    )
-    # distributed stuff
-    p.add_argument(
-        "--distributed",
-        type=str2bool,
-        default=False,
-        help="Use Prefect/Dask to do distributed compute.",
-    )
-
-    p = p.parse_args()
-    # see createJobsFromCSV.do_image implementation:
-    p.run = True
-    p.cluster = False
-
-    # read prefs
-    prefs = setup_prefs(p.prefs)
-
-    # set up execution environment
-    distributed_executor_address, cluster = select_dask_executor(p, prefs)
-
+def build_release_sync(p, prefs):
     # gather data set
     groups = get_data_groups(prefs)
 
     # for debugging/testing, uncomment this to run on a limited set of groups
     # groups = groups[0:10]
+
+    # set up execution environment
+    distributed_executor_address, cluster = select_dask_executor(p, prefs)
 
     # This is the main function
     with Flow("CFE_dataset_pipeline") as flow:
@@ -267,6 +296,83 @@ def main():
     send_done_email()
 
     log.info("Done!")
+
+
+def build_release_async(p, prefs):
+    # gather data set
+    groups = get_data_groups(prefs)
+
+    # use SLURM sbatch submission to schedule all the steps
+    # each step will run build_release.py with a step id
+    job_ids = submit_fov_rows(p, prefs, groups)
+    job_ids = submit_validate_rows(prefs, job_ids)
+    job_ids = submit_build_feature_data(prefs, job_ids)
+    job_ids = submit_generate_celline_defs(prefs, job_ids)
+    job_ids = submit_done(prefs, job_ids)
+    log.info("All Jobs Submitted!")
+
+
+def parse_args():
+    p = argparse.ArgumentParser(prog="process", description="Process the FOV pipeline")
+
+    p.add_argument("prefs", nargs="?", default="prefs.json", help="prefs file")
+
+    p.add_argument(
+        "--n_fovs", type=int, default=100, help="Number of fov's per cell line to use."
+    )
+    p.add_argument(
+        "--debug",
+        type=str2bool,
+        default=False,
+        help="Do debugging things (currently applies only to distributed)",
+    )
+    # distributed stuff
+    p.add_argument(
+        "--distributed",
+        type=str2bool,
+        default=False,
+        help="Use Prefect/Dask to do distributed compute.",
+    )
+
+    p.add_argument("step", type=BuildStep, choices=list(BuildStep))
+
+    p = p.parse_args()
+    # see createJobsFromCSV.do_image implementation:
+    p.run = True
+    p.cluster = False
+    return p
+
+
+def main():
+    """
+    Dask/Prefect distributed command for running pipeline
+    """
+
+    p = parse_args()
+
+    # read prefs
+    prefs = setup_prefs(p.prefs)
+
+    if p.distributed:
+        # use Dask/Prefect distributed build
+        build_release_sync(p, prefs)
+    else:
+        # if a step was passed in, then we need to run that step!
+        if p.step == BuildStep.VALIDATE:
+            validate_fov_rows(groups, p, prefs)
+            print("validate_fov_rows done")
+        elif p.step == BuildStep.FEATUREDATA:
+            build_feature_data(prefs, groups)
+            print("build_feature_data done")
+        elif p.step == BuildStep.CELLLINES:
+            generate_cellline_def(prefs)
+            print("generate_cellline_def done")
+        elif p.step == BuildStep.DONE:
+            send_done_email()
+            log.info("Done!")
+        else:
+            # use SBATCH submission
+            build_release_async(p, prefs)
 
     return
 
