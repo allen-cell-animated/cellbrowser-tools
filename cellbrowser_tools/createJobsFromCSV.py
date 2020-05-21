@@ -7,7 +7,7 @@ from . import cellJob
 from . import dataHandoffUtils as lkutils
 from . import jobScheduler
 from .dataset_constants import AugmentedDataField, DataField
-from .processImageWithSegmentation import do_main_image_with_celljob
+from .fov_processing import do_main_image_with_celljob
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
@@ -64,7 +64,7 @@ def make_json(jobname, info, prefs):
     with open(jsonname, "w") as fp:
         json.dump(info.__dict__, fp)
 
-    return f"python ./processImageWithSegmentation.py {jsonname}"
+    return f"processImageWithSegmentation {jsonname}"
 
 
 def do_image(args, prefs, rows):
