@@ -52,6 +52,23 @@ def setup_prefs(p):
     return prefs
 
 
+def cache_dataset(prefs, groups):
+    with open(
+        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "w"
+    ) as savefile:
+        json.dump(groups, savefile)
+    log.info("Saved dataset to json")
+
+
+def uncache_dataset(prefs):
+    groups = []
+    with open(
+        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "r"
+    ) as savefile:
+        groups = json.load(savefile)
+    return groups
+
+
 def get_data_groups(prefs):
     data = dataHandoffUtils.collect_data_rows(fovids=prefs.get("fovs"))
     log.info("Number of total cell rows: " + str(len(data)))
@@ -65,11 +82,11 @@ def get_data_groups(prefs):
         groups.append(group.to_dict(orient="records"))
     log.info("Converted groups to lists of dicts")
 
-    with open(
-        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "w"
-    ) as savefile:
-        json.dump(groups, savefile)
-    log.info("Saved dataset to json")
+    # for debugging/testing, uncomment this to run on a limited set of groups
+    # groups = groups[0:10]
+
+    # make dataset available as a file for later runs
+    cache_dataset(prefs, groups)
 
     return groups
 
@@ -254,9 +271,6 @@ def build_release_sync(p, prefs):
     # gather data set
     groups = get_data_groups(prefs)
 
-    # for debugging/testing, uncomment this to run on a limited set of groups
-    # groups = groups[0:10]
-
     # set up execution environment
     distributed_executor_address, cluster = select_dask_executor(p, prefs)
 
@@ -334,6 +348,7 @@ def parse_args():
         help="Use Prefect/Dask to do distributed compute.",
     )
 
+    # internal use
     p.add_argument("step", type=BuildStep, choices=list(BuildStep))
 
     p = p.parse_args()
@@ -359,9 +374,11 @@ def main():
     else:
         # if a step was passed in, then we need to run that step!
         if p.step == BuildStep.VALIDATE:
+            groups = uncache_dataset(prefs)
             validate_fov_rows(groups, p, prefs)
             print("validate_fov_rows done")
         elif p.step == BuildStep.FEATUREDATA:
+            groups = uncache_dataset(prefs)
             build_feature_data(prefs, groups)
             print("build_feature_data done")
         elif p.step == BuildStep.CELLLINES:
