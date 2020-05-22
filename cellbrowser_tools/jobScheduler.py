@@ -71,15 +71,18 @@ def slurp_commands(commandlist, prefs, name="", do_run=True, deps=[]):
 
     jobids = []
     if do_run or len(scripts) == 1:
+        killflag = "--kill-on-invalid-dep=yes"
         depstring = ""
         if len(deps) > 0:
             depliststring = ":".join([str(x) for x in deps])
             depstring = f"-d=afterany:{depliststring}"
         for script in scripts:
+            if depstring:
+                sbatch_cmd = ["sbatch", depstring, killflag, script]
+            else:
+                sbatch_cmd = ["sbatch", script]
             result = subprocess.run(
-                ["sbatch", depstring, script] if depstring else ["sbatch", script],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                sbatch_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             )
             print(result.args)
             output = result.stdout.decode("utf-8")
