@@ -363,7 +363,7 @@ def parse_args():
     )
 
     # internal use
-    p.add_argument("step", type=BuildStep, choices=list(BuildStep), default="None")
+    p.add_argument("--step", type=BuildStep, choices=list(BuildStep), default="None")
 
     p = p.parse_args()
     # see createJobsFromCSV.do_image implementation:
