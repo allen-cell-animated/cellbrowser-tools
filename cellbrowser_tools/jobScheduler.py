@@ -51,7 +51,8 @@ def slurp_commands(commandlist, prefs, name="", do_run=True, deps=[]):
             "cwd": os.getcwd(),
         }
 
-        template_path = str(Path(__file__).parent)
+        template_path = str(Path(__file__).parent.absolute())
+        print(f"jinja template path : {template_path}")
         j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_path))
 
         with open(script, "w") as f:
