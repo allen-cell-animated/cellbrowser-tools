@@ -39,6 +39,7 @@ logging.basicConfig(
 
 
 class BuildStep(Enum):
+    NONE = "None"
     VALIDATE = "validate"
     FEATUREDATA = "featuredata"
     CELLLINES = "celllines"
@@ -362,7 +363,7 @@ def parse_args():
     )
 
     # internal use
-    p.add_argument("step", type=BuildStep, choices=list(BuildStep))
+    p.add_argument("step", type=BuildStep, choices=list(BuildStep), default="None")
 
     p = p.parse_args()
     # see createJobsFromCSV.do_image implementation:
