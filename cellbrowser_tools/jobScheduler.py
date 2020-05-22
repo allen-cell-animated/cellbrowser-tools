@@ -76,6 +76,7 @@ def slurp_commands(commandlist, prefs, name="", do_run=True, deps=[]):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
+            print(result.args)
             output = result.stdout.decode("utf-8")
             code = result.returncode
             print(f"{script.name} output:")
