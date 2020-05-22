@@ -30,12 +30,12 @@ def slurp_commands(commandlist, prefs, name="", do_run=True, deps=[]):
         job_prefs["output"] = os.path.join(
             prefs["out_status"], prefs["script_dir"], job_prefs["output"]
         )
-        os.makedirs(job_prefs["output"], exist_ok=True)
+        os.makedirs(os.path.dirname(job_prefs["output"]), exist_ok=True)
 
         job_prefs["error"] = os.path.join(
             prefs["out_status"], prefs["script_dir"], job_prefs["error"]
         )
-        os.makedirs(job_prefs["error"], exist_ok=True)
+        os.makedirs(os.path.dirname(job_prefs["error"]), exist_ok=True)
 
         max_simultaneous_jobs = job_prefs.pop("max_simultaneous_jobs")
 
