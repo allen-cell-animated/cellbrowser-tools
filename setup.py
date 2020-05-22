@@ -79,7 +79,10 @@ setup(
     data_files=[("", ["cellbrowser_tools/batch_job.j2"])],
     description="Build dataset for release in Cell Feature Explorer",
     entry_points={
-        "console_scripts": ["build_release=cellbrowser_tools.bin.build_release:main"],
+        "console_scripts": [
+            "build_release=cellbrowser_tools.bin.build_release:main",
+            "processImageWithSegmentation=cellbrowser_tools.bin.processImageWithSegmentation:main",
+        ],
     },
     install_requires=requirements,
     license="Allen Institute Software License",
