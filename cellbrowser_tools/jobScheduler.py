@@ -75,7 +75,7 @@ def slurp_commands(commandlist, prefs, name="", do_run=True, deps=[]):
         depstring = ""
         if len(deps) > 0:
             depliststring = ":".join([str(x) for x in deps])
-            depstring = f"-d=afterany:{depliststring}"
+            depstring = f"--dependency=afterany:{depliststring}"
         for script in scripts:
             if depstring:
                 sbatch_cmd = ["sbatch", depstring, killflag, script]
