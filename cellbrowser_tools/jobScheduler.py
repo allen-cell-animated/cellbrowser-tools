@@ -26,12 +26,17 @@ def slurp_commands(commandlist, prefs, name="", do_run=True, deps=[]):
     for i, commands in enumerate(command_lists):
 
         job_prefs = prefs["job_prefs"].copy()
+
         job_prefs["output"] = os.path.join(
             prefs["out_status"], prefs["script_dir"], job_prefs["output"]
         )
+        os.makedirs(job_prefs["output"], exist_ok=True)
+
         job_prefs["error"] = os.path.join(
             prefs["out_status"], prefs["script_dir"], job_prefs["error"]
         )
+        os.makedirs(job_prefs["error"], exist_ok=True)
+
         max_simultaneous_jobs = job_prefs.pop("max_simultaneous_jobs")
 
         slurm_args = []
