@@ -72,7 +72,7 @@ def slurp_commands(commandlist, prefs, name="", do_run=True, deps=[]):
             depstring = f"-d=afterany:{depliststring}"
         for script in scripts:
             result = subprocess.run(
-                ["sbatch", depstring, script],
+                ["sbatch", depstring, script] if depstring else ["sbatch", script],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
