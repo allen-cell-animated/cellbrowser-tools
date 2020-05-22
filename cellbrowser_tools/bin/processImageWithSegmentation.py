@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-from cellbrowser_tools import fov_processing
-
-from . import cellJob
+from cellbrowser_tools import cellJob, fov_processing
 
 import argparse
 import json
