@@ -386,6 +386,8 @@ def main():
         # use Dask/Prefect distributed build
         build_release_sync(p, prefs)
     elif p.sbatch:
+        p.run = False
+        p.cluster = True
         # use SBATCH submission
         build_release_async(p, prefs)
     else:
