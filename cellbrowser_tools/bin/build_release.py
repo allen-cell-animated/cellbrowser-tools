@@ -71,7 +71,7 @@ def uncache_dataset(prefs):
     return groups
 
 
-def get_data_groups(prefs):
+def get_data_groups(prefs, n=0):
     data = dataHandoffUtils.collect_data_rows(fovids=prefs.get("fovs"))
     log.info("Number of total cell rows: " + str(len(data)))
     # group by fov id
@@ -84,8 +84,9 @@ def get_data_groups(prefs):
         groups.append(group.to_dict(orient="records"))
     log.info("Converted groups to lists of dicts")
 
-    # for debugging/testing, uncomment this to run on a limited set of groups
-    groups = groups[0:1000]
+    # first N fovs
+    if n > 0:
+        groups = groups[0:n]
 
     # make dataset available as a file for later runs
     cache_dataset(prefs, groups)
@@ -265,7 +266,7 @@ def select_dask_executor(p, prefs):
 
 def build_release_sync(p, prefs):
     # gather data set
-    groups = get_data_groups(prefs)
+    groups = get_data_groups(prefs, p.n)
 
     # set up execution environment
     distributed_executor_address, cluster = select_dask_executor(p, prefs)
@@ -310,7 +311,7 @@ def build_release_sync(p, prefs):
 
 def build_release_async(p, prefs):
     # gather data set
-    groups = get_data_groups(prefs)
+    groups = get_data_groups(prefs, p.n)
 
     # copy the prefs file to a location where it can be found for all steps.
     statusdir = prefs["out_status"]
@@ -332,9 +333,7 @@ def parse_args():
 
     p.add_argument("prefs", nargs="?", default="prefs.json", help="prefs file")
 
-    p.add_argument(
-        "--n_fovs", type=int, default=100, help="Number of fov's per cell line to use."
-    )
+    p.add_argument("--n", type=int, default=0, help="Number of fov's to process.")
     p.add_argument(
         "--debug",
         type=str2bool,
