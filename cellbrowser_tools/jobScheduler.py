@@ -57,11 +57,13 @@ def _submit(sbatch_cmd, scriptname, deps):
 
 
 # return an array of one single jobid
-def submit_one(commandstring, prefs, name="", do_run=True, deps=[]):
+def submit_one(commandstring, prefs, name="", do_run=True, deps=[], mem=""):
     # adding this unique id lets me submit over and over and know that i'm not overwriting a key data file
     unique_id = "%08x" % random.randrange(16 ** 8)
 
     job_prefs = _job_prefs_from_prefs(prefs, name, array=False)
+    if mem:
+        job_prefs["mem-per-cpu"] = mem
 
     max_simultaneous_jobs = job_prefs.pop("max_simultaneous_jobs")
 

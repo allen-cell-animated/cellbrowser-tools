@@ -150,7 +150,9 @@ def submit_validate_rows(prefs, prefspath, job_ids):
 def submit_build_feature_data(prefs, prefspath, job_ids):
     command = f"build_release {prefspath} --step featuredata"
     deps = job_ids
-    new_job_ids = jobScheduler.submit_one(command, prefs, name="featuredata", deps=deps)
+    new_job_ids = jobScheduler.submit_one(
+        command, prefs, name="featuredata", deps=deps, mem="32G"
+    )
     return new_job_ids
 
 
