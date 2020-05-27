@@ -119,6 +119,7 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
+            batch_size=100,
         )
     return "Done"
 

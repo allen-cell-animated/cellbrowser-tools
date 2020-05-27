@@ -7,9 +7,9 @@
   "job_prefs": {
     "max_simultaneous_jobs": 100,
     "partition": "aics_cpu_general",
-    "time": "03:00:00",
+    "time": "06:00:00",
     "cpus-per-task": 1,
-    "mem-per-cpu": "8G",
+    "mem-per-cpu": "16G",
     "output": "out/",
     "error": "err/"
   }
