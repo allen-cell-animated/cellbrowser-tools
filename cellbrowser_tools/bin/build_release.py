@@ -85,7 +85,7 @@ def get_data_groups(prefs):
     log.info("Converted groups to lists of dicts")
 
     # for debugging/testing, uncomment this to run on a limited set of groups
-    groups = groups[0:10]
+    groups = groups[0:1000]
 
     # make dataset available as a file for later runs
     cache_dataset(prefs, groups)
