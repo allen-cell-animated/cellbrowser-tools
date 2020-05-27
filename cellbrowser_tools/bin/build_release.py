@@ -133,7 +133,7 @@ def submit_fov_rows(args, prefs, groups):
         jobdata_list.append(jobdata)
 
     print("SUBMITTING " + str(len(groups)) + " JOBS")
-    job_ids = jobScheduler.slurp_commands(jobdata_list, prefs, name="fovs")
+    job_ids = jobScheduler.submit_batch(jobdata_list, prefs, name="fovs")
     return job_ids
 
 
@@ -145,34 +145,28 @@ def validate_fov_rows(groups, args, prefs):
 def submit_validate_rows(prefs, prefspath, job_ids):
     command = f"build_release {prefspath} --step validate"
     deps = job_ids
-    new_job_ids = jobScheduler.slurp_commands(
-        [command], prefs, name="validate", deps=deps
-    )
+    new_job_ids = jobScheduler.submit_one(command, prefs, name="validate", deps=deps)
     return new_job_ids
 
 
 def submit_build_feature_data(prefs, prefspath, job_ids):
     command = f"build_release {prefspath} --step featuredata"
     deps = job_ids
-    new_job_ids = jobScheduler.slurp_commands(
-        [command], prefs, name="featuredata", deps=deps
-    )
+    new_job_ids = jobScheduler.submit_one(command, prefs, name="featuredata", deps=deps)
     return new_job_ids
 
 
 def submit_generate_celline_defs(prefs, prefspath, job_ids):
     command = f"build_release {prefspath} --step celllines"
     deps = job_ids
-    new_job_ids = jobScheduler.slurp_commands(
-        [command], prefs, name="celllines", deps=deps
-    )
+    new_job_ids = jobScheduler.submit_one(command, prefs, name="celllines", deps=deps)
     return new_job_ids
 
 
 def submit_done(prefs, prefspath, job_ids):
     command = f"build_release {prefspath} --step done"
     deps = job_ids
-    new_job_ids = jobScheduler.slurp_commands([command], prefs, name="done", deps=deps)
+    new_job_ids = jobScheduler.submit_one(command, prefs, name="done", deps=deps)
     return new_job_ids
 
 

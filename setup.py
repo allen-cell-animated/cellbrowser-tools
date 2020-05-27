@@ -76,7 +76,9 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
-    data_files=[("", ["cellbrowser_tools/batch_job.j2"])],
+    data_files=[
+        ("", ["cellbrowser_tools/batch_job.j2", "cellbrowser_tools/single_job.j2"])
+    ],
     description="Build dataset for release in Cell Feature Explorer",
     entry_points={
         "console_scripts": [

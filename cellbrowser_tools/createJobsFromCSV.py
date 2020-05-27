@@ -148,7 +148,7 @@ def process_images(args, prefs):
             jobdata_list.append(jobdata)
 
         print("SUBMITTING " + str(total_jobs) + " JOBS")
-        jobScheduler.slurp_commands(jobdata_list, prefs, name="fovs")
+        jobScheduler.submit_batch(jobdata_list, prefs, name="fovs")
     else:
         # run serially
         for index, (fovid, group) in enumerate(data_grouped):

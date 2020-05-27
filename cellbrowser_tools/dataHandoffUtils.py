@@ -9,7 +9,6 @@ import os
 import pandas as pd
 from quilt3 import Package
 import re
-import shutil
 import sys
 
 logging.basicConfig(level=logging.INFO)
@@ -78,19 +77,16 @@ def setup_prefs(json_path):
         os.makedirs(atlas_dir)
     prefs["atlas_dir"] = atlas_dir
 
-    json_path_local = prefs["out_status"] + os.sep + "prefs.json"
-    shutil.copyfile(json_path, json_path_local)
-    # if not os.path.exists(json_path_local):
-    #     # make a copy of the json object in the parent directory
-    #     shutil.copyfile(json_path, json_path_local)
-    # else:
-    #     # use the local copy
-    #     print('Local copy of preference file already exists at ' + json_path_local)
-    #     with open(json_path_local) as f:
-    #         prefs = json.load(f)
+    prefs["sbatch_output"] = os.path.join(
+        prefs["out_status"], prefs["script_dir"], prefs["job_prefs"]["output"]
+    )
+    os.makedirs(os.path.dirname(prefs["sbatch_output"]), exist_ok=True)
 
-    # record the location of the json object
-    prefs["my_path"] = json_path_local
+    prefs["sbatch_error"] = os.path.join(
+        prefs["out_status"], prefs["script_dir"], prefs["job_prefs"]["error"]
+    )
+    os.makedirs(os.path.dirname(prefs["sbatch_error"]), exist_ok=True)
+
     # record the location of the data object
     prefs["save_log_path"] = prefs["out_status"] + os.sep + prefs["data_log_name"]
 

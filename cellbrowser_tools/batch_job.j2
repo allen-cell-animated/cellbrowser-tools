@@ -12,7 +12,6 @@
 # enable locating the source code of these scripts
 module add anaconda3
 source activate cellbrowser-tools
-# export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools/cellbrowser_tools
 
 {# srun the script, and add the item to the end of the script call #}
 srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID {{mybatchdatafilename}} | tail -n 1)"
