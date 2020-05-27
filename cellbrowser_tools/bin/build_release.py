@@ -125,10 +125,8 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
 def submit_fov_rows(args, prefs, groups):
     # gather cluster commands and submit in batch
     jobdata_list = []
+    print("PREPARING " + str(len(groups)) + " JOBS")
     for index, rows in enumerate(groups):
-        # print(
-        #     "(" + str(index) + "/" + str(total_jobs) + ") : Processing " + " : " + fovid
-        # )
         jobdata = createJobsFromCSV.do_image(args, prefs, rows)
         jobdata_list.append(jobdata)
 
