@@ -6,10 +6,15 @@ from pathlib import Path
 import jinja2
 
 
-def _job_prefs_from_prefs(prefs):
+def _job_prefs_from_prefs(prefs, name, array=False):
     job_prefs = prefs["job_prefs"].copy()
-    job_prefs["output"] = prefs["sbatch_output"]
-    job_prefs["error"] = prefs["sbatch_error"]
+    arraystring = f"_%A_%a" if array else f"_%A"
+    job_prefs["output"] = os.path.join(
+        prefs["sbatch_output"], name + arraystring + ".out"
+    )
+    job_prefs["error"] = os.path.join(
+        prefs["sbatch_error"], name + arraystring + ".err"
+    )
     return job_prefs
 
 
@@ -56,7 +61,7 @@ def submit_one(commandstring, prefs, name="", do_run=True, deps=[]):
     # adding this unique id lets me submit over and over and know that i'm not overwriting a key data file
     unique_id = "%08x" % random.randrange(16 ** 8)
 
-    job_prefs = _job_prefs_from_prefs(prefs)
+    job_prefs = _job_prefs_from_prefs(prefs, name, array=False)
 
     max_simultaneous_jobs = job_prefs.pop("max_simultaneous_jobs")
 
@@ -108,7 +113,7 @@ def submit_batch(commandlist, prefs, name="", do_run=True, deps=[]):
     scripts = []
     for i, commands in enumerate(command_lists):
 
-        job_prefs = _job_prefs_from_prefs(prefs)
+        job_prefs = _job_prefs_from_prefs(prefs, name, array=True)
         max_simultaneous_jobs = job_prefs.pop("max_simultaneous_jobs")
 
         slurm_args = []

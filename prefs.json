@@ -9,8 +9,8 @@
     "partition": "aics_cpu_general",
     "time": "03:00:00",
     "cpus-per-task": 1,
-    "mem-per-cpu": "4G",
-    "output": "out/FOV-%A_%a.out",
-    "error": "err/FOV-%A_%a.err"
+    "mem-per-cpu": "8G",
+    "output": "out/",
+    "error": "err/"
   }
 }

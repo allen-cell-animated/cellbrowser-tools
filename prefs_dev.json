@@ -9,7 +9,7 @@
     "partition": "aics_cpu_general",
     "time": "03:00:00",
     "cpus-per-task": 1,
-    "output": "out/FOV-%A_%a.out",
-    "error": "err/FOV-%A_%a.err"
+    "output": "out/",
+    "error": "err/"
   }
 }
