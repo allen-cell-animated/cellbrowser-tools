@@ -119,7 +119,6 @@ def check_dups(dfr, column, remove=True):
         dfr.drop_duplicates(subset=column, keep="first", inplace=True)
 
 
-# big assumption: any query_name passed in must return data of the same format!
 def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     # lk = LabKey(host="aics")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
@@ -140,6 +139,9 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
         df_data_handoff = df_data_handoff.head(max_rows)
 
     print("GOT DATA HANDOFF")
+
+    # Merge Aligned and Source read path columns
+    df_data_handoff[DataField.SourceReadPath] = df_data_handoff[DataField.AlignedImageReadPath].combine_first(df_data_handoff[DataField.SourceReadPath])
 
     if raw_only:
         return df_data_handoff

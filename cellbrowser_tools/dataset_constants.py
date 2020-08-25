@@ -15,6 +15,7 @@ CHANNEL_NAMES_FILENAME = "allChannelNames.txt"
 
 # the expected column names returned from labkey
 class DataField(str, Enum):
+    AlignedImageReadPath = "AlignedImageReadPath"
     CellId = "CellId"
     CellIndex = "CellIndex"
     SourceFileId = "SourceFileId"
