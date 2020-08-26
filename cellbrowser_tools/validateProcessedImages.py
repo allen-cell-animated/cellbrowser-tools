@@ -359,13 +359,23 @@ def build_feature_data(prefs, groups):
             )
 
     jsondictlist = fh.df_to_json(allfeaturedata)
+    jsondictlist = generate_filenames(jsondictlist)
     jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
+
     with open(
         os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
         "w",
         newline="",
     ) as output_file:
         output_file.write(json.dumps(jsondictlist))
+
+
+def generate_filenames(handoff):
+    for row in handoff:
+        fi = row["file_info"]
+        fi["thumbnailPath"] = f'{fi["CellLineName"]}/{fi["FOVId"]}_{fi["CellId"]}.png'
+        fi["volumeviewerPath"] = f'{fi["CellLineName"]}/{fi["FOVId"]}_{fi["CellId"]}_atlas.json'
+    return handoff
 
 
 def validate_rows(groups, args, prefs):
