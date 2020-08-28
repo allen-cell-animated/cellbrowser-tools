@@ -48,7 +48,7 @@ requirements = [
     "distributed==2.12.0",
     "featuredb>=0.3.0",
     "labkey",
-    "lkaccess",
+    "lkaccess>=1.4.19",
     "pandas==1.0.3",
     "prefect==0.9.7",
     "quilt3",
