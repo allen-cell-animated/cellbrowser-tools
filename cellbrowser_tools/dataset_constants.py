@@ -42,8 +42,10 @@ class DataField(str, Enum):
     StructureContourReadPath = "StructureContourReadPath"
     StructureSegmentationAlgorithm = "StructureSegmentationAlgorithm"
     StructureSegmentationAlgorithmVersion = "StructureSegmentationAlgorithmVersion"
-    ChannelNumber405 = "ChannelNumber405"
-    ChannelNumber638 = "ChannelNumber638"
+    ChannelNumber405 = "ChannelNumber405"  # dna
+    # ChannelNumber488 = "ChannelNumber488" # possible struct
+    # ChannelNumber561 = "ChannelNumber561" # possible struct
+    ChannelNumber638 = "ChannelNumber638"  # membrane
     ChannelNumberStruct = "ChannelNumberStruct"
     ChannelNumberBrightfield = "ChannelNumberBrightfield"
     NucMembSegmentationAlgorithm = "NucMembSegmentationAlgorithm"

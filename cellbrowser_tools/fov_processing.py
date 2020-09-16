@@ -137,11 +137,19 @@ class ImageProcessor:
     # The functions outside of this class do not rely on a cellJob object
     def __init__(self, info):
         self.job = info
-        self.row = info.cells[0]
+        if 'cells' in info:
+            self.row = info.cells[0]
+        else:
+            self.row = info
 
         # Setting up directory paths for images
         self.image_file = utils.normalize_path(self.row[DataField.SourceReadPath])
-        self.file_name = self.row[AugmentedDataField.FOV_3dcv_Name]
+        if self.row[DataField.AlignedImageReadPath]:
+            self.image_file = utils.normalize_path(self.row[DataField.AlignedImageReadPath])
+        if AugmentedDataField.FOV_3dcv_Name in self.row:
+            self.file_name = self.row[AugmentedDataField.FOV_3dcv_Name]
+        else:
+            self.file_name = f"F{self.row[DataField.FOVId]}"
         self._generate_paths()
 
         # Setting up segmentation channels for full image
@@ -162,17 +170,30 @@ class ImageProcessor:
         self.image = self.add_segs_to_img()
 
     def _generate_paths(self):
-        # full fields need different directories than segmented cells do
-        thumbnaildir = utils.normalize_path(self.job.cbrThumbnailLocation)
+        if "cbrThumbnailLocation" in self.job:
+            thumbnaildir = utils.normalize_path(self.job.cbrThumbnailLocation)
+        else:
+            thumbnaildir = "."
+        if "cbrImageLocation" in self.job:
+            ometifdir = utils.normalize_path(self.job.cbrImageLocation)
+        else:
+            ometifdir = "."
+        if "cbrTextureAtlasLocation" in self.job:
+            atlasdir = utils.normalize_path(self.job.cbrTextureAtlasLocation)
+        else:
+            atlasdir = "."
+        if "cbrThumbnailURL" in self.job:
+            thumburl = utils.normalize_path(self.job.cbrThumbnailURL) + "/"
+        else:
+            thumburl = ""
+
         make_dir(thumbnaildir)
         self.png_dir = os.path.join(thumbnaildir, self.file_name)
-        self.png_url = self.job.cbrThumbnailURL + "/" + self.file_name
+        self.png_url = thumburl + self.file_name
 
-        ometifdir = utils.normalize_path(self.job.cbrImageLocation)
         make_dir(ometifdir)
         self.ometif_dir = os.path.join(ometifdir, self.file_name)
 
-        atlasdir = utils.normalize_path(self.job.cbrTextureAtlasLocation)
         make_dir(atlasdir)
         self.atlas_dir = atlasdir
 
@@ -222,6 +243,9 @@ class ImageProcessor:
         self.channel_colors.append(_rgba255(0, 255, 0, 255))
         self.channels_to_mask.append(len(self.channel_names) - 1)
 
+        if self.row[DataField.MembraneContourReadPath] is None:
+            self.row[DataField.MembraneContourReadPath] = self.row[DataField.MembraneSegmentationReadPath]
+
         # cell contour segmentation (good for viz in the volume viewer)
         cell_con_file = utils.normalize_path(
             self.row[DataField.MembraneContourReadPath]
@@ -231,6 +255,9 @@ class ImageProcessor:
         self.channel_names.append("CON_Memb")
         self.channel_colors.append(_rgba255(255, 255, 0, 255))
         self.channels_to_mask.append(len(self.channel_names) - 1)
+
+        if self.row[DataField.NucleusContourReadPath] is None:
+            self.row[DataField.NucleusContourReadPath] = self.row[DataField.NucleusSegmentationReadPath]
 
         # nucleus contour segmentation (good for viz in the volume viewer)
         nuc_con_file = utils.normalize_path(self.row[DataField.NucleusContourReadPath])
@@ -243,11 +270,11 @@ class ImageProcessor:
         return file_list
 
     def add_segs_to_img(self):
-        outdir = self.job.cbrImageLocation
-        make_dir(outdir)
+        # outdir = self.job.cbrImageLocation
+        # make_dir(outdir)
 
-        thumbnaildir = self.job.cbrThumbnailLocation
-        make_dir(thumbnaildir)
+        # thumbnaildir = self.job.cbrThumbnailLocation
+        # make_dir(thumbnaildir)
 
         file_list = self.build_file_list()
 
