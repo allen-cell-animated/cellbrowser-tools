@@ -171,19 +171,19 @@ class ImageProcessor:
 
     def _generate_paths(self):
         if "cbrThumbnailLocation" in self.job:
-            thumbnaildir = utils.normalize_path(self.job.cbrThumbnailLocation)
+            thumbnaildir = utils.normalize_path(self.job["cbrThumbnailLocation"])
         else:
             thumbnaildir = "."
         if "cbrImageLocation" in self.job:
-            ometifdir = utils.normalize_path(self.job.cbrImageLocation)
+            ometifdir = utils.normalize_path(self.job["cbrImageLocation"])
         else:
             ometifdir = "."
         if "cbrTextureAtlasLocation" in self.job:
-            atlasdir = utils.normalize_path(self.job.cbrTextureAtlasLocation)
+            atlasdir = utils.normalize_path(self.job["cbrTextureAtlasLocation"])
         else:
             atlasdir = "."
         if "cbrThumbnailURL" in self.job:
-            thumburl = utils.normalize_path(self.job.cbrThumbnailURL) + "/"
+            thumburl = utils.normalize_path(self.job["cbrThumbnailURL"]) + "/"
         else:
             thumburl = ""
 
@@ -446,7 +446,9 @@ class ImageProcessor:
             }
         else:
             m["isCropped"] = False
-            m["CellId"] = [r[DataField.CellId] for r in self.job.cells]
+            if "cells" in self.job:
+                m["CellId"] = [r[DataField.CellId] for r in self.job.cells]
+
         m["isModel"] = False
 
         m["cellLine"] = row[DataField.CellLine]
@@ -484,7 +486,7 @@ class ImageProcessor:
         print("making thumbnail...", end="")
         generator = thumbnailGenerator.ThumbnailGenerator(
             channel_indices=[memb_index, nuc_index, struct_index],
-            size=self.job.cbrThumbnailSize,
+            size=self.job["cbrThumbnailSize"],
             mask_channel_index=self.seg_indices[1],
             colors=thumbnail_colors,
             projection="slice",
@@ -494,11 +496,7 @@ class ImageProcessor:
         )
         print("done")
 
-        print("making image...", end="")
         im_to_save = self.image
-        print("done")
-
-        assert self.image, "No image to process"
 
         # do texture atlas here
         aimage = AICSImage(self.image, known_dims="CZYX")
@@ -506,7 +504,7 @@ class ImageProcessor:
         print("generating atlas ...")
         atlas = textureAtlas.generate_texture_atlas(
             aimage,
-            name=self.row[AugmentedDataField.FOV_3dcv_Name],
+            name=base,
             max_edge=2048,
             pack_order=None,
         )
