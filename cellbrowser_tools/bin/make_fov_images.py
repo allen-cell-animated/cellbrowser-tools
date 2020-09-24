@@ -1,6 +1,5 @@
-from cellbrowser_tools import fov_processing
+from cellbrowser_tools import fov_processing, cellJob
 
-# from cellbrowser_tools import cellJob
 import lkaccess
 import lkaccess.contexts
 from lkaccess import LabKey
@@ -28,10 +27,11 @@ for index, (fovid, group) in enumerate(data_grouped):
     g = group.to_dict(orient="records")
     # jsut select the first one, we only need one representative per FOV
     g = g[0]
-    g["cbrThumbnailSize"] = 128
-    g["cbrThumbnailLocation"] = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
-    g["cbrImageLocation"] = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
-    g["cbrTextureAtlasLocation"] = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
+    g = cellJob.CellJob([g])
+    g.cbrThumbnailSize = 128
+    g.cbrThumbnailLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
+    g.cbrImageLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
+    g.cbrTextureAtlasLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
 
     processor = fov_processing.ImageProcessor(g)
     processor.generate_and_save(do_segmented_cells=False)

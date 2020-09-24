@@ -1,7 +1,6 @@
 from . import dataset_constants
 from .dataset_constants import DataField
 import json
-import labkey
 from lkaccess import LabKey
 import lkaccess.contexts
 import logging
@@ -119,6 +118,76 @@ def check_dups(dfr, column, remove=True):
         dfr.drop_duplicates(subset=column, keep="first", inplace=True)
 
 
+def collect_csv_data_rows(
+    csvpath="//allen/aics/assay-dev/computational/data/dna_cell_seg_on_production_data/production_run_test/mergedataset/manifest.csv",
+    fovids=None,
+    raw_only=False,
+    max_rows=None,
+):
+    print("REQUESTING DATA HANDOFF")
+    df_data_handoff = pd.read_csv(csvpath)
+
+    # verify the expected column names in the above query
+    for field in dataset_constants.DataField:
+        if field.value not in df_data_handoff.columns:
+            raise f"Expected {field.value} to be in labkey dataset results."
+
+    if fovids is not None and len(fovids) > 0:
+        df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
+
+    if max_rows is not None:
+        df_data_handoff = df_data_handoff.head(max_rows)
+
+    print("GOT DATA HANDOFF")
+
+    # Merge Aligned and Source read path columns
+    df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
+        DataField.AlignedImageReadPath
+    ].combine_first(df_data_handoff[DataField.SourceReadPath])
+
+    if raw_only:
+        return df_data_handoff
+
+    # replace any remaining NaNs with None
+    df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
+
+    check_dups(df_data_handoff, "CellId")
+
+    print("DONE BUILDING TABLES")
+
+    print(list(df_data_handoff.columns))
+
+    # verify the expected column names in the above query
+    expected_columns = ["MitoticStateId", "Complete"]
+    for field in expected_columns:
+        if field not in df_data_handoff.columns:
+            raise f"Expected {field} to be in combined dataset results."
+
+    # put in string mitotic state names
+    def mitotic_id_to_name(row):
+        mid = row.MitoticStateId
+        if mid == 1:
+            return "M6/M7" if row.Complete else "M6/M7 Partial"
+        elif mid == 2:
+            return "M0"
+        elif mid == 3:
+            return "M1/M2"
+        elif mid == 4:
+            return "M3"
+        elif mid == 5:
+            return "M4/M5"
+        elif mid == 6:
+            return "Mitosis"
+        else:
+            raise ValueError("Unexpected value for MitoticStateId")
+
+    df_data_handoff["MitoticStateId/Name"] = df_data_handoff.apply(
+        lambda row: mitotic_id_to_name(row), axis=1
+    )
+
+    return df_data_handoff
+
+
 def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     # lk = LabKey(host="aics")
     lk = LabKey(server_context=lkaccess.contexts.PROD)
@@ -141,7 +210,9 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     print("GOT DATA HANDOFF")
 
     # Merge Aligned and Source read path columns
-    df_data_handoff[DataField.SourceReadPath] = df_data_handoff[DataField.AlignedImageReadPath].combine_first(df_data_handoff[DataField.SourceReadPath])
+    df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
+        DataField.AlignedImageReadPath
+    ].combine_first(df_data_handoff[DataField.SourceReadPath])
 
     if raw_only:
         return df_data_handoff
@@ -183,52 +254,6 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
         value={"IsMitotic": "", "MitoticState": ""}
     )
 
-    # get legacy cell name for all cells
-    legacycellname_results = lk.select_rows_as_list(
-        schema_name="processing",
-        query_name="CellAnnotationJunction",
-        columns="CellId, Value",
-        filter_array=[
-            labkey.query.QueryFilter("AnnotationTypeId/Name", "Cell name", "in")
-        ],
-    )
-    print("GOT LEGACY CELL NAMES")
-    df_legacycellname = pd.DataFrame(legacycellname_results)
-    df_legacycellname = df_legacycellname.rename(columns={"Value": "LegacyCellName"})
-    df_data_handoff = pd.merge(
-        df_data_handoff,
-        df_legacycellname,
-        how="left",
-        left_on="CellId",
-        right_on="CellId",
-    )
-
-    # get legacy fov name for all fovs.
-    fovannotation_results = lk.select_rows_as_list(
-        schema_name="processing",
-        query_name="FOVAnnotationJunction",
-        columns="FOVId, AnnotationTypeId/Name, Value",
-        filter_array=[
-            labkey.query.QueryFilter("AnnotationTypeId/Name", "FOV name", "in")
-        ],
-    )
-    print("GOT LEGACY FOV NAMES")
-    df_fovlegacyname = pd.DataFrame(fovannotation_results)
-    df_fovlegacyname = df_fovlegacyname.rename(columns={"Value": "LegacyFOVName"})[
-        ["FOVId", "LegacyFOVName"]
-    ]
-    # allow for multiple possible legacy names for a fov
-    df_fovlegacyname = (
-        df_fovlegacyname.groupby(["FOVId"])["LegacyFOVName"].apply(list).reset_index()
-    )
-
-    df_data_handoff = pd.merge(
-        df_data_handoff, df_fovlegacyname, how="left", left_on="FOVId", right_on="FOVId"
-    )
-    # at this time since there have been duplicate legacy FOVs, let's eliminate them.
-    print("Removing duplicate legacy fov names...")
-    check_dups(df_data_handoff, "CellId")
-
     # get the aligned mitotic cell data
     imsc_dataset = Package.browse(
         "aics/imsc_align_cells", "s3://allencell-internal-quilt"
@@ -248,18 +273,8 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
         how="left",
     )
 
-    # put cell fov name in a new column:
-    df_data_handoff["FOV_3dcv_Name"] = df_data_handoff.apply(
-        lambda row: get_fov_name_from_row(row), axis=1
-    )
-
     # deal with nans
-    df_data_handoff = df_data_handoff.fillna(
-        value={"LegacyCellName": "", "Angle": 0, "x": 0, "y": 0}
-    )
-    df_data_handoff["LegacyFOVName"] = df_data_handoff["LegacyFOVName"].apply(
-        lambda d: d if isinstance(d, list) else []
-    )
+    df_data_handoff = df_data_handoff.fillna(value={"Angle": 0, "x": 0, "y": 0})
 
     # replace any remaining NaNs with None
     df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
@@ -269,11 +284,6 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     print("DONE BUILDING TABLES")
 
     print(list(df_data_handoff.columns))
-
-    # verify the expected column names in the above query
-    for field in dataset_constants.AugmentedDataField:
-        if field.value not in df_data_handoff.columns:
-            raise f"Expected {field.value} to be in combined dataset results."
 
     return df_data_handoff
 

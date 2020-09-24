@@ -33,6 +33,9 @@ Workflow:
 
 2. Modify a copy of prefs.json to have the proper parameters inside. The most important parameters are the output directories to prevent overwriting old data sets.
 
+Test dataset from csv instead of db query
+\\allen\aics\assay-dev\computational\data\dna_cell_seg_on_production_data\production_run_test\mergedataset\manifest.csv
+
 3. Generate dataset:
    run:
 

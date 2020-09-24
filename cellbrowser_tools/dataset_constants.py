@@ -76,7 +76,6 @@ class DataField(str, Enum):
     Structure = "Structure"
     StructureDisplayName = "StructureDisplayName"
     StructureShortName = "StructureShortName"
-    StructEducationName = "StructEducationName"
     Protein = "Protein"
     ProteinDisplayName = "ProteinDisplayName"
     Gene = "Gene"
@@ -87,9 +86,3 @@ class DataField(str, Enum):
 class AugmentedDataField(str, Enum):
     IsMitotic = "IsMitotic"
     MitoticState = "MitoticState"
-    LegacyCellName = "LegacyCellName"
-    LegacyFOVName = "LegacyFOVName"
-    MitoticAlignedAngle = "Angle"
-    MitoticAlignedX = "x"
-    MitoticAlignedY = "y"
-    FOV_3dcv_Name = "FOV_3dcv_Name"

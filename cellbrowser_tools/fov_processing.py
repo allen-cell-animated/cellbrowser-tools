@@ -17,10 +17,13 @@ import collections
 import copy
 import errno
 import json
+import logging
 import numpy as np
 import os
 import sys
 import traceback
+
+log = logging.getLogger()
 
 
 def retrieve_file(read_path, file_name):
@@ -55,10 +58,8 @@ def _int32(x):
 
 
 def _rgba255(r, g, b, a):
-    assert 0 <= r <= 255
-    assert 0 <= g <= 255
-    assert 0 <= b <= 255
-    assert 0 <= a <= 255
+    if not (0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255 and 0 <= a <= 255):
+        raise ValueError("rgba values out of 0..255 range")
     # bit shift to compose rgba tuple
     x = r << 24 | g << 16 | b << 8 | a
     # now force x into a signed 32 bit integer for OME XML Channel Color.
@@ -135,21 +136,19 @@ class ImageProcessor:
     # The functions outside of this class do not rely on a cellJob object
     def __init__(self, info):
         self.job = info
-        if "cells" in info:
+        if isinstance(info, cellJob.CellJob):
+            self.row = info.cells[0]
+        elif "cells" in info:
             self.row = info.cells[0]
         else:
             self.row = info
 
         # Setting up directory paths for images
-        self.image_file = utils.normalize_path(self.row[DataField.SourceReadPath])
-        if self.row[DataField.AlignedImageReadPath]:
-            self.image_file = utils.normalize_path(
-                self.row[DataField.AlignedImageReadPath]
-            )
-        if AugmentedDataField.FOV_3dcv_Name in self.row:
-            self.file_name = self.row[AugmentedDataField.FOV_3dcv_Name]
-        else:
-            self.file_name = f"F{self.row[DataField.FOVId]}"
+        readpath = self.row[DataField.AlignedImageReadPath]
+        if not readpath:
+            readpath = self.row[DataField.SourceReadPath]
+        self.image_file = utils.normalize_path(readpath)
+        self.file_name = utils.get_fov_name_from_row(self.row)
         self._generate_paths()
 
         # Setting up segmentation channels for full image
@@ -170,20 +169,20 @@ class ImageProcessor:
         self.image = self.add_segs_to_img()
 
     def _generate_paths(self):
-        if "cbrThumbnailLocation" in self.job:
-            thumbnaildir = utils.normalize_path(self.job["cbrThumbnailLocation"])
+        if self.job.cbrThumbnailLocation:
+            thumbnaildir = utils.normalize_path(self.job.cbrThumbnailLocation)
         else:
             thumbnaildir = "."
-        if "cbrImageLocation" in self.job:
-            ometifdir = utils.normalize_path(self.job["cbrImageLocation"])
+        if self.job.cbrImageLocation:
+            ometifdir = utils.normalize_path(self.job.cbrImageLocation)
         else:
             ometifdir = "."
-        if "cbrTextureAtlasLocation" in self.job:
-            atlasdir = utils.normalize_path(self.job["cbrTextureAtlasLocation"])
+        if self.job.cbrTextureAtlasLocation:
+            atlasdir = utils.normalize_path(self.job.cbrTextureAtlasLocation)
         else:
             atlasdir = "."
-        if "cbrThumbnailURL" in self.job:
-            thumburl = utils.normalize_path(self.job["cbrThumbnailURL"]) + "/"
+        if self.job.cbrThumbnailURL:
+            thumburl = utils.normalize_path(self.job.cbrThumbnailURL) + "/"
         else:
             thumburl = ""
 
@@ -209,7 +208,7 @@ class ImageProcessor:
 
         self.channels_to_mask = []
 
-        print("loading segmentations for " + self.file_name + "...", end="")
+        log.info("loading segmentations for " + self.file_name + "...")
         # print(seg_path)
         # list of tuple(readpath, channelindex, outputChannelName)
         file_list = []
@@ -220,7 +219,7 @@ class ImageProcessor:
                 self.row[DataField.StructureSegmentationReadPath]
             )
             # print(struct_seg_file)
-            file_list.append((struct_seg_file, 0))
+            file_list.append((struct_seg_file, 0, "SEG_STRUCT"))
             self.channel_names.append("SEG_STRUCT")
             self.channel_colors.append(_rgba255(255, 0, 0, 255))
 
@@ -230,7 +229,11 @@ class ImageProcessor:
         )
         # print(cell_seg_file)
         file_list.append(
-            (cell_seg_file, self.row[DataField.MembraneSegmentationChannelIndex])
+            (
+                cell_seg_file,
+                self.row[DataField.MembraneSegmentationChannelIndex],
+                "SEG_Memb",
+            )
         )
         self.channel_names.append("SEG_Memb")
         self.channel_colors.append(_rgba255(0, 0, 255, 255))
@@ -242,7 +245,11 @@ class ImageProcessor:
         )
         # print(nuc_seg_file)
         file_list.append(
-            (nuc_seg_file, self.row[DataField.NucleusSegmentationChannelIndex])
+            (
+                nuc_seg_file,
+                self.row[DataField.NucleusSegmentationChannelIndex],
+                "SEG_DNA",
+            )
         )
         self.channel_names.append("SEG_DNA")
         self.channel_colors.append(_rgba255(0, 255, 0, 255))
@@ -259,7 +266,7 @@ class ImageProcessor:
         )
         # print(cell_seg_file)
         file_list.append(
-            (cell_con_file, self.row[DataField.MembraneContourChannelIndex])
+            (cell_con_file, self.row[DataField.MembraneContourChannelIndex], "CON_Memb")
         )
         self.channel_names.append("CON_Memb")
         self.channel_colors.append(_rgba255(255, 255, 0, 255))
@@ -273,7 +280,9 @@ class ImageProcessor:
         # nucleus contour segmentation (good for viz in the volume viewer)
         nuc_con_file = utils.normalize_path(self.row[DataField.NucleusContourReadPath])
         # print(nuc_seg_file)
-        file_list.append((nuc_con_file, self.row[DataField.NucleusContourChannelIndex]))
+        file_list.append(
+            (nuc_con_file, self.row[DataField.NucleusContourChannelIndex], "CON_DNA")
+        )
         self.channel_names.append("CON_DNA")
         self.channel_colors.append(_rgba255(0, 255, 255, 255))
         self.channels_to_mask.append(len(self.channel_names) - 1)
@@ -289,7 +298,7 @@ class ImageProcessor:
 
         file_list = self.build_file_list()
 
-        image_file = self.row[DataField.SourceReadPath]
+        image_file = self.image_file
         image_file = utils.normalize_path(image_file)
         # print(image_file)
 
@@ -306,7 +315,8 @@ class ImageProcessor:
         image = cr.get_image_data("CZYX", T=0)
         # if len(image.shape) == 5 and image.shape[0] == 1:
         #    image = image[0, :, :, :, :]
-        assert len(image.shape) == 4
+        if len(image.shape) != 4:
+            raise ValueError("Image did not return 4d CZYX data")
         # image shape from czi assumed to be ZCYX
         # assume no T dimension for now
         # convert to CZYX, so that shape[0] is number of channels:
@@ -319,7 +329,10 @@ class ImageProcessor:
             int(self.row[DataField.ChannelNumberBrightfield]),
         ]
         # image.shape[0] is num of channels.
-        assert image.shape[0] > max(self.channel_indices)
+        if image.shape[0] <= max(self.channel_indices):
+            raise ValueError(
+                f"Image does not have enough channels - needs at least {max(self.channel_indices)} but has {image.shape[0]}"
+            )
         orig_num_channels = image.shape[0]
         image = np.array(
             [
@@ -370,27 +383,18 @@ class ImageProcessor:
             seg = reader.get_image_data("ZYX", C=f[1], T=0)
             # seg is expected to be ZYX
             # image is expected to be CZYX
-            assert seg.shape[0] == image.shape[1], (
-                f
-                + " has shape mismatch "
-                + str(seg.shape[0])
-                + " vs "
-                + str(image.shape[1])
-            )
-            assert seg.shape[1] == image.shape[2], (
-                f
-                + " has shape mismatch "
-                + str(seg.shape[1])
-                + " vs "
-                + str(image.shape[2])
-            )
-            assert seg.shape[2] == image.shape[3], (
-                f
-                + " has shape mismatch "
-                + str(seg.shape[2])
-                + " vs "
-                + str(image.shape[3])
-            )
+            if seg.shape[0] != image.shape[1]:
+                raise ValueError(
+                    f"FOV {self.row[DataField.FOVId]} has shape mismatch {f[2]} {seg.shape[0]} vs FOV {image.shape[1]}"
+                )
+            if seg.shape[1] != image.shape[2]:
+                raise ValueError(
+                    f"FOV {self.row[DataField.FOVId]} has shape mismatch {f[2]} {seg.shape[1]} vs FOV {image.shape[2]}"
+                )
+            if seg.shape[2] != image.shape[3]:
+                raise ValueError(
+                    f"FOV {self.row[DataField.FOVId]} has shape mismatch {f[2]} {seg.shape[2]} vs FOV {image.shape[3]}"
+                )
             # append channels containing segmentations
             self.omexml.image().Pixels.append_channel(
                 nch + i, self.channel_names[nch + i]
@@ -402,7 +406,7 @@ class ImageProcessor:
             unretrieve_file(fpath)
             i += 1
 
-        print("done")
+        log.info("done making combined image")
         cr.close()
         unretrieve_file(image_file)
         return image
@@ -434,19 +438,19 @@ class ImageProcessor:
             m["CellId"] = row[DataField.CellId]
             m["source"] = cell_meta.parent_image
             m["isCropped"] = True
-            m["mitoticPhase"] = row[AugmentedDataField.MitoticState]
-            m["isMitotic"] = row[AugmentedDataField.IsMitotic]
-            m["alignedTransform"] = {
-                "translation": [
-                    row[AugmentedDataField.MitoticAlignedX],
-                    row[AugmentedDataField.MitoticAlignedY],
-                    0,
-                ],
-                "rotation": [0, 0, row[AugmentedDataField.MitoticAlignedAngle]],
-            }
+            m["mitoticPhase"] = row["MitoticStateId/Name"]
+            m["isMitotic"] = row["MitoticStateId/Name"] == "M0"
+            # m["alignedTransform"] = {
+            #     "translation": [
+            #         row[AugmentedDataField.MitoticAlignedX],
+            #         row[AugmentedDataField.MitoticAlignedY],
+            #         0,
+            #     ],
+            #     "rotation": [0, 0, row[AugmentedDataField.MitoticAlignedAngle]],
+            # }
         else:
             m["isCropped"] = False
-            if "cells" in self.job:
+            if self.job.cells:
                 m["CellId"] = [r[DataField.CellId] for r in self.job.cells]
 
         m["isModel"] = False
@@ -481,12 +485,12 @@ class ImageProcessor:
         struct_index = 1
         thumbnail_colors = [[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 0.0]]
 
-        print("generating full fields...")
+        log.info("generating full fields...")
 
-        print("making thumbnail...", end="")
+        log.info("making thumbnail...")
         generator = thumbnailGenerator.ThumbnailGenerator(
             channel_indices=[memb_index, nuc_index, struct_index],
-            size=self.job["cbrThumbnailSize"],
+            size=self.job.cbrThumbnailSize,
             mask_channel_index=self.seg_indices[1],
             colors=thumbnail_colors,
             projection="slice",
@@ -494,20 +498,21 @@ class ImageProcessor:
         ffthumb = generator.make_thumbnail(
             self.image.transpose(1, 0, 2, 3), apply_cell_mask=False
         )
-        print("done")
+        log.info("done making thumbnail")
 
         im_to_save = self.image
 
         # do texture atlas here
         aimage = AICSImage(self.image, known_dims="CZYX")
         # aimage.metadata = self.omexml
-        print("generating atlas ...")
+        log.info("generating atlas ...")
         atlas = textureAtlas.generate_texture_atlas(
             aimage,
             name=base,
             max_edge=2048,
             pack_order=None,
         )
+        log.info("done making atlas")
         p = self.omexml.image(0).Pixels
         atlas.dims.pixel_size_x = p.get_PhysicalSizeX()
         atlas.dims.pixel_size_y = p.get_PhysicalSizeY()
@@ -538,9 +543,8 @@ class ImageProcessor:
 
         for idx, row in enumerate(self.job.cells):
             # for each cell segmented from this image:
-            print("generating segmented cells...", end="")
             i = row[DataField.CellIndex]
-            print(i, end=" ")
+            log.info(f"generating segmented cell {i}")
 
             bounds = get_segmentation_bounds(cell_segmentation_image, i)
             cropped = crop_to_bounds(self.image, bounds)
@@ -551,7 +555,7 @@ class ImageProcessor:
             for mi in self.channels_to_mask:
                 cropped[mi] = image_to_mask(cropped[mi], i, 255)
 
-            print("making thumbnail...", end="")
+            log.info("making thumbnail...")
             generator = thumbnailGenerator.ThumbnailGenerator(
                 channel_indices=[memb_index, nuc_index, struct_index],
                 size=self.job.cbrThumbnailSize,
@@ -562,7 +566,7 @@ class ImageProcessor:
             thumb = generator.make_thumbnail(
                 cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True
             )
-            print("done")
+            log.info("done making thumbnail")
 
             cell_meta = CellMeta(
                 bounds={
@@ -577,13 +581,13 @@ class ImageProcessor:
                 parent_image=base,
             )
 
-            for bn in cell_meta.bounds:
-                print(bn, cell_meta.bounds[bn])
+            # for bn in cell_meta.bounds:
+            #    print(bn, cell_meta.bounds[bn])
 
             # copy self.omexml for output
             copyxml = None
 
-            print("making image...", end="")
+            log.info("making cropped image...")
             copied = copy.deepcopy(self.omexml.dom)
             copyxml = OMEXML(rootnode=copied)
             # now fix it up
@@ -604,12 +608,12 @@ class ImageProcessor:
                     pixels.node.remove(p.node)
                 else:
                     p.set_TheZ(pz - minz)
-            print("done")
+            log.info("done making cropped image")
 
             # do texture atlas here
             aimage_cropped = AICSImage(cropped, known_dims="CZYX")
             # aimage_cropped.metadata = copyxml
-            print("generating atlas ...")
+            log.info("generating cropped atlas ...")
             atlas_cropped = textureAtlas.generate_texture_atlas(
                 aimage_cropped,
                 name=base + "_" + str(row[DataField.CellId]),
@@ -625,7 +629,7 @@ class ImageProcessor:
             static_meta_cropped = self.generate_meta(copyxml, row, cell_meta)
 
             im_to_save = cropped
-            print("done")
+            log.info("done making cropped atlas")
 
             self._save_and_post(
                 image=im_to_save,
@@ -635,8 +639,8 @@ class ImageProcessor:
                 omexml=copyxml,
                 other_data=static_meta_cropped,
             )
-            print("done")
-        print("done processing cells for this fov")
+            log.info("done with cropped image")
+        log.info("done processing cells for this fov")
 
     def _save_and_post(
         self,
@@ -670,14 +674,14 @@ class ImageProcessor:
             png_url += ".png"
 
         if thumbnail is not None:
-            print("saving thumbnail...", end="")
+            log.info("saving thumbnail...")
             with PngWriter(file_path=png_dir, overwrite_file=True) as writer:
                 writer.save(thumbnail)
-            print("done")
+            log.info("thumbnail saved")
 
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
-            print("saving image...", end="")
+            log.info("saving image...")
             with OmeTiffWriter(file_path=ometif_dir, overwrite_file=True) as writer:
                 writer.save(
                     transposed_image,
@@ -685,12 +689,12 @@ class ImageProcessor:
                     # channel_names=self.channel_names, channel_colors=self.channel_colors,
                     pixels_physical_size=physical_size,
                 )
-            print("done")
+            log.info("image saved")
 
         if textureatlas is not None:
-            print("saving texture atlas...", end="")
+            log.info("saving texture atlas...")
             textureatlas.save(self.atlas_dir, user_data=other_data)
-            print("done")
+            log.info("texture atlas saved")
 
 
 def do_main_image_with_celljob(info):

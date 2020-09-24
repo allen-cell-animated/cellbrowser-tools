@@ -72,7 +72,7 @@ def uncache_dataset(prefs):
 
 
 def get_data_groups(prefs, n=0):
-    data = dataHandoffUtils.collect_data_rows(fovids=prefs.get("fovs"))
+    data = dataHandoffUtils.collect_csv_data_rows(fovids=prefs.get("fovs"))
     log.info("Number of total cell rows: " + str(len(data)))
     # group by fov id
     data_grouped = data.groupby("FOVId")
@@ -96,7 +96,8 @@ def get_data_groups(prefs, n=0):
 
 def process_fov_row(group, args, prefs):
     rows = group  # .to_dict(orient="records")
-    log.info("STARTING FOV")
+    name = dataHandoffUtils.get_fov_name_from_row(rows[0])
+    log.info(f"STARTING FOV {name}")
     try:
         createJobsFromCSV.do_image(args, prefs, rows)
     except Exception as e:
@@ -106,6 +107,14 @@ def process_fov_row(group, args, prefs):
             log.error("=============================================")
         log.error("\n\n" + str(e) + "\n")
         log.error("=============================================")
+        # write traceback to a file
+        with open(
+            os.path.join(prefs["sbatch_error"], f"ERROR_{name}.txt"), "w"
+        ) as myfile:
+            myfile.write(str(e))
+            myfile.write("\n\n")
+            myfile.write(traceback.format_exc())
+            myfile.write("\n\n")
         raise
     log.info("COMPLETED FOV")
 
@@ -113,13 +122,14 @@ def process_fov_row(group, args, prefs):
 @task
 def process_fov_rows(groups, args, prefs, distributed_executor_address):
     # Batch process the FOVs
+    batch_size = 100 if args.distributed else 4
     with DistributedHandler(distributed_executor_address) as handler:
         handler.batched_map(
             process_fov_row,
             [g for g in groups],
             [args for g in groups],
             [prefs for g in groups],
-            batch_size=100,
+            batch_size=batch_size,
         )
     return "Done"
 
@@ -400,6 +410,12 @@ def main():
         elif p.step == BuildStep.DONE:
             send_done_email()
             log.info("Done!")
+        else:
+            # no cmd line args at all - just run using threads and not localcluster
+            p.debug = True
+            # p.n = 8  # set number of fovs to run
+            # prefs["fovs"] = [135934]  # set individual fovs to run
+            build_release_sync(p, prefs)
 
     return
 

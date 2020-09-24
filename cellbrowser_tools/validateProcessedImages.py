@@ -64,7 +64,7 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
     # use row 0 as the "full field" row
     fovrow = rows[0]
 
-    jobname = fovrow[AugmentedDataField.FOV_3dcv_Name]
+    jobname = lkutils.get_fov_name_from_row(fovrow)
 
     imageName = jobname
 
@@ -374,7 +374,9 @@ def generate_filenames(handoff):
     for row in handoff:
         fi = row["file_info"]
         fi["thumbnailPath"] = f'{fi["CellLineName"]}/{fi["FOVId"]}_{fi["CellId"]}.png'
-        fi["volumeviewerPath"] = f'{fi["CellLineName"]}/{fi["FOVId"]}_{fi["CellId"]}_atlas.json'
+        fi[
+            "volumeviewerPath"
+        ] = f'{fi["CellLineName"]}/{fi["FOVId"]}_{fi["CellId"]}_atlas.json'
     return handoff
 
 
