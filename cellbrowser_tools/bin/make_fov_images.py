@@ -26,6 +26,9 @@ df_data_handoff["SourceReadPath"] = df_data_handoff[
     "AlignedImageReadPath"
 ].combine_first(df_data_handoff["SourceReadPath"])
 
+# add Unknown Mitotic state to rows.
+df_data_handoff["MitoticStateId/Name"] = "Unknown"
+
 # group by fov id
 data_grouped = df_data_handoff.groupby("FOVId")
 total_jobs = len(data_grouped)
@@ -33,14 +36,17 @@ total_jobs = len(data_grouped)
 groups = []
 for index, (fovid, group) in enumerate(data_grouped):
     print(fovid)
+    if fovid != 5587:
+        continue
     g = group.to_dict(orient="records")
     # jsut select the first one, we only need one representative per FOV
-    g = g[0]
-    g = cellJob.CellJob([g])
+    # g = g[0]
+    g = cellJob.CellJob(g)
     g.cbrThumbnailSize = 128
     g.cbrThumbnailLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
     g.cbrImageLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
     g.cbrTextureAtlasLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
+    g.cbrThumbnailURL = str(g.cells[0]["CellLine"])
 
     processor = fov_processing.ImageProcessor(g)
-    processor.generate_and_save(do_segmented_cells=False)
+    processor.generate_and_save(do_segmented_cells=True)
