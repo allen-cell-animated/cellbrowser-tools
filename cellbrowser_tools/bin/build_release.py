@@ -137,12 +137,12 @@ def process_fov_rows(groups, args, prefs, distributed_executor_address):
 def submit_fov_rows(args, prefs, groups):
     # gather cluster commands and submit in batch
     jobdata_list = []
-    print("PREPARING " + str(len(groups)) + " JOBS")
+    log.info("PREPARING " + str(len(groups)) + " JOBS")
     for index, rows in enumerate(groups):
         jobdata = createJobsFromCSV.do_image(args, prefs, rows)
         jobdata_list.append(jobdata)
 
-    print("SUBMITTING " + str(len(groups)) + " JOBS")
+    log.info("SUBMITTING " + str(len(groups)) + " JOBS")
     job_ids = jobScheduler.submit_batch(jobdata_list, prefs, name="fovs")
     return job_ids
 
@@ -296,24 +296,24 @@ def build_release_sync(p, prefs):
         #####################################
         process_fov_rows(groups, p, prefs, distributed_executor_address)
 
-    print("************************************************")
-    print("***Submission complete.  Beginning execution.***")
-    print("************************************************")
+    log.info("************************************************")
+    log.info("***Submission complete.  Beginning execution.***")
+    log.info("************************************************")
     # flow.run can return a state object to be used to get results
     flow.run()
 
-    print("************************************************")
-    print("***Flow execution complete.                  ***")
-    print("************************************************")
+    log.info("************************************************")
+    log.info("***Flow execution complete.                  ***")
+    log.info("************************************************")
     if cluster is not None:
         cluster.close()
 
     validate_fov_rows(groups, p, prefs)
-    print("validate_fov_rows done")
+    log.info("validate_fov_rows done")
     build_feature_data(prefs, groups)
-    print("build_feature_data done")
+    log.info("build_feature_data done")
     generate_cellline_def(prefs)
-    print("generate_cellline_def done")
+    log.info("generate_cellline_def done")
 
     send_done_email()
 
@@ -399,14 +399,14 @@ def main():
         if p.step == BuildStep.VALIDATE:
             groups = uncache_dataset(prefs)
             validate_fov_rows(groups, p, prefs)
-            print("validate_fov_rows done")
+            log.info("validate_fov_rows done")
         elif p.step == BuildStep.FEATUREDATA:
             groups = uncache_dataset(prefs)
             build_feature_data(prefs, groups)
-            print("build_feature_data done")
+            log.info("build_feature_data done")
         elif p.step == BuildStep.CELLLINES:
             generate_cellline_def(prefs)
-            print("generate_cellline_def done")
+            log.info("generate_cellline_def done")
         elif p.step == BuildStep.DONE:
             send_done_email()
             log.info("Done!")
