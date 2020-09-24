@@ -8,7 +8,7 @@ from typing import NamedTuple
 import csv
 from . import dataHandoffUtils as lkutils
 from . import dataset_constants
-from .dataset_constants import AugmentedDataField, DataField
+from .dataset_constants import DataField
 import json
 import os
 import pandas as pd

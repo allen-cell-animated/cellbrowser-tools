@@ -1,5 +1,3 @@
-from aicsimageio.readers import OmeTiffReader
-from aicsimageio.readers import TiffReader
 from aicsimageio.writers import OmeTiffWriter
 from aicsimageio.writers import PngWriter
 from aicsimageio.vendor.omexml import OMEXML
@@ -7,8 +5,7 @@ from aicsimageio.vendor.omexml import qn
 from aicsimageio import AICSImage
 from . import cellJob
 from . import dataHandoffUtils as utils
-from .dataset_constants import AugmentedDataField, DataField
-from aicsimageio import AICSImage
+from .dataset_constants import DataField
 from aicsimageprocessing import thumbnailGenerator
 from aicsimageprocessing import textureAtlas
 
