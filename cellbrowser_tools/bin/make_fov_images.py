@@ -8,7 +8,16 @@ import pandas as pd
 lk = LabKey(server_context=lkaccess.contexts.PROD)
 
 print("REQUESTING DATA HANDOFF")
-# lkdatarows = lk.dataset.get_fov_dataset(126)
+
+####################################################################
+# This script generates combined ome-tiffs, texture atlases and thumbnails for a set of fovs with segmentations
+####################################################################
+# THERE IS NO LK QUERY THAT RETURNS THE CORRECT COLUMNS FOR FOV IDS
+# TODAY WE REQUIRE CREATING A SPECIAL DATASET WITH THE FOVS NEEDED
+# ALSO WE HAVE TO USE THE get_cell_dataset UNTIL get_fov_dataset WORKS AGAIN
+####################################################################
+
+# Hardcoded for now, for testing
 lkdatarows = lk.dataset.get_cell_dataset(126)
 df_data_handoff = pd.DataFrame(lkdatarows)
 
