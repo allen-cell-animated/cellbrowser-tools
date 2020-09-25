@@ -46,7 +46,6 @@ for index, (fovid, group) in enumerate(data_grouped):
     g.cbrThumbnailLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
     g.cbrImageLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
     g.cbrTextureAtlasLocation = "//allen/aics/animated-cell/Dan/fileserver/DS126/"
-    g.cbrThumbnailURL = str(g.cells[0]["CellLine"])
 
     processor = fov_processing.ImageProcessor(g)
     processor.generate_and_save(do_segmented_cells=True)

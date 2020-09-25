@@ -21,7 +21,6 @@ import featuredb as fh
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
-# cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 # clustering algorithm defaults

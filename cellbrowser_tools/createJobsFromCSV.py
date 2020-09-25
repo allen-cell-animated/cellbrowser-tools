@@ -11,7 +11,6 @@ from .fov_processing import do_main_image_with_celljob
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
-# cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 
@@ -96,7 +95,6 @@ def do_image(args, prefs, rows):
     info.cbrTextureAtlasLocation = os.path.join(
         info.cbrTextureAtlasRoot, info.cbrImageRelPath
     )
-    info.cbrThumbnailURL = subdir
 
     info.cbrThumbnailSize = 128
 

@@ -178,14 +178,9 @@ class ImageProcessor:
             atlasdir = utils.normalize_path(self.job.cbrTextureAtlasLocation)
         else:
             atlasdir = "."
-        if self.job.cbrThumbnailURL:
-            thumburl = utils.normalize_path(self.job.cbrThumbnailURL) + "/"
-        else:
-            thumburl = ""
 
         make_dir(thumbnaildir)
         self.png_dir = os.path.join(thumbnaildir, self.file_name)
-        self.png_url = thumburl + self.file_name
 
         make_dir(ometifdir)
         self.ometif_dir = os.path.join(ometifdir, self.file_name)
@@ -655,20 +650,17 @@ class ImageProcessor:
             self.row[DataField.PixelScaleY],
             self.row[DataField.PixelScaleZ],
         ]
-        png_dir, ometif_dir, png_url, atlas_dir = (
+        png_dir, ometif_dir, atlas_dir = (
             self.png_dir,
             self.ometif_dir,
-            self.png_url,
             self.atlas_dir,
         )
         if seg_cell_index is not None:
             png_dir += "_" + str(seg_cell_index) + ".png"
             ometif_dir += "_" + str(seg_cell_index) + ".ome.tif"
-            png_url += "_" + str(seg_cell_index) + ".png"
         else:
             png_dir += ".png"
             ometif_dir += ".ome.tif"
-            png_url += ".png"
 
         if thumbnail is not None:
             log.info("saving thumbnail...")
