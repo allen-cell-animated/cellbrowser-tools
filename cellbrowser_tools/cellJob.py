@@ -9,5 +9,3 @@ class CellJob(object):
         self.cbrImageLocation = ""
         # root output directory for volume-viewer texture atlases
         self.cbrTextureAtlasLocation = ""
-        # url relative path for thumbnail
-        self.cbrThumbnailURL = ""

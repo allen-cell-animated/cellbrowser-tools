@@ -10,7 +10,10 @@ from quilt3 import Package
 import re
 import sys
 
-logging.basicConfig(level=logging.INFO)
+log = logging.getLogger()
+logging.basicConfig(
+    level=logging.INFO, format="[%(levelname)4s:%(lineno)4s %(asctime)s] %(message)s"
+)
 
 
 # CAUTION:
@@ -101,6 +104,10 @@ def get_fov_name(fovid, cellline):
     return f"{cellline}_{fovid}"
 
 
+def get_cell_name(cellid, fovid, cellline):
+    return f"{cellline}_{fovid}_{cellid}"
+
+
 def get_fov_name_from_row(row):
     celllinename = get_cellline_name_from_row(row)
     fovid = row[DataField.FOVId]
@@ -118,13 +125,17 @@ def check_dups(dfr, column, remove=True):
         dfr.drop_duplicates(subset=column, keep="first", inplace=True)
 
 
+TEST_DATASET = "//allen/aics/assay-dev/computational/data/dna_cell_seg_on_production_data/production_run_test/mergedataset/manifest.csv"
+FULL_DATASET = "//allen/aics/assay-dev/computational/data/dna_cell_seg_on_production_data/production_run/mergedataset/manifest.csv"
+
+
 def collect_csv_data_rows(
-    csvpath="//allen/aics/assay-dev/computational/data/dna_cell_seg_on_production_data/production_run_test/mergedataset/manifest.csv",
+    csvpath=FULL_DATASET,
     fovids=None,
     raw_only=False,
     max_rows=None,
 ):
-    print("REQUESTING DATA HANDOFF")
+    log.info("REQUESTING DATA HANDOFF")
     df_data_handoff = pd.read_csv(csvpath)
 
     # verify the expected column names in the above query
@@ -138,7 +149,7 @@ def collect_csv_data_rows(
     if max_rows is not None:
         df_data_handoff = df_data_handoff.head(max_rows)
 
-    print("GOT DATA HANDOFF")
+    log.info("GOT DATA HANDOFF")
 
     # Merge Aligned and Source read path columns
     df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
@@ -185,6 +196,7 @@ def collect_csv_data_rows(
         lambda row: mitotic_id_to_name(row), axis=1
     )
 
+    log.info("RETURNING COMPLETE DATASET")
     return df_data_handoff
 
 

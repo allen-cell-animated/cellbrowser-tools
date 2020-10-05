@@ -180,10 +180,10 @@ class ImageProcessor:
             atlasdir = "."
 
         make_dir(thumbnaildir)
-        self.png_dir = os.path.join(thumbnaildir, self.file_name)
+        self.png_dir = thumbnaildir
 
         make_dir(ometifdir)
-        self.ometif_dir = os.path.join(ometifdir, self.file_name)
+        self.ometif_dir = ometifdir
 
         make_dir(atlasdir)
         self.atlas_dir = atlasdir
@@ -517,6 +517,7 @@ class ImageProcessor:
             image=im_to_save,
             thumbnail=ffthumb,
             textureatlas=atlas,
+            name=base,
             omexml=self.omexml,
             other_data=static_meta,
         )
@@ -535,6 +536,9 @@ class ImageProcessor:
 
         for idx, row in enumerate(self.job.cells):
             # for each cell segmented from this image:
+            cell_name = utils.get_cell_name(
+                row[DataField.CellId], row[DataField.FOVId], row[DataField.CellLine]
+            )
             i = row[DataField.CellIndex]
             log.info(f"generating segmented cell {i}")
 
@@ -608,7 +612,7 @@ class ImageProcessor:
             log.info("generating cropped atlas ...")
             atlas_cropped = textureAtlas.generate_texture_atlas(
                 aimage_cropped,
-                name=base + "_" + str(row[DataField.CellId]),
+                name=cell_name,
                 max_edge=2048,
                 pack_order=None,
             )
@@ -627,7 +631,7 @@ class ImageProcessor:
                 image=im_to_save,
                 thumbnail=thumb,
                 textureatlas=atlas_cropped,
-                seg_cell_index=row[DataField.CellId],
+                name=cell_name,
                 omexml=copyxml,
                 other_data=static_meta_cropped,
             )
@@ -639,7 +643,7 @@ class ImageProcessor:
         image,
         thumbnail,
         textureatlas,
-        seg_cell_index=None,
+        name="",
         omexml=None,
         other_data=None,
     ):
@@ -650,17 +654,10 @@ class ImageProcessor:
             self.row[DataField.PixelScaleY],
             self.row[DataField.PixelScaleZ],
         ]
-        png_dir, ometif_dir, atlas_dir = (
-            self.png_dir,
-            self.ometif_dir,
-            self.atlas_dir,
-        )
-        if seg_cell_index is not None:
-            png_dir += "_" + str(seg_cell_index) + ".png"
-            ometif_dir += "_" + str(seg_cell_index) + ".ome.tif"
-        else:
-            png_dir += ".png"
-            ometif_dir += ".ome.tif"
+
+        png_dir = os.path.join(self.png_dir, name + ".png")
+        ometif_dir = os.path.join(self.ometif_dir, name + ".ome.tif")
+        # atlas_dir = os.path.join(self.atlas_dir, name + "_atlas.json")
 
         if thumbnail is not None:
             log.info("saving thumbnail...")

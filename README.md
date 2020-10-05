@@ -36,7 +36,7 @@ Workflow:
 Test dataset from csv instead of db query
 \\allen\aics\assay-dev\computational\data\dna_cell_seg_on_production_data\production_run_test\mergedataset\manifest.csv
 
-3. Generate dataset:
+3. Generate dataset. This step will prepare every image, validate the final images, and then compile some aggregations including a csv manifest for deployment and the final CFE input dataset in a json file.
    run:
 
    ```
@@ -45,7 +45,7 @@ Test dataset from csv instead of db query
 
 4. Upload data: This step is tied to the implementation of Cell-Feature-Explorer. The current strategy is to upload two large directories of files: the OME-TIFF files, and the postprocessed json and png files.
    To upload the json and png data:
-   `set DATASET_VERSION=1.5.0`
+   `set DATASET_VERSION=2.0.0`
    `cd %prefs.out_dir%`
    `s3promotion upload --dest-bucket bisque.allencell.org --dest-prefix v%DATASET_VERSION%/ %dataset_constants.THUMBNAILS_DIR%/`
    Upload of the OME-TIFF files is accomplished by handing the cellviewer-files.csv from step 3 to Gabe, currently. << fill in details here >>
