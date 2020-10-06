@@ -99,7 +99,7 @@ def generate_cellline_def(prefs):
     results = lk.select_rows_as_list(
         schema_name="celllines",
         query_name="CellLineDefinition",
-        columns="CellLineId/Name, ProteinId/Name, StructureId/Name, ProteinId/DisplayName",
+        columns="CellLineId/Name, ProteinId/Name, StructureId/Name, ProteinId/DisplayName, GeneId/Name, GeneId/FullName",
         filter_array=[
             labkey.query.QueryFilter(
                 "CellLineId/Name", "AICS-", labkey.query.QueryFilter.Types.STARTS_WITH

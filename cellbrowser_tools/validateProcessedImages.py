@@ -335,7 +335,7 @@ def compute_clusters_on_json_handoff(
 
 
 def get_quilt_actk_features():
-    dest_path = "temp_dir"
+    dest_path = Path("./temp_dir")
     # features come from quilt data
     # look though whole package
     p = quilt3.Package.browse("aics/actk", registry="s3://allencell")
@@ -349,7 +349,7 @@ def get_quilt_actk_features():
     cell_features_rows = []
     for cell in df_feats_manifest[["CellId", "CellFeaturesPath"]].iterrows():
         row = {"CellId": cell["CellId"]}
-        with open(dest_path / Path(cell["CellFeaturesPath"]) as f:
+        with open(dest_path / Path(cell["CellFeaturesPath"]), mode="r") as f:
             feats = json.load(f)
             pd.concat
             row.update(feats)
@@ -359,11 +359,10 @@ def get_quilt_actk_features():
     return df_feats
 
 
-def make_rand_features(prefs, count=6):
-    data = lkutils.collect_csv_data_rows(fovids=prefs.get("fovs"))
-    df_feat = data[["CellId"]]
+def make_rand_features(dataset, count=6):
+    df = dataset[["CellId"]]
     for i in range(count):
-        rand0 = [random.random() for cell in data]
+        rand0 = [random.random() for cell in range(len(dataset))]
         df[f"Random{i}"] = rand0
     return df
 
@@ -384,45 +383,66 @@ def build_cfe_dataset_2020(prefs):
     #         ...
     #     }
     # }
-    file_info_columns = ["CellId", "FOVId", "CellLineName", "thumbnailPath", "volumeviewerPath", "fovThumbnailPath", "fovVolumeviewerPath"]
-    file_infos = data[["CellId", "FOVId", "CellLineName"]]
+    file_info_columns = [
+        "CellId",
+        "FOVId",
+        "CellLineName",
+        "thumbnailPath",
+        "volumeviewerPath",
+        "fovThumbnailPath",
+        "fovVolumeviewerPath",
+    ]
+    file_infos = data[["CellId", "FOVId", "CellLine"]]
     # add file path locations
     file_infos["thumbnailPath"] = file_infos.apply(
-        lambda x: f'{x["CellLineName"]}/{lkutils.get_cell_name(x["Cellid"], x["FOVId"], x["CellLineName"])}.png'
+        lambda x: f'{x["CellLine"]}/{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}.png',
+        axis=1,
     )
     file_infos["volumeviewerPath"] = file_infos.apply(
-        lambda x: f'{x["CellLineName"]}/{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLineName"])}_atlas.json'
+        lambda x: f'{x["CellLine"]}/{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}_atlas.json',
+        axis=1,
     )
     file_infos["fovThumbnailPath"] = file_infos.apply(
-        lambda x: f'{x["CellLineName"]}/{lkutils.get_fov_name(x["FOVId"], x["CellLineName"])}.png'
+        lambda x: f'{x["CellLine"]}/{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}.png',
+        axis=1,
     )
     file_infos["fovVolumeviewerPath"] = file_infos.apply(
-        lambda x: f'{x["CellLineName"]}/{lkutils.get_fov_name(x["FOVId"], x["CellLineName"])}_atlas.json'
+        lambda x: f'{x["CellLine"]}/{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}_atlas.json',
+        axis=1,
     )
 
+    # need CellLineName here
+    file_infos.rename(columns={"CellLine": "CellLineName"}, inplace=True)
 
     # df_feats = get_quilt_actk_features()
-    df_feats = make_rand_features(prefs, 6)
+    df_feats = make_rand_features(data, 6)
     if len(df_feats) != len(file_infos):
-        raise ValueError(f"Features list has different number of cells ({len(df_feats)}) than source dataset ({len(file_infos)})")
+        raise ValueError(
+            f"Features list has different number of cells ({len(df_feats)}) than source dataset ({len(file_infos)})"
+        )
 
     # merge together on cellid
     dataset_df = pd.merge(file_infos, df_feats, how="inner", on="CellId")
-    if len(dataset_pf) != len(file_infos):
-        raise ValueError(f"Features list has different cellIds than source dataset. Can not merge.")
+    if len(dataset_df) != len(file_infos):
+        raise ValueError(
+            f"Features list has different cellIds than source dataset. Can not merge."
+        )
 
     # make each row into two dicts
     # format
     dataset = []
-    for row in dataset_df:
-        rowdict = row.to_dict("records")
-        file_infos = file_infos.to_dict("records")
-        features = df_feats.to_dict("records")
-        dataset.append({
-            "file_info": {x: rowdict[x] for x in rowdict if x in file_info_columns},
-            "measured_features":  {x: rowdict[x] for x in rowdict if x not in file_info_columns}
-        })
-
+    for i, row in dataset_df.iterrows():
+        rowdict = row.to_dict()
+        # file_infos = file_infos.to_dict("records")
+        # features = df_feats.to_dict("records")
+        dataset.append(
+            {
+                "file_info": {x: rowdict[x] for x in rowdict if x in file_info_columns},
+                "measured_features": {
+                    x: rowdict[x] for x in rowdict if x not in file_info_columns
+                },
+            }
+        )
 
     # write out the final data set
     with open(
@@ -432,7 +452,6 @@ def build_cfe_dataset_2020(prefs):
     ) as output_file:
         # TODO: could do this row by row?
         output_file.write(json.dumps(dataset))
-
 
 
 def build_feature_data(prefs, groups):

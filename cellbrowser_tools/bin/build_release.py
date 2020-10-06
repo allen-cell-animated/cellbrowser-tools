@@ -183,7 +183,7 @@ def submit_done(prefs, prefspath, job_ids):
     return new_job_ids
 
 
-def build_feature_data(prefs, groups):
+def build_feature_data(prefs):
     # validateProcessedImages.build_feature_data(prefs, groups)
     validateProcessedImages.build_cfe_dataset_2020(prefs)
     return True
@@ -341,6 +341,22 @@ def build_release_async(p, prefs):
     log.info("All Jobs Submitted!")
 
 
+def build_images_async(p, prefs):
+    # gather data set
+    groups = get_data_groups(prefs, p.n)
+
+    # copy the prefs file to a location where it can be found for all steps.
+    statusdir = prefs["out_status"]
+    prefspath = Path(f"{statusdir}/prefs.json").expanduser()
+    shutil.copyfile(p.prefs, prefspath)
+
+    # use SLURM sbatch submission to schedule all the steps
+    # each step will run build_release.py with a step id
+    job_ids = submit_fov_rows(p, prefs, groups)
+    job_ids = submit_done(prefs, prefspath, job_ids)
+    log.info("All Jobs Submitted!")
+
+
 def parse_args():
     p = argparse.ArgumentParser(prog="process", description="Process the FOV pipeline")
 
@@ -398,13 +414,14 @@ def main():
         build_release_async(p, prefs)
     else:
         # if a step was passed in, then we need to run that step!
-        if p.step == BuildStep.VALIDATE:
+        if p.step == BuildStep.IMAGES:
+            build_images_async(p, prefs)
+        elif p.step == BuildStep.VALIDATE:
             groups = uncache_dataset(prefs)
             validate_fov_rows(groups, p, prefs)
             log.info("validate_fov_rows done")
         elif p.step == BuildStep.FEATUREDATA:
-            groups = uncache_dataset(prefs)
-            build_feature_data(prefs, groups)
+            build_feature_data(prefs)
             log.info("build_feature_data done")
         elif p.step == BuildStep.CELLLINES:
             generate_cellline_def(prefs)

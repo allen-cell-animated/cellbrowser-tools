@@ -43,6 +43,13 @@ Test dataset from csv instead of db query
    python build_release.py myprefs.json
    ```
 
+   ```
+   python build_release.py myprefs.json --step images
+   python build_release.py myprefs.json --step validate
+   python build_release.py myprefs.json --step featuredata
+   python build_release.py myprefs.json --step celllines
+   ```
+
 4. Upload data: This step is tied to the implementation of Cell-Feature-Explorer. The current strategy is to upload two large directories of files: the OME-TIFF files, and the postprocessed json and png files.
    To upload the json and png data:
    `set DATASET_VERSION=2.0.0`
