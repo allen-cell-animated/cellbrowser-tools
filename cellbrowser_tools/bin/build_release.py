@@ -415,6 +415,8 @@ def main():
     else:
         # if a step was passed in, then we need to run that step!
         if p.step == BuildStep.IMAGES:
+            p.run = False
+            p.cluster = True
             build_images_async(p, prefs)
         elif p.step == BuildStep.VALIDATE:
             groups = uncache_dataset(prefs)
