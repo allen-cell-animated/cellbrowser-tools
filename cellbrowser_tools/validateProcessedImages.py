@@ -95,13 +95,13 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
         fullf = make_path(thumbs_dir, cell_line, f + ".png")
         if not os.path.isfile(fullf):
             err = True
-            print("ERROR: " + jobname + ": Could not find file: " + fullf)
+            log.info("ERROR: " + jobname + ": Could not find file: " + fullf)
 
         # check for atlas meta
         fullaj = make_path(thumbs_dir, cell_line, f + "_atlas.json")
         if not os.path.isfile(fullaj):
             err = True
-            print("ERROR: " + jobname + ": Could not find file: " + fullaj)
+            log.info("ERROR: " + jobname + ": Could not find file: " + fullaj)
         else:
             # load file and look at channel names
             with open(fullaj, "r") as json_file:
@@ -115,13 +115,13 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
             fullat = make_path(thumbs_dir, cell_line, f + "_atlas_" + i + ".png")
             if not os.path.isfile(fullat):
                 err = True
-                print("ERROR: " + jobname + ": Could not find file: " + fullat)
+                log.info("ERROR: " + jobname + ": Could not find file: " + fullat)
 
         # check for image
         fullf = make_path(data_dir, cell_line, f + ".ome.tif")
         if not os.path.isfile(fullf):
             err = True
-            print("ERROR: " + jobname + ": Could not find file: " + fullf)
+            log.info("ERROR: " + jobname + ": Could not find file: " + fullf)
 
     outrows = []
     if err is not True:
@@ -522,6 +522,8 @@ def validate_rows(groups, args, prefs):
             errorFovs.append(str(rows[0]["FOVId"]))
         else:
             allfiles.extend(filerows)
+        # if index % 1000 == 0:
+        #     log.info(f"Processed {index}")
 
     # write out all collected channel names
     with open(
