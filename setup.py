@@ -73,8 +73,8 @@ setup(
         "Intended Audience :: Developers",
         "License :: Allen Institute Software License",
         "Natural Language :: English",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     data_files=[
         ("", ["cellbrowser_tools/batch_job.j2", "cellbrowser_tools/single_job.j2"])
@@ -94,7 +94,7 @@ setup(
     keywords="cellbrowser_tools",
     name="cellbrowser_tools",
     packages=find_packages(),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     setup_requires=setup_requirements,
     test_suite="cellbrowser_tools/tests",
     tests_require=test_requirements,
