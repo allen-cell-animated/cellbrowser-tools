@@ -81,9 +81,9 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
 
     names = [imageName]
     for row in rows:
-        seg = row[DataField.CellId]
-        n = imageName + "_" + str(int(seg))
-        # str(int(seg)) removes leading zeros
+        n = lkutils.get_cell_name(
+            row[DataField.CellId], row[DataField.FOVId], row[DataField.CellLine]
+        )
         names.append(n)
 
     # exts = [".ome.tif", ".png"]
