@@ -4,19 +4,10 @@
 #          Zach Crabtree zacharyc@alleninstitute.org
 
 import argparse
-import csv
-import glob
-import json
-import labkey
 import os
-import platform
-import re
-import shutil
 import sys
 
-from . import cellJob
 from . import dataHandoffUtils as lkutils
-from . import dataset_constants
 from . import jobScheduler
 from .dataset_constants import DataField
 
@@ -153,7 +144,7 @@ def do_main(args, prefs):
             jobdata_list.append(jobdata)
 
         print("SUBMITTING " + str(total_jobs) + " JOBS")
-        jobScheduler.slurp_commands(jobdata_list, prefs, name="thumbs")
+        jobScheduler.submit_batch(jobdata_list, prefs, name="thumbs")
 
     else:
         # run serially

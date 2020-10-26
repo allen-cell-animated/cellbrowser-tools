@@ -7,12 +7,12 @@
 {#- Lastly, add the array directive based off of the number of items in the query #}
 {#- Also add a maximum number of simultaneous jobs #}
 {#- See https://slurm.schedmd.com/sbatch.html#OPT_array for further details #}
-#SBATCH --array 0-{{ (mybatchsize) }}%{{ max_simultaneous_jobs | default(32) }}
+{#- this is 1 based to work with the "head" command below #}
+#SBATCH --array 1-{{ (mybatchsize) }}%{{ max_simultaneous_jobs | default(32) }}
 
 # enable locating the source code of these scripts
 module add anaconda3
-conda activate cellbrowser-tools
-# export PYTHONPATH=$PYTHONPATH:/home/danielt/cellbrowserpipeline/cellbrowser-tools/cellbrowser_tools
+source activate cellbrowser-tools
 
 {# srun the script, and add the item to the end of the script call #}
 srun bash -c "$(head -n $SLURM_ARRAY_TASK_ID {{mybatchdatafilename}} | tail -n 1)"

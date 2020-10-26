@@ -1,0 +1,13 @@
+#!/bin/bash
+
+{# Add all of the user-requested directives #}
+{% for directive in directives -%}
+#SBATCH {{ directive }}
+{% endfor -%}
+
+# enable locating the source code of these scripts
+module add anaconda3
+source activate cellbrowser-tools
+
+{# srun the script, and add the item to the end of the script call #}
+srun {{ job_with_args }}

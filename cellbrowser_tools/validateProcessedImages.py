@@ -8,20 +8,27 @@ from typing import NamedTuple
 import csv
 from . import dataHandoffUtils as lkutils
 from . import dataset_constants
-from .dataset_constants import AugmentedDataField, DataField
+from .dataset_constants import DataField
 import json
+import logging
 import os
 import pandas as pd
+from pathlib import Path
+import quilt3
+import random
 from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 import sys
 from typing import Union, Dict, List
 
 import featuredb as fh
 
+log = logging.getLogger()
+logging.basicConfig(
+    level=logging.INFO, format="[%(levelname)4s:%(lineno)4s %(asctime)s] %(message)s"
+)
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
-# cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 # clustering algorithm defaults
@@ -64,7 +71,7 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
     # use row 0 as the "full field" row
     fovrow = rows[0]
 
-    jobname = fovrow[AugmentedDataField.FOV_3dcv_Name]
+    jobname = lkutils.get_fov_name_from_row(fovrow)
 
     imageName = jobname
 
@@ -74,9 +81,9 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
 
     names = [imageName]
     for row in rows:
-        seg = row[DataField.CellId]
-        n = imageName + "_" + str(int(seg))
-        # str(int(seg)) removes leading zeros
+        n = lkutils.get_cell_name(
+            row[DataField.CellId], row[DataField.FOVId], row[DataField.CellLine]
+        )
         names.append(n)
 
     # exts = [".ome.tif", ".png"]
@@ -88,13 +95,13 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
         fullf = make_path(thumbs_dir, cell_line, f + ".png")
         if not os.path.isfile(fullf):
             err = True
-            print("ERROR: " + jobname + ": Could not find file: " + fullf)
+            log.info("ERROR: " + jobname + ": Could not find file: " + fullf)
 
         # check for atlas meta
         fullaj = make_path(thumbs_dir, cell_line, f + "_atlas.json")
         if not os.path.isfile(fullaj):
             err = True
-            print("ERROR: " + jobname + ": Could not find file: " + fullaj)
+            log.info("ERROR: " + jobname + ": Could not find file: " + fullaj)
         else:
             # load file and look at channel names
             with open(fullaj, "r") as json_file:
@@ -108,13 +115,13 @@ def do_image(args, prefs, rows, index, total_jobs, channel_name_list):
             fullat = make_path(thumbs_dir, cell_line, f + "_atlas_" + i + ".png")
             if not os.path.isfile(fullat):
                 err = True
-                print("ERROR: " + jobname + ": Could not find file: " + fullat)
+                log.info("ERROR: " + jobname + ": Could not find file: " + fullat)
 
         # check for image
         fullf = make_path(data_dir, cell_line, f + ".ome.tif")
         if not os.path.isfile(fullf):
             err = True
-            print("ERROR: " + jobname + ": Could not find file: " + fullf)
+            log.info("ERROR: " + jobname + ": Could not find file: " + fullf)
 
     outrows = []
     if err is not True:
@@ -327,6 +334,126 @@ def compute_clusters_on_json_handoff(
     return handoff
 
 
+def get_quilt_actk_features():
+    dest_path = Path("./temp_dir")
+    # features come from quilt data
+    # look though whole package
+    p = quilt3.Package.browse("aics/actk", registry="s3://allencell")
+    # download just the feature data locally -- takes an hour at 300kbps
+    p.install(
+        "aics/actk/master/singlecellfeatures", registry="s3://allencell", dest=dest_path
+    )
+    # load the features manifest as a df
+    df_feats_manifest = p["master/singlecellfeatures/manifest.parquet"]()
+    # read all the jsons you downloaded in as a df
+    cell_features_rows = []
+    for cell in df_feats_manifest[["CellId", "CellFeaturesPath"]].iterrows():
+        row = {"CellId": cell["CellId"]}
+        with open(dest_path / Path(cell["CellFeaturesPath"]), mode="r") as f:
+            feats = json.load(f)
+            pd.concat
+            row.update(feats)
+        cell_features_rows.append(row)
+    df_feats = pd.DataFrame(cell_features_rows)
+
+    return df_feats
+
+
+def make_rand_features(dataset, count=6):
+    df = dataset[["CellId"]]
+    for i in range(count):
+        rand0 = [random.random() for cell in range(len(dataset))]
+        df[f"Random{i}"] = rand0
+    return df
+
+
+def build_cfe_dataset_2020(prefs):
+    # read dataset into dataframe
+    data = lkutils.collect_csv_data_rows(fovids=prefs.get("fovs"))
+    log.info(f"Number of total cell rows: {len(data)}")
+    # Per-cell
+    #     {
+    #     "file_info": {
+    #         "CellId": 2,
+    #         "FOVId": 1,
+    #         "CellLineName": "AICS-13"
+    #     },
+    #     "measured_features": {
+    #         "Apical Proximity (unitless)": 2.1123541,
+    #         ...
+    #     }
+    # }
+    file_info_columns = [
+        "CellId",
+        "FOVId",
+        "CellLineName",
+        "thumbnailPath",
+        "volumeviewerPath",
+        "fovThumbnailPath",
+        "fovVolumeviewerPath",
+    ]
+    file_infos = data[["CellId", "FOVId", "CellLine"]]
+    # add file path locations
+    file_infos["thumbnailPath"] = file_infos.apply(
+        lambda x: f'{x["CellLine"]}/{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}.png',
+        axis=1,
+    )
+    file_infos["volumeviewerPath"] = file_infos.apply(
+        lambda x: f'{x["CellLine"]}/{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}_atlas.json',
+        axis=1,
+    )
+    file_infos["fovThumbnailPath"] = file_infos.apply(
+        lambda x: f'{x["CellLine"]}/{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}.png',
+        axis=1,
+    )
+    file_infos["fovVolumeviewerPath"] = file_infos.apply(
+        lambda x: f'{x["CellLine"]}/{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}_atlas.json',
+        axis=1,
+    )
+
+    # need CellLineName here
+    file_infos.rename(columns={"CellLine": "CellLineName"}, inplace=True)
+
+    # df_feats = get_quilt_actk_features()
+    df_feats = make_rand_features(data, 6)
+    if len(df_feats) != len(file_infos):
+        raise ValueError(
+            f"Features list has different number of cells ({len(df_feats)}) than source dataset ({len(file_infos)})"
+        )
+
+    # merge together on cellid
+    dataset_df = pd.merge(file_infos, df_feats, how="inner", on="CellId")
+    if len(dataset_df) != len(file_infos):
+        raise ValueError(
+            f"Features list has different cellIds than source dataset. Can not merge."
+        )
+
+    # make each row into two dicts
+    # format
+    dataset = []
+    for i, row in dataset_df.iterrows():
+        rowdict = row.to_dict()
+        # file_infos = file_infos.to_dict("records")
+        # features = df_feats.to_dict("records")
+        dataset.append(
+            {
+                "file_info": {x: rowdict[x] for x in rowdict if x in file_info_columns},
+                "measured_features": {
+                    x: rowdict[x] for x in rowdict if x not in file_info_columns
+                },
+            }
+        )
+
+    # write out the final data set
+    with open(
+        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
+        "w",
+        newline="",
+    ) as output_file:
+        # TODO: could do this row by row?
+        output_file.write(json.dumps(dataset))
+
+
 def build_feature_data(prefs, groups):
     configfile = "//allen/aics/animated-cell/Dan/featurehandoff/prod.json"
 
@@ -359,13 +486,25 @@ def build_feature_data(prefs, groups):
             )
 
     jsondictlist = fh.df_to_json(allfeaturedata)
+    jsondictlist = generate_filenames(jsondictlist)
     jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
+
     with open(
         os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
         "w",
         newline="",
     ) as output_file:
         output_file.write(json.dumps(jsondictlist))
+
+
+def generate_filenames(handoff):
+    for row in handoff:
+        fi = row["file_info"]
+        fi["thumbnailPath"] = f'{fi["CellLineName"]}/{fi["FOVId"]}_{fi["CellId"]}.png'
+        fi[
+            "volumeviewerPath"
+        ] = f'{fi["CellLineName"]}/{fi["FOVId"]}_{fi["CellId"]}_atlas.json'
+    return handoff
 
 
 def validate_rows(groups, args, prefs):
@@ -383,6 +522,8 @@ def validate_rows(groups, args, prefs):
             errorFovs.append(str(rows[0]["FOVId"]))
         else:
             allfiles.extend(filerows)
+        # if index % 1000 == 0:
+        #     log.info(f"Processed {index}")
 
     # write out all collected channel names
     with open(

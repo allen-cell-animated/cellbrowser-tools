@@ -6,12 +6,11 @@ import sys
 from . import cellJob
 from . import dataHandoffUtils as lkutils
 from . import jobScheduler
-from .dataset_constants import AugmentedDataField, DataField
-from .processImageWithSegmentation import do_main_image_with_celljob
+from .dataset_constants import DataField
+from .fov_processing import do_main_image_with_celljob
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
-# cbrThumbnailURL file:// uri to cellbrowser thumbnail
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
 
 
@@ -64,14 +63,14 @@ def make_json(jobname, info, prefs):
     with open(jsonname, "w") as fp:
         json.dump(info.__dict__, fp)
 
-    return f"python ./processImageWithSegmentation.py {jsonname}"
+    return f"processImageWithSegmentation {jsonname}"
 
 
 def do_image(args, prefs, rows):
     # use row 0 as the "full field" row
     row = rows[0]
 
-    jobname = row[AugmentedDataField.FOV_3dcv_Name]
+    jobname = lkutils.get_fov_name_from_row(row)
 
     # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
 
@@ -96,7 +95,6 @@ def do_image(args, prefs, rows):
     info.cbrTextureAtlasLocation = os.path.join(
         info.cbrTextureAtlasRoot, info.cbrImageRelPath
     )
-    info.cbrThumbnailURL = subdir
 
     info.cbrThumbnailSize = 128
 
@@ -148,7 +146,7 @@ def process_images(args, prefs):
             jobdata_list.append(jobdata)
 
         print("SUBMITTING " + str(total_jobs) + " JOBS")
-        jobScheduler.slurp_commands(jobdata_list, prefs, name="fovs")
+        jobScheduler.submit_batch(jobdata_list, prefs, name="fovs")
     else:
         # run serially
         for index, (fovid, group) in enumerate(data_grouped):

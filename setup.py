@@ -40,7 +40,7 @@ dev_requirements = [
 
 requirements = [
     "aics_dask_utils==0.2.0",
-    "aicsimageio==3.2.0",
+    "aicsimageio==3.3.1",
     "aicsimageprocessing==0.7.3",
     "bokeh==2.0.2",
     "dask[bag]==2.12.0",
@@ -48,7 +48,7 @@ requirements = [
     "distributed==2.12.0",
     "featuredb>=0.3.0",
     "labkey",
-    "lkaccess",
+    "lkaccess>=1.4.21",
     "pandas==1.0.3",
     "prefect==0.9.7",
     "quilt3",
@@ -73,12 +73,18 @@ setup(
         "Intended Audience :: Developers",
         "License :: Allen Institute Software License",
         "Natural Language :: English",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+    ],
+    data_files=[
+        ("", ["cellbrowser_tools/batch_job.j2", "cellbrowser_tools/single_job.j2"])
     ],
     description="Build dataset for release in Cell Feature Explorer",
     entry_points={
-        "console_scripts": ["build_release=cellbrowser_tools.bin.build_release:main"],
+        "console_scripts": [
+            "build_release=cellbrowser_tools.bin.build_release:main",
+            "processImageWithSegmentation=cellbrowser_tools.bin.processImageWithSegmentation:main",
+        ],
     },
     install_requires=requirements,
     license="Allen Institute Software License",
@@ -88,7 +94,7 @@ setup(
     keywords="cellbrowser_tools",
     name="cellbrowser_tools",
     packages=find_packages(),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     setup_requires=setup_requirements,
     test_suite="cellbrowser_tools/tests",
     tests_require=test_requirements,

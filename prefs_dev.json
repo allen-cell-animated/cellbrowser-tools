@@ -9,7 +9,7 @@
     "partition": "aics_cpu_general",
     "time": "03:00:00",
     "cpus-per-task": 1,
-    "output": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/out/FOV-%A_%a.out",
-    "error": "/allen/aics/animated-cell/Dan/cellbrowser-tools/processing/scripts_slurm/err/FOV-%A_%a.err"
+    "output": "out/",
+    "error": "err/"
   }
 }

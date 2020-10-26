@@ -7,6 +7,7 @@ ATLAS_DIR = "Cell-Viewer_Thumbnails"
 FEATURE_DATA_FILENAME = "cell-feature-analysis.json"
 CELL_LINE_DATA_FILENAME = "cell-line-def.json"
 FILE_LIST_FILENAME = "cellviewer-files.csv"
+DATASET_JSON_FILENAME = "dataset.json"
 
 ERROR_FOVS_FILENAME = "errorFovs.txt"
 CHANNEL_NAMES_FILENAME = "allChannelNames.txt"
@@ -14,6 +15,7 @@ CHANNEL_NAMES_FILENAME = "allChannelNames.txt"
 
 # the expected column names returned from labkey
 class DataField(str, Enum):
+    AlignedImageReadPath = "AlignedImageReadPath"
     CellId = "CellId"
     CellIndex = "CellIndex"
     SourceFileId = "SourceFileId"
@@ -23,15 +25,19 @@ class DataField(str, Enum):
     NucleusSegmentationFileId = "NucleusSegmentationFileId"
     NucleusSegmentationFilename = "NucleusSegmentationFilename"
     NucleusSegmentationReadPath = "NucleusSegmentationReadPath"
+    NucleusSegmentationChannelIndex = "NucleusSegmentationChannelIndex"
     NucleusContourFileId = "NucleusContourFileId"
     NucleusContourFilename = "NucleusContourFilename"
     NucleusContourReadPath = "NucleusContourReadPath"
+    NucleusContourChannelIndex = "NucleusContourChannelIndex"
     MembraneSegmentationFileId = "MembraneSegmentationFileId"
     MembraneSegmentationFilename = "MembraneSegmentationFilename"
     MembraneSegmentationReadPath = "MembraneSegmentationReadPath"
+    MembraneSegmentationChannelIndex = "MembraneSegmentationChannelIndex"
     MembraneContourFileId = "MembraneContourFileId"
     MembraneContourFilename = "MembraneContourFilename"
     MembraneContourReadPath = "MembraneContourReadPath"
+    MembraneContourChannelIndex = "MembraneContourChannelIndex"
     StructureSegmentationFileId = "StructureSegmentationFileId"
     StructureSegmentationFilename = "StructureSegmentationFilename"
     StructureSegmentationReadPath = "StructureSegmentationReadPath"
@@ -40,8 +46,10 @@ class DataField(str, Enum):
     StructureContourReadPath = "StructureContourReadPath"
     StructureSegmentationAlgorithm = "StructureSegmentationAlgorithm"
     StructureSegmentationAlgorithmVersion = "StructureSegmentationAlgorithmVersion"
-    ChannelNumber405 = "ChannelNumber405"
-    ChannelNumber638 = "ChannelNumber638"
+    ChannelNumber405 = "ChannelNumber405"  # dna
+    # ChannelNumber488 = "ChannelNumber488" # possible struct
+    # ChannelNumber561 = "ChannelNumber561" # possible struct
+    ChannelNumber638 = "ChannelNumber638"  # membrane
     ChannelNumberStruct = "ChannelNumberStruct"
     ChannelNumberBrightfield = "ChannelNumberBrightfield"
     NucMembSegmentationAlgorithm = "NucMembSegmentationAlgorithm"
@@ -68,7 +76,6 @@ class DataField(str, Enum):
     Structure = "Structure"
     StructureDisplayName = "StructureDisplayName"
     StructureShortName = "StructureShortName"
-    StructEducationName = "StructEducationName"
     Protein = "Protein"
     ProteinDisplayName = "ProteinDisplayName"
     Gene = "Gene"
@@ -79,9 +86,3 @@ class DataField(str, Enum):
 class AugmentedDataField(str, Enum):
     IsMitotic = "IsMitotic"
     MitoticState = "MitoticState"
-    LegacyCellName = "LegacyCellName"
-    LegacyFOVName = "LegacyFOVName"
-    MitoticAlignedAngle = "Angle"
-    MitoticAlignedX = "x"
-    MitoticAlignedY = "y"
-    FOV_3dcv_Name = "FOV_3dcv_Name"
