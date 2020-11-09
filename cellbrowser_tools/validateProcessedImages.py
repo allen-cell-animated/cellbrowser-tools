@@ -367,6 +367,10 @@ def make_rand_features(dataset, count=6):
     return df
 
 
+def get_csv_features(path: str):
+    return pd.read_csv(path)
+
+
 def build_cfe_dataset_2020(prefs):
     # read dataset into dataframe
     data = lkutils.collect_csv_data_rows(fovids=prefs.get("fovs"))
@@ -414,8 +418,12 @@ def build_cfe_dataset_2020(prefs):
     # need CellLineName here
     file_infos.rename(columns={"CellLine": "CellLineName"}, inplace=True)
 
+    log.info("Collecting feature data")
+    df_feats = get_csv_features(
+        "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cfe_table_2020/Production2020.csv"
+    )
     # df_feats = get_quilt_actk_features()
-    df_feats = make_rand_features(data, 6)
+    # df_feats = make_rand_features(data, 6)
     if len(df_feats) != len(file_infos):
         raise ValueError(
             f"Features list has different number of cells ({len(df_feats)}) than source dataset ({len(file_infos)})"
