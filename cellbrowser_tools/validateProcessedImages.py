@@ -368,7 +368,10 @@ def make_rand_features(dataset, count=6):
 
 
 def get_csv_features(path: str):
-    return pd.read_csv(path)
+    # replace NaN values with string "NaN"
+    df = pd.read_csv(path)
+    df.fillna("NaN", inplace=True)
+    return df
 
 
 def build_cfe_dataset_2020(prefs):
