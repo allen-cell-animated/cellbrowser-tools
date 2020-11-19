@@ -376,7 +376,7 @@ def get_csv_features(path: str):
 
 def build_cfe_dataset_2020(prefs):
     # read dataset into dataframe
-    data = lkutils.collect_csv_data_rows(fovids=prefs.get("fovs"))
+    data = lkutils.collect_csv_data_rows(fovids=prefs.get("fovs"), cell_lines=prefs.get("cell_lines"))
     log.info(f"Number of total cell rows: {len(data)}")
     # Per-cell
     #     {

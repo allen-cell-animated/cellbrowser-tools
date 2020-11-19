@@ -73,7 +73,9 @@ def uncache_dataset(prefs):
 
 
 def get_data_groups(prefs, n=0):
-    data = dataHandoffUtils.collect_csv_data_rows(fovids=prefs.get("fovs"))
+    data = dataHandoffUtils.collect_csv_data_rows(
+        fovids=prefs.get("fovs"), cell_lines=prefs.get("cell_lines")
+    )
     log.info("Number of total cell rows: " + str(len(data)))
     # group by fov id
     data_grouped = data.groupby("FOVId")

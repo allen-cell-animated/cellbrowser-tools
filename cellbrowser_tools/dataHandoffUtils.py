@@ -132,6 +132,7 @@ FULL_DATASET = "//allen/aics/assay-dev/computational/data/dna_cell_seg_on_produc
 def collect_csv_data_rows(
     csvpath=FULL_DATASET,
     fovids=None,
+    cell_lines=None,
     raw_only=False,
     max_rows=None,
 ):
@@ -145,6 +146,8 @@ def collect_csv_data_rows(
 
     if fovids is not None and len(fovids) > 0:
         df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
+    elif cell_lines is not None and len(cell_lines) > 0:
+        df_data_handoff = df_data_handoff[df_data_handoff["CellLine"].isin(cell_lines)]
 
     if max_rows is not None:
         df_data_handoff = df_data_handoff.head(max_rows)
