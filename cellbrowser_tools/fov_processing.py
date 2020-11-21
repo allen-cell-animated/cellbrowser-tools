@@ -305,15 +305,8 @@ class ImageProcessor:
 
         # 2. obtain relevant channels from original image file
         image = cr.get_image_data("CZYX", T=0)
-        # if len(image.shape) == 5 and image.shape[0] == 1:
-        #    image = image[0, :, :, :, :]
         if len(image.shape) != 4:
             raise ValueError("Image did not return 4d CZYX data")
-        # image shape from czi assumed to be ZCYX
-        # assume no T dimension for now
-        # convert to CZYX, so that shape[0] is number of channels:
-        # image = image.transpose(1, 0, 2, 3)
-        # assumption: channel indices are one-based.
         self.channel_indices = [
             int(self.row[DataField.ChannelNumber638]),
             int(self.row[DataField.ChannelNumberStruct]),
@@ -325,7 +318,6 @@ class ImageProcessor:
             raise ValueError(
                 f"Image does not have enough channels - needs at least {max(self.channel_indices)} but has {image.shape[0]}"
             )
-        orig_num_channels = image.shape[0]
         image = np.array(
             [
                 image[self.channel_indices[0]],
@@ -334,9 +326,6 @@ class ImageProcessor:
                 image[self.channel_indices[3]],
             ]
         )
-        channels_to_remove = [
-            x for x in range(orig_num_channels) if x not in self.channel_indices
-        ]
 
         # 3. fix up XML to reorder channels
         # we want to preserve all channel and plane data for the channels we are keeping!
@@ -347,23 +336,23 @@ class ImageProcessor:
         #   channel_indices[3] to channel3
         pix = self.omexml.image().Pixels
         chxml = [pix.Channel(channel) for channel in self.channel_indices]
-        planes = [
-            pix.get_planes_of_channel(channel) for channel in self.channel_indices
-        ]
-        # remove channels in reverse order to preserve indices for next removal!!
-        # this assumes that channels_to_remove is in ascending order.
-        for i in reversed(channels_to_remove):
-            pix.remove_channel(i)
-        # reset all plane indices
-        for i in range(len(planes)):
-            for j in planes[i]:
-                j.set("TheC", str(i))
-        pix.set_SizeC(4)
-        chxml = [pix.Channel(channel) for channel in range(0, 4)]
-        chxml[0].set_ID("Channel:0:0")
-        chxml[1].set_ID("Channel:0:1")
-        chxml[2].set_ID("Channel:0:2")
-        chxml[3].set_ID("Channel:0:3")
+        # remove all channels and re-add them in the approved order.
+        while pix.channel_count > 0:
+            pix.remove_channel(pix.channel_count - 1)
+        # add our channels
+        for (c, channel) in enumerate(chxml):
+            pix.node.append(channel.node)
+            channel.set_ID(f"Channel:0:{c}")
+
+        pix.set_SizeC(len(chxml))
+        # add a bunch of planes for all the channels just added
+        pix.plane_count = pix.get_SizeZ() * len(chxml)
+        for c in range(len(chxml)):
+            for z in range(pix.get_SizeZ()):
+                which_plane = z + c * pix.get_SizeZ()
+                pix.Plane(which_plane).TheZ = z
+                pix.Plane(which_plane).TheC = c
+                pix.Plane(which_plane).TheT = 0
 
         nch = 4
         self.seg_indices = []
