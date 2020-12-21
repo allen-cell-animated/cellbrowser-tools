@@ -376,7 +376,9 @@ def get_csv_features(path: str):
 
 def build_cfe_dataset_2020(prefs):
     # read dataset into dataframe
-    data = lkutils.collect_csv_data_rows(fovids=prefs.get("fovs"), cell_lines=prefs.get("cell_lines"))
+    data = lkutils.collect_csv_data_rows(
+        fovids=prefs.get("fovs"), cell_lines=prefs.get("cell_lines")
+    )
     log.info(f"Number of total cell rows: {len(data)}")
     # Per-cell
     #     {
@@ -424,6 +426,7 @@ def build_cfe_dataset_2020(prefs):
     log.info("Collecting feature data")
     df_feats = get_csv_features(
         "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cfe_table_2020/Production2020.csv"
+        # "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cfe_table_2020/Production2020_beta.csv"
     )
     # df_feats = get_quilt_actk_features()
     # df_feats = make_rand_features(data, 6)
