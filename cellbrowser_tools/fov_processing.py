@@ -1,7 +1,6 @@
 from aicsimageio.writers import OmeTiffWriter
 from aicsimageio.writers import PngWriter
 from aicsimageio.vendor.omexml import OMEXML
-from aicsimageio.vendor.omexml import qn
 from aicsimageio import AICSImage
 from . import cellJob
 from . import dataHandoffUtils as utils
@@ -9,18 +8,271 @@ from .dataset_constants import DataField
 from aicsimageprocessing import thumbnailGenerator
 from aicsimageprocessing import textureAtlas
 
+# import copy
 import argparse
 import collections
-import copy
+from copy import deepcopy
 import errno
 import json
 import logging
 import numpy as np
+from ome_types import from_xml, to_xml
+from ome_types.model import Channel, TiffData
 import os
+import re
 import sys
+from tifffile import TiffFile
 import traceback
+import xml.etree.ElementTree as ET
+
 
 log = logging.getLogger()
+
+
+###############################################################################
+
+
+def _clean_ome_xml_for_known_issues(xml: str) -> str:
+    # This is a known issue that could have been caused by prior versions of aicsimageio
+    # due to our old OMEXML.py file.
+    #
+    # You can see the PR that updated this exact line here:
+    # https://github.com/AllenCellModeling/aicsimageio/pull/116/commits/e3f9cde7f680edeef3ef3586a67fd8106e746167#diff-46a483e94af833f7eaa1106921191fed5e7c77f33a5c0c47a8f5a2d35ad3ba96L47
+    #
+    # Notably why this is invalid is that the 2012-03 schema _doesn't exist_
+    #
+    # Don't know how this wasn't ever caught before that PR but to ensure that we don't
+    # error in reading the OME in aicsimageio>=4.0.0, we manually find and replace this
+    # line in OME xml prior to creating the OME object.
+    KNOWN_INVALID_OME_XSD_REFERENCES = [
+        "www.openmicroscopy.org/Schemas/ome/2013-06",
+        "www.openmicroscopy.org/Schemas/OME/2012-03",
+    ]
+    REPLACEMENT_OME_XSD_REFERENCE = "www.openmicroscopy.org/Schemas/OME/2016-06"
+    # Store list of changes to print out with warning
+    metadata_changes = []
+
+    # Fix xsd reference
+    # This is from OMEXML object just having invalid reference
+    for known_invalid_ref in KNOWN_INVALID_OME_XSD_REFERENCES:
+        if known_invalid_ref in xml:
+            xml = xml.replace(
+                known_invalid_ref,
+                REPLACEMENT_OME_XSD_REFERENCE,
+            )
+            metadata_changes.append(
+                f"Replaced '{known_invalid_ref}' with "
+                f"'{REPLACEMENT_OME_XSD_REFERENCE}'."
+            )
+
+    # Read in XML
+    root = ET.fromstring(xml)
+
+    # Get the namespace
+    # In XML etree this looks like
+    # "{http://www.openmicroscopy.org/Schemas/OME/2016-06}"
+    # and must prepend any etree finds
+    namespace_matches = re.match(r"\{.*\}", root.tag)
+    if namespace_matches is not None:
+        namespace = namespace_matches.group(0)
+    else:
+        raise ValueError("XML does not contain a namespace")
+
+    # Find all Image elements and fix IDs
+    # This is for certain for test files of ours and ACTK files
+    for image_index, image in enumerate(root.findall(f"{namespace}Image")):
+        image_id = image.get("ID")
+        if not image_id.startswith("Image"):
+            image.set("ID", f"Image:{image_id}")
+            metadata_changes.append(
+                f"Updated attribute 'ID' from '{image_id}' to 'Image:{image_id}' "
+                f"on Image element at position {image_index}."
+            )
+
+        # Find all Pixels elements and fix IDs
+        for pixels_index, pixels in enumerate(image.findall(f"{namespace}Pixels")):
+            pixels_id = pixels.get("ID")
+            if not pixels_id.startswith("Pixels"):
+                pixels.set("ID", f"Pixels:{pixels_id}")
+                metadata_changes.append(
+                    f"Updated attribute 'ID' from '{pixels_id}' to "
+                    f"Pixels:{pixels_id}' on Pixels element at "
+                    f"position {pixels_index}."
+                )
+
+            # Determine if there is an out-of-order channel / plane elem
+            # This is due to OMEXML "add channel" function
+            # That added Channels and appropriate Planes to the XML
+            # But, placed them in:
+            # Channel
+            # Plane
+            # Plane
+            # ...
+            # Channel
+            # Plane
+            # Plane
+            #
+            # Instead of grouped together:
+            # Channel
+            # Channel
+            # ...
+            # Plane
+            # Plane
+            # ...
+            #
+            # This effects all CFE files (new and old) but for different reasons
+            pixels_children_out_of_order = False
+            encountered_something_besides_channel = False
+            for child in pixels:
+                if child.tag != f"{namespace}Channel":
+                    encountered_something_besides_channel = True
+                if (
+                    encountered_something_besides_channel
+                    and child.tag == f"{namespace}Channel"
+                ):
+                    pixels_children_out_of_order = True
+                    break
+
+            # Ensure order of:
+            # channels -> bindata | tiffdata | metadataonly -> planes
+            if pixels_children_out_of_order:
+                # Get all relevant elems
+                channels = [deepcopy(c) for c in pixels.findall(f"{namespace}Channel")]
+                bin_data = [deepcopy(b) for b in pixels.findall(f"{namespace}BinData")]
+                tiff_data = [
+                    deepcopy(t) for t in pixels.findall(f"{namespace}TiffData")
+                ]
+                # There should only be one metadata only element but to standardize
+                # list comprehensions later we findall
+                metadata_only = [
+                    deepcopy(m) for m in pixels.findall(f"{namespace}MetadataOnly")
+                ]
+                planes = [deepcopy(p) for p in pixels.findall(f"{namespace}Plane")]
+
+                # Old (2018 ish) cell feature explorer files sometimes contain both
+                # an empty metadata only element and filled tiffdata elements
+                # Since the metadata only elements are empty we can check this and
+                # choose the tiff data elements instead
+                #
+                # First check if there are any metadata only elements
+                if len(metadata_only) == 1:
+                    # Now check if _one of_ of the other two choices are filled
+                    # ^ in Python is XOR
+                    if (len(bin_data) > 0) ^ (len(tiff_data) > 0):
+                        metadata_children = list(metadata_only[0])
+                        # Now check if the metadata only elem has no children
+                        if len(metadata_children) == 0:
+                            # If so, just "purge" by creating empty list
+                            metadata_only = []
+
+                        # If there are children elements
+                        # Return XML and let XMLSchema Validation show error
+                        else:
+                            return xml
+
+                # After cleaning metadata only, validate the normal behaviors of
+                # OME schema
+                #
+                # Validate that there is only one of bindata, tiffdata, or metadata
+                if len(bin_data) > 0:
+                    if len(tiff_data) == 0 and len(metadata_only) == 0:
+                        selected_choice = bin_data
+                    else:
+                        # Return XML and let XMLSchema Validation show error
+                        return xml
+                elif len(tiff_data) > 0:
+                    if len(bin_data) == 0 and len(metadata_only) == 0:
+                        selected_choice = tiff_data
+                    else:
+                        # Return XML and let XMLSchema Validation show error
+                        return xml
+                elif len(metadata_only) == 1:
+                    if len(bin_data) == 0 and len(tiff_data) == 0:
+                        selected_choice = metadata_only
+                    else:
+                        # Return XML and let XMLSchema Validation show error
+                        return xml
+                else:
+                    # Return XML and let XMLSchema Validation show error
+                    return xml
+
+                # Remove all children from element to be replaced
+                # with ordered elements
+                for elem in list(pixels):
+                    pixels.remove(elem)
+
+                # Re-attach elements
+                for channel in channels:
+                    pixels.append(channel)
+                for elem in selected_choice:
+                    pixels.append(elem)
+                for plane in planes:
+                    pixels.append(plane)
+
+                metadata_changes.append(
+                    f"Reordered children of Pixels element at "
+                    f"position {pixels_index}."
+                )
+
+    # This is a result of dumping basically all experiement metadata
+    # into "StructuredAnnotation" blocks
+    #
+    # This affects new (2020) Cell Feature Explorer files
+    #
+    # Because these are structured annotations we don't want to mess with anyones
+    # besides the AICS generated bad structured annotations
+    aics_anno_removed_count = 0
+    sa = root.find(f"{namespace}StructuredAnnotations")
+    if sa is not None:
+        for xml_anno in sa.findall(f"{namespace}XMLAnnotation"):
+            # At least these are namespaced
+            if xml_anno.get("Namespace") == "alleninstitute.org/CZIMetadata":
+                # Get ID because some elements have annotation refs
+                # in both the base Image element and all plane elements
+                aics_anno_id = xml_anno.get("ID")
+                for image in root.findall(f"{namespace}Image"):
+                    for anno_ref in image.findall(f"{namespace}AnnotationRef"):
+                        if anno_ref.get("ID") == aics_anno_id:
+                            image.remove(anno_ref)
+
+                    # Clean planes
+                    pixels = image.find(f"{namespace}Pixels")
+                    for plane in pixels.findall(f"{namespace}Plane"):
+                        for anno_ref in plane.findall(f"{namespace}AnnotationRef"):
+                            if anno_ref.get("ID") == aics_anno_id:
+                                plane.remove(anno_ref)
+
+                # Remove the whole etree
+                sa.remove(xml_anno)
+                aics_anno_removed_count += 1
+
+    # Log changes
+    if aics_anno_removed_count > 0:
+        metadata_changes.append(
+            f"Removed {aics_anno_removed_count} AICS generated XMLAnnotations."
+        )
+
+    # If there are no annotations in StructuredAnnotations, remove it
+    if sa is not None:
+        if len(list(sa)) == 0:
+            root.remove(sa)
+
+    # If any piece of metadata was changed alert and rewrite
+    if len(metadata_changes) > 0:
+        log.debug("OME metadata was cleaned for known AICSImageIO 3.x OMEXML errors.")
+        log.debug(f"Full list of OME cleaning changes: {metadata_changes}")
+
+        # Register namespace
+        ET.register_namespace("", f"http://{REPLACEMENT_OME_XSD_REFERENCE}")
+
+        # Write out cleaned XML to string
+        xml = ET.tostring(
+            root,
+            encoding="unicode",
+            method="xml",
+        )
+
+    return xml
 
 
 def retrieve_file(read_path, file_name):
@@ -117,10 +369,6 @@ def make_dir(dirname):
             pass
 
 
-def omexmlfind(obj, parent, tag):
-    return parent.findall(qn(obj.ns["ome"], tag))
-
-
 CellMeta = collections.namedtuple("CellMeta", "bounds parent_image index")
 
 
@@ -152,17 +400,7 @@ class ImageProcessor:
         self.seg_indices = []
         self.channels_to_mask = []
         self.omexml = None
-        # try:
-        #     with OmeTiffReader(self.ometif_dir + ".ome.tif") as reader:
-        #         print("\nloading pre-made image for " + self.file_name + "...", end="")
-        #         self.image = reader.load()
-        #         if len(self.image.shape) == 5:
-        #             self.image = self.image[0]
-        #         self.image = self.image.transpose((1, 0, 2, 3))
-        #         self.omexml = reader.get_metadata()
-        #         self.seg_indices = [4, 5, 6]
-        #         print("done")
-        # except AssertionError:
+
         self.image = self.add_segs_to_img()
 
     def _generate_paths(self):
@@ -299,9 +537,16 @@ class ImageProcessor:
 
         # 1. obtain OME XML metadata from original microscopy image
         cr = AICSImage(image_file)
-        self.omexml = cr.metadata
 
-        # TODO dump this to a file someplace! (use cmd line args in bftools showinf above?)
+        with TiffFile(image_file) as tiff:
+            if tiff.is_ome:
+                description = tiff.pages[0].description.strip()
+                description = _clean_ome_xml_for_known_issues(description)
+                self.omexml = from_xml(description)
+                # testx = to_xml(self.omexml)
+                # testome = from_xml(testx)
+
+        # self.omexml = cr.metadata
 
         # 2. obtain relevant channels from original image file
         image = cr.get_image_data("CZYX", T=0)
@@ -334,25 +579,40 @@ class ImageProcessor:
         #   channel_indices[1] to channel1
         #   channel_indices[2] to channel2
         #   channel_indices[3] to channel3
-        pix = self.omexml.image().Pixels
-        chxml = [pix.Channel(channel) for channel in self.channel_indices]
-        # remove all channels and re-add them in the approved order.
-        while pix.channel_count > 0:
-            pix.remove_channel(pix.channel_count - 1)
-        # add our channels
-        for (c, channel) in enumerate(chxml):
-            pix.node.append(channel.node)
-            channel.set_ID(f"Channel:0:{c}")
 
-        pix.set_SizeC(len(chxml))
-        # add a bunch of planes for all the channels just added
-        pix.plane_count = pix.get_SizeZ() * len(chxml)
-        for c in range(len(chxml)):
-            for z in range(pix.get_SizeZ()):
-                which_plane = z + c * pix.get_SizeZ()
-                pix.Plane(which_plane).TheZ = z
-                pix.Plane(which_plane).TheC = c
-                pix.Plane(which_plane).TheT = 0
+        pix = self.omexml.images[0].pixels
+        chxml = [pix.channels[channel] for channel in self.channel_indices]
+        pix.channels = chxml
+        pix.size_c = len(chxml)
+
+        # fixups:
+
+        # 1. channel ids
+        for (c, channel) in enumerate(pix.channels):
+            channel.id = f"Channel:0:{c}"
+
+        # 2. remove all planes whose C index is not in self.channel_indices
+        for p in pix.planes:
+            if p.the_c not in self.channel_indices:
+                pix.planes.remove(p)
+
+        # 3. update plane_count
+        pix.plane_count = len(pix.planes)
+
+        # 4. then remap the C of the remaining planes
+        for p in pix.planes:
+            p.the_c = self.channel_indices.index(p.the_c)
+
+        # 5. does plane order matter??
+
+        # 6. remove all tiffdata elements in favor of one single one
+        pix.tiff_data_blocks = [TiffData()]
+
+        def add_channel(pix, name):
+            channel = Channel(id=f"Channel:0:{len(pix.channels)}", name=name)
+            pix.channels.append(channel)
+            pix.size_c += 1
+            # TODO add Planes?
 
         nch = 4
         self.seg_indices = []
@@ -377,9 +637,8 @@ class ImageProcessor:
                     f"FOV {self.row[DataField.FOVId]} has shape mismatch {f[2]} {seg.shape[2]} vs FOV {image.shape[3]}"
                 )
             # append channels containing segmentations
-            self.omexml.image().Pixels.append_channel(
-                nch + i, self.channel_names[nch + i]
-            )
+            add_channel(pix, self.channel_names[nch + i])
+
             # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
             image = np.append(image, [seg], axis=0)
             self.seg_indices.append(image.shape[0] - 1)
@@ -395,16 +654,14 @@ class ImageProcessor:
     def generate_meta(self, metadata, row, cell_meta: CellMeta = None):
         m = {}
 
-        m["date_time"] = metadata.image().get_AcquisitionDate()
+        m["date_time"] = metadata.images[0].acquisition_date.strftime("%c")
 
-        instrument = omexmlfind(metadata, metadata.root_node, "Instrument")
-        if len(instrument) > 0:
-            instrument = instrument[0]
-            objective = omexmlfind(metadata, instrument, "Objective")
-            if len(objective) > 0:
-                objective = objective[0]
-                m["objective"] = objective.get("NominalMagnification")
-                m["numerical_aperture"] = objective.get("LensNA")
+        if len(metadata.instruments) > 0:
+            instrument = metadata.instruments[0]
+            if len(instrument.objectives) > 0:
+                objective = instrument.objectives[0]
+                m["objective"] = objective.nominal_magnification
+                m["numerical_aperture"] = objective.lens_na
 
         if cell_meta is not None:
             m["bounds"] = [
@@ -433,6 +690,7 @@ class ImageProcessor:
             m["isCropped"] = False
             if self.job.cells:
                 m["CellId"] = [r[DataField.CellId] for r in self.job.cells]
+                m["CellIndex"] = [r[DataField.CellIndex] for r in self.job.cells]
 
         m["isModel"] = False
 
@@ -485,7 +743,7 @@ class ImageProcessor:
 
         # do texture atlas here
         aimage = AICSImage(self.image, known_dims="CZYX")
-        # aimage.metadata = self.omexml
+
         log.info("generating atlas ...")
         atlas = textureAtlas.generate_texture_atlas(
             aimage,
@@ -494,11 +752,11 @@ class ImageProcessor:
             pack_order=None,
         )
         log.info("done making atlas")
-        p = self.omexml.image(0).Pixels
-        atlas.dims.pixel_size_x = p.get_PhysicalSizeX()
-        atlas.dims.pixel_size_y = p.get_PhysicalSizeY()
-        atlas.dims.pixel_size_z = p.get_PhysicalSizeZ()
-        atlas.dims.channel_names = p.get_channel_names()
+        p = self.omexml.images[0].pixels
+        atlas.dims.pixel_size_x = p.physical_size_x
+        atlas.dims.pixel_size_y = p.physical_size_y
+        atlas.dims.pixel_size_z = p.physical_size_z
+        atlas.dims.channel_names = [c.name for c in p.channels]
         # grab metadata for display
         static_meta = self.generate_meta(self.omexml, self.row)
 
@@ -573,18 +831,24 @@ class ImageProcessor:
             copyxml = None
 
             log.info("making cropped image...")
-            copied = copy.deepcopy(self.omexml.dom)
-            copyxml = OMEXML(rootnode=copied)
+            # start with original metadata and make a copy
+            copied = to_xml(self.omexml)
+            # print(copied)
+            copyxml = from_xml(copied)
             # now fix it up
-            pixels = copyxml.image().Pixels
-            pixels.set_SizeX(cropped.shape[3])
-            pixels.set_SizeY(cropped.shape[2])
-            pixels.set_SizeZ(cropped.shape[1])
-            # if sizeZ changed, then we have to use bounds to fix up the plane elements
+            pixels = copyxml.images[0].pixels
+            pixels.size_x = cropped.shape[3]
+            pixels.size_y = cropped.shape[2]
+            pixels.size_z = cropped.shape[1]
+
+            # if sizeZ changed, then we have to use bounds to fix up the plane elements:
+            # 1. drop planes outside of z bounds.
+            # 2. update remaining planes' the_z indices.
+            # 3. adjust position_x and position_y of plane data to try to match the crop region?
             minz = bounds[2][0]
             maxz = bounds[2][1]
             planes = []
-            for pi in range(pixels.get_plane_count()):
+            for pi in range(pixels.plane_count):
                 planes.append(pixels.Plane(pi))
             for p in planes:
                 pz = p.get_TheZ()
@@ -605,11 +869,11 @@ class ImageProcessor:
                 max_edge=2048,
                 pack_order=None,
             )
-            p = copyxml.image(0).Pixels
-            atlas_cropped.dims.pixel_size_x = p.get_PhysicalSizeX()
-            atlas_cropped.dims.pixel_size_y = p.get_PhysicalSizeY()
-            atlas_cropped.dims.pixel_size_z = p.get_PhysicalSizeZ()
-            atlas_cropped.dims.channel_names = p.get_channel_names()
+            p = copyxml.images[0].pixels
+            atlas_cropped.dims.pixel_size_x = p.physical_size_x
+            atlas_cropped.dims.pixel_size_y = p.physical_size_y
+            atlas_cropped.dims.pixel_size_z = p.physical_size_z
+            atlas_cropped.dims.channel_names = [c.name for c in p.channels]
 
             static_meta_cropped = self.generate_meta(copyxml, row, cell_meta)
 
@@ -657,10 +921,11 @@ class ImageProcessor:
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
             log.info("saving image...")
+            ome_obj = OMEXML(to_xml(omexml))
             with OmeTiffWriter(file_path=ometif_dir, overwrite_file=True) as writer:
                 writer.save(
                     transposed_image,
-                    ome_xml=omexml,
+                    ome_xml=ome_obj,
                     # channel_names=self.channel_names, channel_colors=self.channel_colors,
                     pixels_physical_size=physical_size,
                 )

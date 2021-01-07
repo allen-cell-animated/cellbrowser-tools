@@ -85,11 +85,11 @@ def get_data_groups(prefs, n=0):
     groups = []
     for index, (fovid, group) in enumerate(data_grouped):
         groups.append(group.to_dict(orient="records"))
-    log.info("Converted groups to lists of dicts")
+        # only the first n FOVs (one group per FOV)
+        if n > 0 and index >= n - 1:
+            break
 
-    # first N fovs
-    if n > 0:
-        groups = groups[0:n]
+    log.info("Converted groups to lists of dicts")
 
     # make dataset available as a file for later runs
     cache_dataset(prefs, groups)

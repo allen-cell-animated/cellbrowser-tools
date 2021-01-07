@@ -49,6 +49,7 @@ requirements = [
     "featuredb>=0.3.0",
     "labkey",
     "lkaccess>=1.4.21",
+    "ome-types>=0.2.3",
     "pandas==1.0.3",
     "prefect==0.9.7",
     "quilt3",
