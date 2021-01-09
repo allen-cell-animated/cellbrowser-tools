@@ -17,7 +17,7 @@ import json
 import logging
 import numpy as np
 from ome_types import from_xml, to_xml
-from ome_types.model import Channel, TiffData
+from ome_types.model import Channel, TiffData, Plane
 import os
 import re
 import sys
@@ -542,6 +542,7 @@ class ImageProcessor:
             if tiff.is_ome:
                 description = tiff.pages[0].description.strip()
                 description = _clean_ome_xml_for_known_issues(description)
+                # print(description)
                 self.omexml = from_xml(description)
                 # testx = to_xml(self.omexml)
                 # testome = from_xml(testx)
@@ -609,10 +610,15 @@ class ImageProcessor:
         pix.tiff_data_blocks = [TiffData()]
 
         def add_channel(pix, name):
-            channel = Channel(id=f"Channel:0:{len(pix.channels)}", name=name)
+            channel_index = len(pix.channels)
+            channel = Channel(id=f"Channel:0:{channel_index}", name=name)
             pix.channels.append(channel)
+            # add Planes(?)
+            for p in range(pix.size_z):
+                pix.planes.append(
+                    Plane(the_c=channel_index, the_z=p, the_t=pix.size_t - 1)
+                )
             pix.size_c += 1
-            # TODO add Planes?
 
         nch = 4
         self.seg_indices = []
@@ -826,15 +832,21 @@ class ImageProcessor:
 
             # for bn in cell_meta.bounds:
             #    print(bn, cell_meta.bounds[bn])
+            minz = int(bounds[2][0])
+            maxz = int(bounds[2][1])
+
+            print(f"cell Z size = {cropped.shape[1]}")
+            print(f"cell Z bounds: {minz} to {maxz}")
 
             # copy self.omexml for output
             copyxml = None
 
             log.info("making cropped image...")
             # start with original metadata and make a copy
-            copied = to_xml(self.omexml)
-            # print(copied)
-            copyxml = from_xml(copied)
+            # copyxml = self.omexml.copy(deep=True)
+            copystr = to_xml(self.omexml)
+            copyxml = from_xml(copystr)
+
             # now fix it up
             pixels = copyxml.images[0].pixels
             pixels.size_x = cropped.shape[3]
@@ -844,19 +856,13 @@ class ImageProcessor:
             # if sizeZ changed, then we have to use bounds to fix up the plane elements:
             # 1. drop planes outside of z bounds.
             # 2. update remaining planes' the_z indices.
-            # 3. adjust position_x and position_y of plane data to try to match the crop region?
-            minz = bounds[2][0]
-            maxz = bounds[2][1]
-            planes = []
-            for pi in range(pixels.plane_count):
-                planes.append(pixels.Plane(pi))
-            for p in planes:
-                pz = p.get_TheZ()
-                # TODO: CONFIRM THAT THIS IS CORRECT!!
-                if pz >= maxz or pz < minz:
-                    pixels.node.remove(p.node)
-                else:
-                    p.set_TheZ(pz - minz)
+            pixels.planes = [
+                p for p in pixels.planes if ((p.the_z < maxz) and (p.the_z >= minz))
+            ]
+            for p in pixels.planes:
+                p.the_z -= minz
+            pixels.plane_count = len(pixels.planes)
+
             log.info("done making cropped image")
 
             # do texture atlas here
@@ -869,11 +875,10 @@ class ImageProcessor:
                 max_edge=2048,
                 pack_order=None,
             )
-            p = copyxml.images[0].pixels
-            atlas_cropped.dims.pixel_size_x = p.physical_size_x
-            atlas_cropped.dims.pixel_size_y = p.physical_size_y
-            atlas_cropped.dims.pixel_size_z = p.physical_size_z
-            atlas_cropped.dims.channel_names = [c.name for c in p.channels]
+            atlas_cropped.dims.pixel_size_x = pixels.physical_size_x
+            atlas_cropped.dims.pixel_size_y = pixels.physical_size_y
+            atlas_cropped.dims.pixel_size_z = pixels.physical_size_z
+            atlas_cropped.dims.channel_names = [c.name for c in pixels.channels]
 
             static_meta_cropped = self.generate_meta(copyxml, row, cell_meta)
 
