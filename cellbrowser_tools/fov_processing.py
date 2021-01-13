@@ -1,6 +1,5 @@
 from aicsimageio.writers import OmeTiffWriter
 from aicsimageio.writers import PngWriter
-from aicsimageio.vendor.omexml import OMEXML
 from aicsimageio import AICSImage
 from . import cellJob
 from . import dataHandoffUtils as utils
@@ -926,11 +925,11 @@ class ImageProcessor:
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
             log.info("saving image...")
-            ome_obj = OMEXML(to_xml(omexml))
+            ome_str = to_xml(omexml)
             with OmeTiffWriter(file_path=ometif_dir, overwrite_file=True) as writer:
                 writer.save(
                     transposed_image,
-                    ome_xml=ome_obj,
+                    ome_xml=ome_str,
                     # channel_names=self.channel_names, channel_colors=self.channel_colors,
                     pixels_physical_size=physical_size,
                 )
