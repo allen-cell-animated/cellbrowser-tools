@@ -925,7 +925,17 @@ class ImageProcessor:
         if image is not None:
             transposed_image = image.transpose(1, 0, 2, 3)
             log.info("saving image...")
+            # calculate the proper plane count
+            omepixels = omexml.images[0].pixels
+            omepixels.tiff_data_blocks = [
+                TiffData(
+                    plane_count=omepixels.size_c * omepixels.size_z * omepixels.size_t
+                )
+            ]
+
             ome_str = to_xml(omexml)
+            # appease ChimeraX and possibly others who expect to see this
+            ome_str = '<?xml version="1.0" encoding="UTF-8"?>' + ome_str
             with OmeTiffWriter(file_path=ometif_dir, overwrite_file=True) as writer:
                 writer.save(
                     transposed_image,
