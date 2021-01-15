@@ -31,6 +31,13 @@ log = logging.getLogger()
 ###############################################################################
 
 
+def check_num_planes(omepixels):
+    if len(omepixels.planes) != omepixels.size_c * omepixels.size_t * omepixels.size_z:
+        raise ValueError(
+            f"number of planes {len(omepixels.planes)} not consistent with sizeC*sizeZ*sizeT {omepixels.size_c}*{omepixels.size_t}*{omepixels.size_z}"
+        )
+
+
 def _clean_ome_xml_for_known_issues(xml: str) -> str:
     # This is a known issue that could have been caused by prior versions of aicsimageio
     # due to our old OMEXML.py file.
@@ -596,17 +603,13 @@ class ImageProcessor:
             if p.the_c not in self.channel_indices:
                 pix.planes.remove(p)
 
-        # 3. update plane_count
-        pix.plane_count = len(pix.planes)
-
-        # 4. then remap the C of the remaining planes
+        # 3. then remap the C of the remaining planes, as they stll have their old channel indices
         for p in pix.planes:
             p.the_c = self.channel_indices.index(p.the_c)
 
-        # 5. does plane order matter??
-
-        # 6. remove all tiffdata elements in favor of one single one
-        pix.tiff_data_blocks = [TiffData()]
+        # 4. remove all tiffdata elements in favor of one single one
+        pix.tiff_data_blocks = [TiffData(plane_count=len(pix.planes))]
+        check_num_planes(pix)
 
         def add_channel(pix, name):
             channel_index = len(pix.channels)
@@ -860,7 +863,6 @@ class ImageProcessor:
             ]
             for p in pixels.planes:
                 p.the_z -= minz
-            pixels.plane_count = len(pixels.planes)
 
             log.info("done making cropped image")
 
@@ -927,6 +929,7 @@ class ImageProcessor:
             log.info("saving image...")
             # calculate the proper plane count
             omepixels = omexml.images[0].pixels
+            check_num_planes(omepixels)
             omepixels.tiff_data_blocks = [
                 TiffData(
                     plane_count=omepixels.size_c * omepixels.size_z * omepixels.size_t
