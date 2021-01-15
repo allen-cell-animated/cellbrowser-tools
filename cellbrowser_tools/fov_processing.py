@@ -550,10 +550,9 @@ class ImageProcessor:
                 description = _clean_ome_xml_for_known_issues(description)
                 # print(description)
                 self.omexml = from_xml(description)
-                # testx = to_xml(self.omexml)
-                # testome = from_xml(testx)
-
-        # self.omexml = cr.metadata
+            else:
+                # this is REALLY catastrophic. Its not expected to happen for AICS data.
+                raise ValueError("Bad OME TIFF file")
 
         # 2. obtain relevant channels from original image file
         image = cr.get_image_data("CZYX", T=0)
