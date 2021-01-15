@@ -732,7 +732,7 @@ class ImageProcessor:
         struct_index = 1
         thumbnail_colors = [[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 0.0]]
 
-        log.info("generating full fields...")
+        log.info(f"Generating images for FOVId {self.row[DataField.FOVId]}")
 
         log.info("making thumbnail...")
         generator = thumbnailGenerator.ThumbnailGenerator(
@@ -795,7 +795,9 @@ class ImageProcessor:
                 row[DataField.CellId], row[DataField.FOVId], row[DataField.CellLine]
             )
             i = row[DataField.CellIndex]
-            log.info(f"generating segmented cell {i}")
+            log.info(
+                f"Generating images for CellId {row[DataField.CellId]}, segmented cell index {i}"
+            )
 
             bounds = get_segmentation_bounds(cell_segmentation_image, i)
             cropped = crop_to_bounds(self.image, bounds)
