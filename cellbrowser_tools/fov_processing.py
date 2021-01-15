@@ -839,8 +839,8 @@ class ImageProcessor:
             minz = int(bounds[2][0])
             maxz = int(bounds[2][1])
 
-            print(f"cell Z size = {cropped.shape[1]}")
-            print(f"cell Z bounds: {minz} to {maxz}")
+            # print(f"cell Z size = {cropped.shape[1]}")
+            # print(f"cell Z bounds: {minz} to {maxz}")
 
             # copy self.omexml for output
             copyxml = None
