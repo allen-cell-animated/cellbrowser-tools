@@ -128,6 +128,9 @@ def check_dups(dfr, column, remove=True):
 TEST_DATASET = "//allen/aics/assay-dev/computational/data/dna_cell_seg_on_production_data/production_run_test/mergedataset/manifest.csv"
 FULL_DATASET = "//allen/aics/assay-dev/computational/data/dna_cell_seg_on_production_data/production_run/mergedataset/manifest.csv"
 
+FULL_FEATURES_DATA = "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cfe_table_2020/Production2020.csv"
+# FULL_FEATURES_DATA = "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cfe_table_2020/Production2020_beta.csv"
+
 
 def collect_csv_data_rows(
     csvpath=FULL_DATASET,
@@ -301,6 +304,13 @@ def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
     print(list(df_data_handoff.columns))
 
     return df_data_handoff
+
+
+def get_csv_features(path: str = FULL_FEATURES_DATA):
+    # replace NaN values with string "NaN"
+    df = pd.read_csv(path)
+    df.fillna("NaN", inplace=True)
+    return df
 
 
 if __name__ == "__main__":

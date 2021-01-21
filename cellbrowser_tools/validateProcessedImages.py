@@ -367,13 +367,6 @@ def make_rand_features(dataset, count=6):
     return df
 
 
-def get_csv_features(path: str):
-    # replace NaN values with string "NaN"
-    df = pd.read_csv(path)
-    df.fillna("NaN", inplace=True)
-    return df
-
-
 def build_cfe_dataset_2020(prefs):
     # read dataset into dataframe
     data = lkutils.collect_csv_data_rows(
@@ -424,10 +417,7 @@ def build_cfe_dataset_2020(prefs):
     file_infos.rename(columns={"CellLine": "CellLineName"}, inplace=True)
 
     log.info("Collecting feature data")
-    df_feats = get_csv_features(
-        "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cfe_table_2020/Production2020.csv"
-        # "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cfe_table_2020/Production2020_beta.csv"
-    )
+    df_feats = lkutils.get_csv_features()
     # df_feats = get_quilt_actk_features()
     # df_feats = make_rand_features(data, 6)
     if len(df_feats) != len(file_infos):
