@@ -40,7 +40,7 @@ dev_requirements = [
 
 requirements = [
     "aics_dask_utils==0.2.0",
-    "aicsimageio==3.3.1",
+    "aicsimageio==3.3.4",
     "aicsimageprocessing==0.7.3",
     "bokeh==2.0.2",
     "dask[bag]==2.12.0",
@@ -49,6 +49,7 @@ requirements = [
     "featuredb>=0.3.0",
     "labkey",
     "lkaccess>=1.4.21",
+    "ome-types>=0.2.3",
     "pandas==1.0.3",
     "prefect==0.9.7",
     "quilt3",
