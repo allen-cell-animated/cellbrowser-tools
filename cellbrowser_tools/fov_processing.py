@@ -141,6 +141,8 @@ def _clean_ome_xml_for_known_issues(xml: str) -> str:
 
             # Ensure order of:
             # channels -> bindata | tiffdata | metadataonly -> planes
+            # setting this to true means just ALWAYS do this.
+            pixels_children_out_of_order = True
             if pixels_children_out_of_order:
                 # Get all relevant elems
                 channels = [deepcopy(c) for c in pixels.findall(f"{namespace}Channel")]
