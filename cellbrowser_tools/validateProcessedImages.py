@@ -450,7 +450,7 @@ def build_cfe_dataset_2020(prefs):
 
     # write out the final data set
     with open(
-        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
+        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME_OLD),
         "w",
         newline="",
     ) as output_file:
@@ -494,7 +494,7 @@ def build_feature_data(prefs, groups):
     jsondictlist = compute_clusters_on_json_handoff(jsondictlist)
 
     with open(
-        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
+        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME_OLD),
         "w",
         newline="",
     ) as output_file:
