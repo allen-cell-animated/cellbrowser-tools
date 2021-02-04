@@ -421,6 +421,7 @@ def build_cfe_dataset_2020(prefs):
     log.info("Collecting feature data")
     df_feats = lkutils.get_csv_features()
     feature_names = df_feats.columns.tolist()
+    feature_names.remove("CellId")
 
     # df_feats = get_quilt_actk_features()
     # df_feats = make_rand_features(data, 6)
@@ -455,7 +456,7 @@ def build_cfe_dataset_2020(prefs):
 
     # write out the final data set
     with open(
-        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME_OLD),
+        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
         "w",
         newline="",
     ) as output_file:
@@ -476,12 +477,12 @@ def convert_old_feature_data_format(prefs, old_json: str):
         dataset.append(
             {
                 "file_info": [file_info[x] for x in file_info],
-                "features": [features[x] for x in features]
+                "features": [features[x] for x in features],
             }
         )
     # write out the final data set
     with open(
-        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME_OLD),
+        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
         "w",
         newline="",
     ) as output_file:
