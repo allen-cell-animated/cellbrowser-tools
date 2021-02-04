@@ -425,6 +425,10 @@ def build_cfe_dataset_2020(prefs):
             f"Features list has different number of cells ({len(df_feats)}) than source dataset ({len(file_infos)})"
         )
 
+    # turn features into arrays per cell id.  order is important.
+    # only_feats = df_feats.drop(columns=["CellId"]).values.tolist()
+    # df_feats["features"] = only_feats
+
     # merge together on cellid
     dataset_df = pd.merge(file_infos, df_feats, how="inner", on="CellId")
     if len(dataset_df) != len(file_infos):
@@ -441,10 +445,8 @@ def build_cfe_dataset_2020(prefs):
         # features = df_feats.to_dict("records")
         dataset.append(
             {
-                "file_info": {x: rowdict[x] for x in rowdict if x in file_info_columns},
-                "measured_features": {
-                    x: rowdict[x] for x in rowdict if x not in file_info_columns
-                },
+                "file_info": [rowdict[x] for x in rowdict if x in file_info_columns],
+                "features": [rowdict[x] for x in rowdict if x not in file_info_columns],
             }
         )
 
@@ -454,8 +456,8 @@ def build_cfe_dataset_2020(prefs):
         "w",
         newline="",
     ) as output_file:
-        # TODO: could do this row by row?
-        output_file.write(json.dumps(dataset))
+        # most compact json encoding
+        output_file.write(json.dumps(dataset, separators=(",", ":")))
 
 
 def build_feature_data(prefs, groups):
