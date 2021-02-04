@@ -447,8 +447,8 @@ def build_cfe_dataset_2020(prefs):
         # features = df_feats.to_dict("records")
         dataset.append(
             {
-                "file_info": [rowdict[x] for x in rowdict if x in file_info_columns],
-                "features": [rowdict[x] for x in rowdict if x not in file_info_columns],
+                "file_info": [rowdict[x] for x in rowdict if x in FILE_INFO_COLUMNS],
+                "features": [rowdict[x] for x in rowdict if x not in FILE_INFO_COLUMNS],
             }
         )
 
@@ -459,6 +459,31 @@ def build_cfe_dataset_2020(prefs):
         newline="",
     ) as output_file:
         # most compact json encoding
+        output_file.write(json.dumps(dataset, separators=(",", ":")))
+
+
+def convert_old_feature_data_format(prefs, old_json: str):
+    # load file such that all entries remain in key order
+    data = json.load(open(old_json), object_pairs_hook=OrderedDict)
+    # make each row into two dicts
+    # format
+    dataset = []
+    for i, row in enumerate(data):
+        rowdict = row
+        file_info = rowdict["file_info"]
+        features = rowdict["measured_features"]
+        dataset.append(
+            {
+                "file_info": [file_info[x] for x in file_info if x in FILE_INFO_COLUMNS],
+                "features": [features[x] for x in features if x not in FILE_INFO_COLUMNS]
+            }
+        )
+    # write out the final data set
+    with open(
+        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME_OLD),
+        "w",
+        newline="",
+    ) as output_file:
         output_file.write(json.dumps(dataset, separators=(",", ":")))
 
 
