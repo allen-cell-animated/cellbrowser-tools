@@ -55,6 +55,9 @@ Test dataset from csv instead of db query
    `set DATASET_VERSION=2.0.0`
    `cd %prefs.out_dir%`
    `s3promotion upload --dest-bucket bisque.allencell.org --dest-prefix v%DATASET_VERSION%/ %dataset_constants.THUMBNAILS_DIR%/`
+
+   example:
+   
    Upload of the OME-TIFF files is accomplished by handing the cellviewer-files.csv from step 3 to Gabe, currently. << fill in details here >>
 
 5. At actual deploy time, update the files in https://github.com/AllenInstitute/cell-feature-data

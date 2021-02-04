@@ -19,6 +19,7 @@ import random
 from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 import sys
 from typing import Union, Dict, List
+from collections import OrderedDict
 
 import featuredb as fh
 
@@ -30,6 +31,16 @@ logging.basicConfig(
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails
 # cbrThumbnailSize size of thumbnail image in pixels (max side of edge)
+
+FILE_INFO_COLUMNS = [
+    "CellId",
+    "FOVId",
+    "CellLineName",
+    "thumbnailPath",
+    "volumeviewerPath",
+    "fovThumbnailPath",
+    "fovVolumeviewerPath",
+]
 
 # clustering algorithm defaults
 DEFAULT_MIN_CLUSTERS = 2
@@ -385,15 +396,6 @@ def build_cfe_dataset_2020(prefs):
     #         ...
     #     }
     # }
-    file_info_columns = [
-        "CellId",
-        "FOVId",
-        "CellLineName",
-        "thumbnailPath",
-        "volumeviewerPath",
-        "fovThumbnailPath",
-        "fovVolumeviewerPath",
-    ]
     file_infos = data[["CellId", "FOVId", "CellLine"]]
     # add file path locations
     file_infos["thumbnailPath"] = file_infos.apply(
