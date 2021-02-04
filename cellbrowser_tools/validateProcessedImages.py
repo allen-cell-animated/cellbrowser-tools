@@ -420,6 +420,8 @@ def build_cfe_dataset_2020(prefs):
 
     log.info("Collecting feature data")
     df_feats = lkutils.get_csv_features()
+    feature_names = df_feats.columns.tolist()
+
     # df_feats = get_quilt_actk_features()
     # df_feats = make_rand_features(data, 6)
     if len(df_feats) != len(file_infos):
@@ -438,17 +440,16 @@ def build_cfe_dataset_2020(prefs):
             f"Features list has different cellIds than source dataset. Can not merge."
         )
 
-    # make each row into two dicts
+    # make each row into two arrays of values
     # format
     dataset = []
     for i, row in dataset_df.iterrows():
-        rowdict = row.to_dict()
-        # file_infos = file_infos.to_dict("records")
-        # features = df_feats.to_dict("records")
+        # i want to preserve key(column) order here.
+        rowdict = row.to_dict(into=OrderedDict)
         dataset.append(
             {
-                "file_info": [rowdict[x] for x in rowdict if x in FILE_INFO_COLUMNS],
-                "features": [rowdict[x] for x in rowdict if x not in FILE_INFO_COLUMNS],
+                "file_info": [rowdict[x] for x in FILE_INFO_COLUMNS],
+                "features": [rowdict[x] for x in feature_names],
             }
         )
 
@@ -474,8 +475,8 @@ def convert_old_feature_data_format(prefs, old_json: str):
         features = rowdict["measured_features"]
         dataset.append(
             {
-                "file_info": [file_info[x] for x in file_info if x in FILE_INFO_COLUMNS],
-                "features": [features[x] for x in features if x not in FILE_INFO_COLUMNS]
+                "file_info": [file_info[x] for x in file_info],
+                "features": [features[x] for x in features]
             }
         )
     # write out the final data set
