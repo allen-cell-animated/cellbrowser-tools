@@ -16,6 +16,7 @@ import pandas as pd
 from pathlib import Path
 import quilt3
 import random
+import re
 from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 import sys
 from typing import Union, Dict, List
@@ -476,10 +477,33 @@ def convert_old_feature_data_format(prefs, old_json: str):
         features = rowdict["measured_features"]
         dataset.append(
             {
-                "file_info": [file_info[x] for x in file_info],
+                "file_info": [(file_info.get(x) or "") for x in FILE_INFO_COLUMNS],
                 "features": [features[x] for x in features],
             }
         )
+
+    # extract a guess at feature defs
+    example_features = data[0]["measured_features"]
+    # string followed by whitespace and then string in parens
+    r = re.compile("(.+)\s+\((.+)\)")
+    feature_defs = []
+    for x in example_features:
+        m = r.search(x)
+        name = m.group(1)
+        unit = m.group(2)
+        name_key = "".join(x for x in name.title() if x.isalnum())
+        name_key = name_key[0].lower() + name_key[1:]
+        feature_defs.append(
+            {
+                "key": name_key,
+                "displayName": name,
+                "unit": unit,
+                "description": "",
+                "tooltip": "",
+                "discrete": False,
+            }
+        )
+
     # write out the final data set
     with open(
         os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DATA_FILENAME),
@@ -487,6 +511,13 @@ def convert_old_feature_data_format(prefs, old_json: str):
         newline="",
     ) as output_file:
         output_file.write(json.dumps(dataset, separators=(",", ":")))
+
+    with open(
+        os.path.join(prefs.get("out_dir"), dataset_constants.FEATURE_DEF_FILENAME),
+        "w",
+        newline="",
+    ) as output_file:
+        output_file.write(json.dumps(feature_defs))
 
 
 def build_feature_data(prefs, groups):
