@@ -6,7 +6,7 @@ import sys
 from . import cellJob
 from . import dataHandoffUtils as lkutils
 from . import jobScheduler
-from .dataset_constants import DataField
+from .dataset_constants import DataField, SLURM_SCRIPTS_DIR
 from .fov_processing import do_main_image_with_celljob
 
 # cbrImageLocation path to cellbrowser images
@@ -53,7 +53,7 @@ def make_json(jobname, info, prefs):
     cell_job_postfix = jobname
     cellline = info.cells[0]["CellLine"]
     current_dir = os.path.join(
-        prefs["out_status"], prefs["script_dir"]
+        prefs["out_status"], SLURM_SCRIPTS_DIR
     )  # os.path.join(os.getcwd(), outdir)
     dest_dir = os.path.join(current_dir, cellline)
 

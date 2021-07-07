@@ -1,15 +1,5 @@
 {
   "out_status": "//allen/aics/animated-cell/Dan/cellbrowser-tools/processing",
   "out_dir": "//allen/aics/animated-cell/Dan/cellbrowser-tools/dataset",
-
-  "script_dir": "scripts_slurm",
-  "data_log_name": "data_jobs_out.csv",
-  "job_prefs": {
-    "max_simultaneous_jobs": 100,
-    "partition": "aics_cpu_general",
-    "time": "03:00:00",
-    "cpus-per-task": 1,
-    "output": "out/",
-    "error": "err/"
-  }
+  "data_log_name": "data_jobs_out.csv"
 }

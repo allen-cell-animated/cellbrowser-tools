@@ -1,5 +1,5 @@
 from . import dataset_constants
-from .dataset_constants import DataField
+from .dataset_constants import DataField, SLURM_SCRIPTS_DIR, SLURM_OUTPUT_DIR, SLURM_ERROR_DIR
 import json
 from lkaccess import LabKey
 import lkaccess.contexts
@@ -80,12 +80,12 @@ def setup_prefs(json_path):
     prefs["atlas_dir"] = atlas_dir
 
     prefs["sbatch_output"] = os.path.join(
-        prefs["out_status"], prefs["script_dir"], prefs["job_prefs"]["output"]
+        prefs["out_status"], SLURM_SCRIPTS_DIR, SLURM_OUTPUT_DIR
     )
     os.makedirs(os.path.dirname(prefs["sbatch_output"]), exist_ok=True)
 
     prefs["sbatch_error"] = os.path.join(
-        prefs["out_status"], prefs["script_dir"], prefs["job_prefs"]["error"]
+        prefs["out_status"], SLURM_SCRIPTS_DIR, SLURM_ERROR_DIR
     )
     os.makedirs(os.path.dirname(prefs["sbatch_error"]), exist_ok=True)
 
