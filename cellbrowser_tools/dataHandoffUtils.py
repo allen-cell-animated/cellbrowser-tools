@@ -1,5 +1,11 @@
 from . import dataset_constants
-from .dataset_constants import DataField, SLURM_SCRIPTS_DIR, SLURM_OUTPUT_DIR, SLURM_ERROR_DIR
+from .dataset_constants import (
+    DataField,
+    SLURM_SCRIPTS_DIR,
+    SLURM_OUTPUT_DIR,
+    SLURM_ERROR_DIR,
+    DATA_LOG_NAME,
+)
 import json
 from lkaccess import LabKey
 import lkaccess.contexts
@@ -10,10 +16,47 @@ from quilt3 import Package
 import re
 import sys
 
+from datetime import datetime
+from typing import List
+
 log = logging.getLogger()
 logging.basicConfig(
     level=logging.INFO, format="[%(levelname)4s:%(lineno)4s %(asctime)s] %(message)s"
 )
+
+
+class QueryOptions:
+    """
+    Filters / options for the querying of images in a data input manifest csv
+    """
+
+    def __init__(
+        self,
+        cell_lines: List[str] = None,
+        plates: List[str] = None,
+        fovids: List[int] = None,
+        start_date: str = None,
+        end_date: str = None,
+    ):
+        self.cell_lines = cell_lines
+        self.plates = plates
+        self.fovids = fovids
+
+        self._ensureValidDateString(start_date)
+        self._ensureValidDateString(end_date)
+        self.start_date = start_date
+        self.end_date = end_date
+
+    def _ensureValidDateString(self, date: str):
+        if date is None:
+            return
+
+        format = "%Y-%m-%d"  # YYYY-MM-DD
+        try:
+            datetime.strptime(date, format)
+        except ValueError:
+            # built-in error message isn't specific enough
+            raise ValueError("Invalid date format - must be YYYY-MM-DD.")
 
 
 # CAUTION:
@@ -90,7 +133,7 @@ def setup_prefs(json_path):
     os.makedirs(os.path.dirname(prefs["sbatch_error"]), exist_ok=True)
 
     # record the location of the data object
-    prefs["save_log_path"] = prefs["out_status"] + os.sep + prefs["data_log_name"]
+    prefs["save_log_path"] = prefs["out_status"] + os.sep + DATA_LOG_NAME
 
     return prefs
 
@@ -133,11 +176,7 @@ FULL_FEATURES_DATA = "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cf
 
 
 def collect_csv_data_rows(
-    csvpath=FULL_DATASET,
-    fovids=None,
-    cell_lines=None,
-    raw_only=False,
-    max_rows=None,
+    csvpath=FULL_DATASET, fovids=None, cell_lines=None, raw_only=False, max_rows=None,
 ):
     log.info("REQUESTING DATA HANDOFF")
     df_data_handoff = pd.read_csv(csvpath)
@@ -311,6 +350,48 @@ def get_csv_features(path: str = FULL_FEATURES_DATA):
     df = pd.read_csv(path)
     df.fillna("NaN", inplace=True)
     return df
+
+
+def cache_dataset(prefs, groups):
+    with open(
+        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "w"
+    ) as savefile:
+        json.dump(groups, savefile)
+    log.info("Saved dataset to json")
+
+
+def uncache_dataset(prefs):
+    groups = []
+    with open(
+        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "r"
+    ) as savefile:
+        groups = json.load(savefile)
+    return groups
+
+
+def get_data_groups(prefs, n=0):
+    data = collect_csv_data_rows(
+        fovids=prefs.get("fovs"), cell_lines=prefs.get("cell_lines")
+    )
+    log.info("Number of total cell rows: " + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    log.info("Number of total FOVs: " + str(total_jobs))
+    # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
+    groups = []
+    for index, (fovid, group) in enumerate(data_grouped):
+        groups.append(group.to_dict(orient="records"))
+        # only the first n FOVs (one group per FOV)
+        if n > 0 and index >= n - 1:
+            break
+
+    log.info("Converted groups to lists of dicts")
+
+    # make dataset available as a file for later runs
+    cache_dataset(prefs, groups)
+
+    return groups
 
 
 if __name__ == "__main__":

@@ -3,7 +3,6 @@
 
 import argparse
 from enum import Enum
-import json
 import logging
 import traceback
 from datetime import datetime
@@ -20,7 +19,6 @@ from distributed import LocalCluster
 from cellbrowser_tools import (
     createJobsFromCSV,
     dataHandoffUtils,
-    dataset_constants,
     generateCellLineDef,
     jobScheduler,
     validateProcessedImages,
@@ -53,48 +51,6 @@ class BuildStep(Enum):
 def setup_prefs(p):
     prefs = dataHandoffUtils.setup_prefs(p)
     return prefs
-
-
-def cache_dataset(prefs, groups):
-    with open(
-        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "w"
-    ) as savefile:
-        json.dump(groups, savefile)
-    log.info("Saved dataset to json")
-
-
-def uncache_dataset(prefs):
-    groups = []
-    with open(
-        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "r"
-    ) as savefile:
-        groups = json.load(savefile)
-    return groups
-
-
-def get_data_groups(prefs, n=0):
-    data = dataHandoffUtils.collect_csv_data_rows(
-        fovids=prefs.get("fovs"), cell_lines=prefs.get("cell_lines")
-    )
-    log.info("Number of total cell rows: " + str(len(data)))
-    # group by fov id
-    data_grouped = data.groupby("FOVId")
-    total_jobs = len(data_grouped)
-    log.info("Number of total FOVs: " + str(total_jobs))
-    # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
-    groups = []
-    for index, (fovid, group) in enumerate(data_grouped):
-        groups.append(group.to_dict(orient="records"))
-        # only the first n FOVs (one group per FOV)
-        if n > 0 and index >= n - 1:
-            break
-
-    log.info("Converted groups to lists of dicts")
-
-    # make dataset available as a file for later runs
-    cache_dataset(prefs, groups)
-
-    return groups
 
 
 def process_fov_row(group, args, prefs):
@@ -281,7 +237,7 @@ def select_dask_executor(p, prefs):
 
 def build_release_sync(p, prefs):
     # gather data set
-    groups = get_data_groups(prefs, p.n)
+    groups = dataHandoffUtils.get_data_groups(prefs, p.n)
 
     # set up execution environment
     distributed_executor_address, cluster = select_dask_executor(p, prefs)
@@ -326,7 +282,7 @@ def build_release_sync(p, prefs):
 
 def build_release_async(p, prefs):
     # gather data set
-    groups = get_data_groups(prefs, p.n)
+    groups = dataHandoffUtils.get_data_groups(prefs, p.n)
 
     # copy the prefs file to a location where it can be found for all steps.
     statusdir = prefs["out_status"]
@@ -345,7 +301,7 @@ def build_release_async(p, prefs):
 
 def build_images_async(p, prefs):
     # gather data set
-    groups = get_data_groups(prefs, p.n)
+    groups = dataHandoffUtils.get_data_groups(prefs, p.n)
 
     # copy the prefs file to a location where it can be found for all steps.
     statusdir = prefs["out_status"]
@@ -421,7 +377,7 @@ def main():
             p.cluster = True
             build_images_async(p, prefs)
         elif p.step == BuildStep.VALIDATE:
-            groups = uncache_dataset(prefs)
+            groups = dataHandoffUtils.uncache_dataset(prefs)
             validate_fov_rows(groups, p, prefs)
             log.info("validate_fov_rows done")
         elif p.step == BuildStep.FEATUREDATA:

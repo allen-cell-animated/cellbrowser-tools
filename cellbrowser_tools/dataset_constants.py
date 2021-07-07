@@ -15,6 +15,7 @@ CHANNEL_NAMES_FILENAME = "allChannelNames.txt"
 SLURM_SCRIPTS_DIR = "scripts_slurm"
 SLURM_OUTPUT_DIR = "out/"
 SLURM_ERROR_DIR = "err/"
+DATA_LOG_NAME = "data_jobs_out.csv"
 
 
 # the expected column names returned from labkey
