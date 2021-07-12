@@ -163,7 +163,7 @@ class OutputPaths:
         )
         self.save_log_path = os.path.join(self.status_dir, DATA_LOG_NAME)
 
-    def _create_dir(d: os.PathLike, name: str):
+    def _create_dir(self, d: os.PathLike):
         if not os.path.exists(d):
             os.makedirs(d)
         return d
@@ -207,7 +207,11 @@ FULL_FEATURES_DATA = "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cf
 
 
 def collect_csv_data_rows(
-    csvpath=FULL_DATASET, fovids=None, cell_lines=None, raw_only=False, max_rows=None,
+    csvpath=FULL_DATASET,
+    fovids=None,
+    cell_lines=None,
+    raw_only=False,
+    max_rows=None,
 ):
     log.info("REQUESTING DATA HANDOFF")
     df_data_handoff = pd.read_csv(csvpath)
@@ -265,6 +269,8 @@ def collect_csv_data_rows(
             return "M4/M5"
         elif mid == 6:
             return "Mitosis"
+        elif mid is None:
+            return ""
         else:
             raise ValueError("Unexpected value for MitoticStateId")
 

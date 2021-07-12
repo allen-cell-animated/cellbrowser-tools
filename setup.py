@@ -50,7 +50,7 @@ requirements = [
     "labkey",
     "lkaccess>=1.4.21",
     "ome-types>=0.2.3",
-    "pandas==1.0.3",
+    "pandas",
     "prefect==0.9.7",
     "quilt3",
     "jinja2",

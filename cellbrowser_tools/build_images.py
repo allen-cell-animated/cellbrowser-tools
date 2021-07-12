@@ -2,9 +2,9 @@ from cellbrowser_tools.dataHandoffUtils import OutputPaths
 import logging
 import os
 
-import createJobsFromCSV
-import dataHandoffUtils
-import jobScheduler
+from . import createJobsFromCSV
+from . import dataHandoffUtils
+from . import jobScheduler
 
 
 log = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def submit_fov_rows(args, prefs, groups):
     jobdata_list = []
     log.info("PREPARING " + str(len(groups)) + " JOBS")
     for index, rows in enumerate(groups):
-        jobdata = createJobsFromCSV.do_image(args.cluster, args.run, prefs, rows)
+        jobdata = createJobsFromCSV.do_image(args["cluster"], args["run"], prefs, rows)
         jobdata_list.append(jobdata)
 
     log.info("SUBMITTING " + str(len(groups)) + " JOBS")
@@ -69,7 +69,7 @@ def build_images(
     output_paths = OutputPaths(output_dir)
 
     # gather data set
-    groups = get_data_groups(input_manifest, query_options)
+    groups = get_data_groups(input_manifest, query_options, output_dir)
 
     # TODO log the command line args
     # statusdir = output_paths.status_dir

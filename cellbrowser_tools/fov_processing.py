@@ -452,46 +452,45 @@ class ImageProcessor:
         file_list = []
 
         # structure segmentation
-        if self.row[DataField.StructureSegmentationReadPath] != "":
-            struct_seg_file = utils.normalize_path(
-                self.row[DataField.StructureSegmentationReadPath]
-            )
+        readpath = self.row[DataField.StructureSegmentationReadPath]
+        if readpath != "" and readpath is not None:
+            struct_seg_file = utils.normalize_path(readpath)
             # print(struct_seg_file)
             file_list.append((struct_seg_file, 0, "SEG_STRUCT"))
             self.channel_names.append("SEG_STRUCT")
             self.channel_colors.append(_rgba255(255, 0, 0, 255))
 
         # cell segmentation
-        cell_seg_file = utils.normalize_path(
-            self.row[DataField.MembraneSegmentationReadPath]
-        )
-        # print(cell_seg_file)
-        file_list.append(
-            (
-                cell_seg_file,
-                self.row[DataField.MembraneSegmentationChannelIndex],
-                "SEG_Memb",
+        readpath = self.row[DataField.MembraneSegmentationReadPath]
+        if readpath != "" and readpath is not None:
+            cell_seg_file = utils.normalize_path(readpath)
+            # print(cell_seg_file)
+            file_list.append(
+                (
+                    cell_seg_file,
+                    self.row[DataField.MembraneSegmentationChannelIndex],
+                    "SEG_Memb",
+                )
             )
-        )
-        self.channel_names.append("SEG_Memb")
-        self.channel_colors.append(_rgba255(0, 0, 255, 255))
-        self.channels_to_mask.append(len(self.channel_names) - 1)
+            self.channel_names.append("SEG_Memb")
+            self.channel_colors.append(_rgba255(0, 0, 255, 255))
+            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # nucleus segmentation
-        nuc_seg_file = utils.normalize_path(
-            self.row[DataField.NucleusSegmentationReadPath]
-        )
-        # print(nuc_seg_file)
-        file_list.append(
-            (
-                nuc_seg_file,
-                self.row[DataField.NucleusSegmentationChannelIndex],
-                "SEG_DNA",
+        readpath = self.row[DataField.NucleusSegmentationReadPath]
+        if readpath != "" and readpath is not None:
+            nuc_seg_file = utils.normalize_path(readpath)
+            # print(nuc_seg_file)
+            file_list.append(
+                (
+                    nuc_seg_file,
+                    self.row[DataField.NucleusSegmentationChannelIndex],
+                    "SEG_DNA",
+                )
             )
-        )
-        self.channel_names.append("SEG_DNA")
-        self.channel_colors.append(_rgba255(0, 255, 0, 255))
-        self.channels_to_mask.append(len(self.channel_names) - 1)
+            self.channel_names.append("SEG_DNA")
+            self.channel_colors.append(_rgba255(0, 255, 0, 255))
+            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         if self.row[DataField.MembraneContourReadPath] is None:
             self.row[DataField.MembraneContourReadPath] = self.row[
@@ -499,16 +498,20 @@ class ImageProcessor:
             ]
 
         # cell contour segmentation (good for viz in the volume viewer)
-        cell_con_file = utils.normalize_path(
-            self.row[DataField.MembraneContourReadPath]
-        )
-        # print(cell_seg_file)
-        file_list.append(
-            (cell_con_file, self.row[DataField.MembraneContourChannelIndex], "CON_Memb")
-        )
-        self.channel_names.append("CON_Memb")
-        self.channel_colors.append(_rgba255(255, 255, 0, 255))
-        self.channels_to_mask.append(len(self.channel_names) - 1)
+        readpath = self.row[DataField.MembraneContourReadPath]
+        if readpath != "" and readpath is not None:
+            cell_con_file = utils.normalize_path(readpath)
+            # print(cell_seg_file)
+            file_list.append(
+                (
+                    cell_con_file,
+                    self.row[DataField.MembraneContourChannelIndex],
+                    "CON_Memb",
+                )
+            )
+            self.channel_names.append("CON_Memb")
+            self.channel_colors.append(_rgba255(255, 255, 0, 255))
+            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         if self.row[DataField.NucleusContourReadPath] is None:
             self.row[DataField.NucleusContourReadPath] = self.row[
@@ -516,14 +519,20 @@ class ImageProcessor:
             ]
 
         # nucleus contour segmentation (good for viz in the volume viewer)
-        nuc_con_file = utils.normalize_path(self.row[DataField.NucleusContourReadPath])
-        # print(nuc_seg_file)
-        file_list.append(
-            (nuc_con_file, self.row[DataField.NucleusContourChannelIndex], "CON_DNA")
-        )
-        self.channel_names.append("CON_DNA")
-        self.channel_colors.append(_rgba255(0, 255, 255, 255))
-        self.channels_to_mask.append(len(self.channel_names) - 1)
+        readpath = self.row[DataField.NucleusContourReadPath]
+        if readpath != "" and readpath is not None:
+            nuc_con_file = utils.normalize_path(readpath)
+            # print(nuc_seg_file)
+            file_list.append(
+                (
+                    nuc_con_file,
+                    self.row[DataField.NucleusContourChannelIndex],
+                    "CON_DNA",
+                )
+            )
+            self.channel_names.append("CON_DNA")
+            self.channel_colors.append(_rgba255(0, 255, 255, 255))
+            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         return file_list
 
@@ -600,9 +609,9 @@ class ImageProcessor:
             channel.id = f"Channel:0:{c}"
 
         # 2. remove all planes whose C index is not in self.channel_indices
-        for p in pix.planes:
-            if p.the_c not in self.channel_indices:
-                pix.planes.remove(p)
+        new_planes = [p for p in pix.planes if p.the_c in self.channel_indices]
+        # new_planes = filter(lambda p: p.the_c in self.channel_indices, pix.planes)
+        pix.planes = new_planes
 
         # 3. then remap the C of the remaining planes, as they stll have their old channel indices
         for p in pix.planes:

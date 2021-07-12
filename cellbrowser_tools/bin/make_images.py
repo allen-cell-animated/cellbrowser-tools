@@ -31,6 +31,12 @@ class Args(argparse.Namespace):
             description="Generates volume-viewer files for a series of images with or without segmentations.",
         )
         p.add_argument(
+            "--input_manifest",
+            type=str,
+            help="csv file containing dataset source data",
+            required=True,
+        )
+        p.add_argument(
             "--output_dir",
             type=str,
             help="directory where outputs should be saved (can be isilon)",
@@ -130,9 +136,13 @@ def main():
         log.info(args)
 
         query_options = QueryOptions(
-            args.fovids, args.plates, args.cell_lines, args.start_date, args.end_date,
+            args.fovids,
+            args.plates,
+            args.cell_lines,
+            args.start_date,
+            args.end_date,
         )
-        build_images(
+        build_images.build_images(
             args.input_manifest, args.output_dir, args.distributed, query_options
         )
 
