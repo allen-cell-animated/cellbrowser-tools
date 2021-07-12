@@ -6,7 +6,7 @@ import traceback
 from datetime import datetime
 from logging import FileHandler, StreamHandler, Formatter
 from cellbrowser_tools.dataHandoffUtils import QueryOptions
-import cellbrowser_tools.build_images
+from cellbrowser_tools import build_images
 
 
 class Args(argparse.Namespace):
@@ -132,7 +132,7 @@ def main():
         query_options = QueryOptions(
             args.fovids, args.plates, args.cell_lines, args.start_date, args.end_date,
         )
-        build_images.build_images(
+        build_images(
             args.input_manifest, args.output_dir, args.distributed, query_options
         )
 

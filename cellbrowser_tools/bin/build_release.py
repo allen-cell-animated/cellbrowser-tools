@@ -58,7 +58,7 @@ def process_fov_row(group, args, prefs):
     name = dataHandoffUtils.get_fov_name_from_row(rows[0])
     log.info(f"STARTING FOV {name}")
     try:
-        createJobsFromCSV.do_image(args, prefs, rows)
+        createJobsFromCSV.do_image(args.cluster, args.run, prefs, rows)
     except Exception as e:
         log.error("=============================================")
         if args.debug:
@@ -98,7 +98,7 @@ def submit_fov_rows(args, prefs, groups):
     jobdata_list = []
     log.info("PREPARING " + str(len(groups)) + " JOBS")
     for index, rows in enumerate(groups):
-        jobdata = createJobsFromCSV.do_image(args, prefs, rows)
+        jobdata = createJobsFromCSV.do_image(args.cluster, args.run, prefs, rows)
         jobdata_list.append(jobdata)
 
     log.info("SUBMITTING " + str(len(groups)) + " JOBS")
@@ -377,7 +377,7 @@ def main():
             p.cluster = True
             build_images_async(p, prefs)
         elif p.step == BuildStep.VALIDATE:
-            groups = dataHandoffUtils.uncache_dataset(prefs)
+            groups = dataHandoffUtils.uncache_dataset(prefs.get("out_dir"))
             validate_fov_rows(groups, p, prefs)
             log.info("validate_fov_rows done")
         elif p.step == BuildStep.FEATUREDATA:

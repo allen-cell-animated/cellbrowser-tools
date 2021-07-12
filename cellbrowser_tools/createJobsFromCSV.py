@@ -66,7 +66,7 @@ def make_json(jobname, info, prefs):
     return f"processImageWithSegmentation {jsonname}"
 
 
-def do_image(args, prefs, rows):
+def do_image(make_job: bool, run_now: bool, prefs, rows):
     # use row 0 as the "full field" row
     row = rows[0]
 
@@ -101,9 +101,9 @@ def do_image(args, prefs, rows):
     os.makedirs(info.cbrImageLocation, exist_ok=True)
     os.makedirs(info.cbrThumbnailLocation, exist_ok=True)
 
-    if args.run:
+    if run_now:
         do_main_image_with_celljob(info)
-    elif args.cluster:
+    elif make_job:
         # TODO: set arg to copy each indiv file to another output
         return make_json(jobname, info, prefs)
 
@@ -142,7 +142,7 @@ def process_images(args, prefs):
                 + fovid
             )
 
-            jobdata = do_image(args, prefs, rows)
+            jobdata = do_image(args.cluster, args.run, prefs, rows)
             jobdata_list.append(jobdata)
 
         print("SUBMITTING " + str(total_jobs) + " JOBS")
@@ -160,7 +160,7 @@ def process_images(args, prefs):
                 + " : "
                 + fovid
             )
-            do_image(args, prefs, rows)
+            do_image(args.cluster, args.run, prefs, rows)
 
 
 def is_process_images_done(args):

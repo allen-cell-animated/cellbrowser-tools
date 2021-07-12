@@ -37,10 +37,12 @@ class QueryOptions:
         fovids: List[int] = None,
         start_date: str = None,
         end_date: str = None,
+        first_n: int = 0,
     ):
         self.cell_lines = cell_lines
         self.plates = plates
         self.fovids = fovids
+        self.first_n = first_n
 
         self._ensureValidDateString(start_date)
         self._ensureValidDateString(end_date)
@@ -136,6 +138,35 @@ def setup_prefs(json_path):
     prefs["save_log_path"] = prefs["out_status"] + os.sep + DATA_LOG_NAME
 
     return prefs
+
+
+class OutputPaths:
+    def __init__(self, out_dir: os.PathLike) -> None:
+        self.out_dir = out_dir
+        self.status_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.STATUS_DIR)
+        )
+        self.images_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.IMAGES_DIR)
+        )
+        self.thumbs_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.THUMBNAILS_DIR)
+        )
+        self.atlas_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.ATLAS_DIR)
+        )
+        self.sbatch_output = self._create_dir(
+            os.path.join(self.status_dir, SLURM_SCRIPTS_DIR, SLURM_OUTPUT_DIR)
+        )
+        self.sbatch_error = self._create_dir(
+            os.path.join(self.status_dir, SLURM_SCRIPTS_DIR, SLURM_ERROR_DIR)
+        )
+        self.save_log_path = os.path.join(self.status_dir, DATA_LOG_NAME)
+
+    def _create_dir(d: os.PathLike, name: str):
+        if not os.path.exists(d):
+            os.makedirs(d)
+        return d
 
 
 def get_cellline_name_from_row(row):
@@ -352,18 +383,18 @@ def get_csv_features(path: str = FULL_FEATURES_DATA):
     return df
 
 
-def cache_dataset(prefs, groups):
+def cache_dataset(out_dir: os.PathLike, groups):
     with open(
-        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "w"
+        os.path.join(out_dir, dataset_constants.DATASET_JSON_FILENAME), "w"
     ) as savefile:
         json.dump(groups, savefile)
     log.info("Saved dataset to json")
 
 
-def uncache_dataset(prefs):
+def uncache_dataset(out_dir: os.PathLike):
     groups = []
     with open(
-        os.path.join(prefs["out_dir"], dataset_constants.DATASET_JSON_FILENAME), "r"
+        os.path.join(out_dir, dataset_constants.DATASET_JSON_FILENAME), "r"
     ) as savefile:
         groups = json.load(savefile)
     return groups
@@ -389,7 +420,7 @@ def get_data_groups(prefs, n=0):
     log.info("Converted groups to lists of dicts")
 
     # make dataset available as a file for later runs
-    cache_dataset(prefs, groups)
+    cache_dataset(prefs.get("out_dir"), groups)
 
     return groups
 

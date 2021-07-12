@@ -1,7 +1,6 @@
+from cellbrowser_tools.dataHandoffUtils import OutputPaths
 import logging
 import os
-from pathlib import Path
-import shutil
 
 import createJobsFromCSV
 import dataHandoffUtils
@@ -11,8 +10,8 @@ import jobScheduler
 log = logging.getLogger(__name__)
 
 
-def submit_done(prefs, prefspath, job_ids):
-    command = f"build_release {prefspath} --step done"
+def submit_done(prefs, job_ids):
+    command = f"build_release --step done"
     deps = job_ids
     new_job_ids = jobScheduler.submit_one(command, prefs, name="done", deps=deps)
     return new_job_ids
@@ -23,7 +22,7 @@ def submit_fov_rows(args, prefs, groups):
     jobdata_list = []
     log.info("PREPARING " + str(len(groups)) + " JOBS")
     for index, rows in enumerate(groups):
-        jobdata = createJobsFromCSV.do_image(args, prefs, rows)
+        jobdata = createJobsFromCSV.do_image(args.cluster, args.run, prefs, rows)
         jobdata_list.append(jobdata)
 
     log.info("SUBMITTING " + str(len(groups)) + " JOBS")
@@ -34,8 +33,7 @@ def submit_fov_rows(args, prefs, groups):
 def get_data_groups(
     input_manifest: os.PathLike,
     query_options: dataHandoffUtils.QueryOptions,
-    prefs,
-    n=0,
+    out_dir: os.PathLike,
 ):
     data = dataHandoffUtils.collect_csv_data_rows(
         input_manifest, fovids=query_options.fovids, cell_lines=query_options.cell_lines
@@ -50,13 +48,13 @@ def get_data_groups(
     for index, (fovid, group) in enumerate(data_grouped):
         groups.append(group.to_dict(orient="records"))
         # only the first n FOVs (one group per FOV)
-        if n > 0 and index >= n - 1:
+        if query_options.first_n > 0 and index >= query_options.first_n - 1:
             break
 
     log.info("Converted groups to lists of dicts")
 
     # make dataset available as a file for later runs
-    dataHandoffUtils.cache_dataset(prefs, groups)
+    dataHandoffUtils.cache_dataset(out_dir, groups)
 
     return groups
 
@@ -67,16 +65,21 @@ def build_images(
     distributed: bool,
     query_options: dataHandoffUtils.QueryOptions,
 ):
-    # gather data set
-    groups = dataHandoffUtils.get_data_groups(prefs, p.n)
+    # setup directories
+    output_paths = OutputPaths(output_dir)
 
-    # copy the prefs file to a location where it can be found for all steps.
-    statusdir = prefs["out_status"]
-    prefspath = Path(f"{statusdir}/prefs.json").expanduser()
-    shutil.copyfile(p.prefs, prefspath)
+    # gather data set
+    groups = get_data_groups(input_manifest, query_options)
+
+    # TODO log the command line args
+    # statusdir = output_paths.status_dir
+    # prefspath = Path(f"{statusdir}/prefs.json").expanduser()
+    # shutil.copyfile(p.prefs, prefspath)
 
     # use SLURM sbatch submission to schedule all the steps
     # each step will run build_release.py with a step id
-    job_ids = submit_fov_rows(p, prefs, groups)
-    job_ids = submit_done(prefs, prefspath, job_ids)
+    job_ids = submit_fov_rows(
+        {"cluster": distributed, "run": not distributed}, output_paths.__dict__, groups
+    )
+    job_ids = submit_done(output_paths.__dict__, job_ids)
     log.info("All Jobs Submitted!")
