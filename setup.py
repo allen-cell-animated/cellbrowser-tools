@@ -84,6 +84,7 @@ setup(
     entry_points={
         "console_scripts": [
             "build_release=cellbrowser_tools.bin.build_release:main",
+            "make_images=cellbrowser_tools.bin.make_images:main",
             "processImageWithSegmentation=cellbrowser_tools.bin.processImageWithSegmentation:main",
         ],
     },
