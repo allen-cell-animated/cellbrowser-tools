@@ -12,6 +12,7 @@ DATASET_JSON_FILENAME = "dataset.json"
 ERROR_FOVS_FILENAME = "errorFovs.txt"
 CHANNEL_NAMES_FILENAME = "allChannelNames.txt"
 
+STATUS_DIR = "processing"
 SLURM_SCRIPTS_DIR = "scripts_slurm"
 SLURM_OUTPUT_DIR = "out/"
 SLURM_ERROR_DIR = "err/"
