@@ -457,8 +457,8 @@ class ImageProcessor:
             int(self.row[DataField.ChannelNumberBrightfield]),
         ]
         # special case of channel combo when "gene-pair" is present
-        genepair = self.row[AugmentedDataField.GenePair]
-        if genepair:
+        genepair = self.row.get(AugmentedDataField.GenePair)
+        if genepair is not None:
             # genepair is a hyphenated split of 561 and 638 channel names
             pair = genepair.split("-")
             if len(pair) != 2:
@@ -763,7 +763,7 @@ class ImageProcessor:
 
         return m
 
-    def generate_and_save(self, do_segmented_cells=True):
+    def generate_and_save(self, do_segmented_cells=True, save_raw=True):
         base = self.file_name
 
         # indices of channels in the original image
@@ -813,7 +813,7 @@ class ImageProcessor:
         static_meta = self.generate_meta(self.omexml, self.row)
 
         self._save_and_post(
-            image=im_to_save,
+            image=im_to_save if save_raw else None,
             thumbnail=ffthumb,
             textureatlas=atlas,
             name=base,
@@ -936,7 +936,7 @@ class ImageProcessor:
             log.info("done making cropped atlas")
 
             self._save_and_post(
-                image=im_to_save,
+                image=im_to_save if save_raw else None,
                 thumbnail=thumb,
                 textureatlas=atlas_cropped,
                 name=cell_name,
@@ -1005,7 +1005,7 @@ class ImageProcessor:
 
 def do_main_image_with_celljob(info):
     processor = ImageProcessor(info)
-    processor.generate_and_save()
+    processor.generate_and_save(do_segmented_cells=info.do_crop, save_raw=info.save_raw)
 
 
 def do_main_image(fname):

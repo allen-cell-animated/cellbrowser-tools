@@ -66,7 +66,15 @@ def make_json(jobname, info, prefs):
     return f"processImageWithSegmentation {jsonname}"
 
 
-def do_image(make_job: bool, run_now: bool, prefs, rows):
+def do_image(
+    make_job: bool,
+    run_now: bool,
+    prefs,
+    rows,
+    do_thumbnails=True,
+    do_crop=True,
+    save_raw=True,
+):
     # use row 0 as the "full field" row
     row = rows[0]
 
@@ -80,7 +88,9 @@ def do_image(make_job: bool, run_now: bool, prefs, rows):
 
     info = cellJob.CellJob(rows)
 
-    info.do_thumbnails = prefs["do_thumbnails"]
+    info.do_thumbnails = do_thumbnails
+    info.do_crop = do_crop
+    info.save_raw = save_raw
 
     # drop images here
     info.cbrDataRoot = prefs["images_dir"]

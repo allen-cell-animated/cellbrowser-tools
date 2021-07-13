@@ -22,7 +22,15 @@ def submit_fov_rows(args, prefs, groups):
     jobdata_list = []
     log.info("PREPARING " + str(len(groups)) + " JOBS")
     for index, rows in enumerate(groups):
-        jobdata = createJobsFromCSV.do_image(args["cluster"], args["run"], prefs, rows)
+        jobdata = createJobsFromCSV.do_image(
+            args["cluster"],
+            args["run"],
+            prefs,
+            rows,
+            do_thumbnails=False,  # TODO get this from args
+            do_crop=False,  # TODO get this from args
+            save_raw=False,
+        )
         jobdata_list.append(jobdata)
 
     log.info("SUBMITTING " + str(len(groups)) + " JOBS")
@@ -79,7 +87,9 @@ def build_images(
     # use SLURM sbatch submission to schedule all the steps
     # each step will run build_release.py with a step id
     job_ids = submit_fov_rows(
-        {"cluster": distributed, "run": not distributed}, output_paths.__dict__, groups
+        {"cluster": distributed, "run": not distributed},
+        output_paths.__dict__,
+        groups,
     )
     job_ids = submit_done(output_paths.__dict__, job_ids)
     log.info("All Jobs Submitted!")
