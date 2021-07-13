@@ -94,4 +94,4 @@ class AugmentedDataField(str, Enum):
     MitoticState = "MitoticState"
     ChannelNumber561 = "ChannelNumber561"
     # special case for FISH dataset
-    GenePair = "gene-pair"
+    GenePair = "gene_pair"

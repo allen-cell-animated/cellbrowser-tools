@@ -456,7 +456,18 @@ class ImageProcessor:
             int(self.row[DataField.ChannelNumber405]),
             int(self.row[DataField.ChannelNumberBrightfield]),
         ]
+
+        # special case replace OBS_STRUCT with OBS_Alpha-actinin-2
+        # if CellIndex starts with C and FOVId starts with F then we are in a special data set.
+        # gene-editing FISH chaos 2019
+        # TODO FIX ME
+        if self.row[DataField.CellIndex].startswith("C") and self.row[
+            DataField.FOVId
+        ].startswith("F"):
+            self.channel_names[1] = "OBS_Alpha-actinin-2"
+
         # special case of channel combo when "gene-pair" is present
+        # TODO FIX ME
         genepair = self.row.get(AugmentedDataField.GenePair)
         if genepair is not None:
             # genepair is a hyphenated split of 561 and 638 channel names
@@ -466,7 +477,7 @@ class ImageProcessor:
                     "Expected gene-pair to have two values joined by hyphen"
                 )
             self.channel_names = [
-                "OBS_Alpha Actinin 2",
+                "OBS_Alpha-actinin-2",
                 "OBS_DNA",
                 "OBS_Trans",
                 f"OBS_{pair[0]}",
@@ -808,7 +819,7 @@ class ImageProcessor:
         atlas.dims.pixel_size_x = p.physical_size_x
         atlas.dims.pixel_size_y = p.physical_size_y
         atlas.dims.pixel_size_z = p.physical_size_z
-        atlas.dims.channel_names = [c.name for c in p.channels]
+        atlas.dims.channel_names = [c for c in self.channel_names]
         # grab metadata for display
         static_meta = self.generate_meta(self.omexml, self.row)
 
@@ -928,7 +939,7 @@ class ImageProcessor:
             atlas_cropped.dims.pixel_size_x = pixels.physical_size_x
             atlas_cropped.dims.pixel_size_y = pixels.physical_size_y
             atlas_cropped.dims.pixel_size_z = pixels.physical_size_z
-            atlas_cropped.dims.channel_names = [c.name for c in pixels.channels]
+            atlas_cropped.dims.channel_names = [c for c in self.channel_names]
 
             static_meta_cropped = self.generate_meta(copyxml, row, cell_meta)
 

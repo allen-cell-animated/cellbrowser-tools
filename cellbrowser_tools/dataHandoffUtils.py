@@ -175,11 +175,11 @@ def get_cellline_name_from_row(row):
 
 # cellline must be 'AICS-#'
 def get_fov_name(fovid, cellline):
-    return f"{cellline}_{fovid}"
+    return f"{fovid}"
 
 
 def get_cell_name(cellid, fovid, cellline):
-    return f"{cellline}_{fovid}_{cellid}"
+    return f"{get_fov_name(fovid, cellline)}_{cellid}"
 
 
 def get_fov_name_from_row(row):
