@@ -9,3 +9,5 @@ class CellJob(object):
         self.cbrImageLocation = ""
         # root output directory for volume-viewer texture atlases
         self.cbrTextureAtlasLocation = ""
+        # whether or not to build thumbnail images in addition to 3d volumes
+        self.do_thumbnails = True

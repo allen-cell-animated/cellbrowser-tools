@@ -80,6 +80,8 @@ def do_image(make_job: bool, run_now: bool, prefs, rows):
 
     info = cellJob.CellJob(rows)
 
+    info.do_thumbnails = prefs["do_thumbnails"]
+
     # drop images here
     info.cbrDataRoot = prefs["images_dir"]
     # drop thumbnails here

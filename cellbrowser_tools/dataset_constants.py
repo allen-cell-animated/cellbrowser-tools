@@ -92,3 +92,6 @@ class DataField(str, Enum):
 class AugmentedDataField(str, Enum):
     IsMitotic = "IsMitotic"
     MitoticState = "MitoticState"
+    ChannelNumber561 = "ChannelNumber561"
+    # special case for FISH dataset
+    GenePair = "gene-pair"

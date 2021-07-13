@@ -3,7 +3,7 @@ from aicsimageio.writers import PngWriter
 from aicsimageio import AICSImage
 from . import cellJob
 from . import dataHandoffUtils as utils
-from .dataset_constants import DataField
+from .dataset_constants import AugmentedDataField, DataField
 from aicsimageprocessing import thumbnailGenerator
 from aicsimageprocessing import textureAtlas
 
@@ -381,16 +381,13 @@ CellMeta = collections.namedtuple("CellMeta", "bounds parent_image index")
 
 
 class ImageProcessor:
-
-    # to clarify my reasoning for these specific methods and variables in this class...
-    # These methods required a large number of redundant parameters
-    # These params would not change throughout the lifecycle of a cellJob object
-    # These methods use a cellJob object as one of their params
-    # The functions outside of this class do not rely on a cellJob object
     def __init__(self, info):
+        self.do_thumbnails = True
+
         self.job = info
         if isinstance(info, cellJob.CellJob):
             self.row = info.cells[0]
+            self.do_thumbnails = info.do_thumbnails
         elif "cells" in info:
             self.row = info.cells[0]
         else:
@@ -435,6 +432,16 @@ class ImageProcessor:
         self.atlas_dir = atlasdir
 
     def build_file_list(self):
+        # TODO:
+        # make all this data driven.
+        # either we just take the ALL channels from the images IN ORDER
+        # or we provide some kind of listing and renaming:
+        #     source file
+        #     channel index
+        #     new name
+        #     color (maybe not even needed)
+        # this is enough data to combine together many channels from many files
+
         # start with 4 channels for membrane, structure, nucleus and transmitted light
         self.channel_names = ["OBS_Memb", "OBS_STRUCT", "OBS_DNA", "OBS_Trans"]
         self.channel_colors = [
@@ -443,6 +450,42 @@ class ImageProcessor:
             _rgba255(0, 128, 128, 255),
             _rgba255(128, 128, 128, 255),
         ]
+        self.channel_indices = [
+            int(self.row[DataField.ChannelNumber638]),
+            int(self.row[DataField.ChannelNumberStruct]),
+            int(self.row[DataField.ChannelNumber405]),
+            int(self.row[DataField.ChannelNumberBrightfield]),
+        ]
+        # special case of channel combo when "gene-pair" is present
+        genepair = self.row[AugmentedDataField.GenePair]
+        if genepair:
+            # genepair is a hyphenated split of 561 and 638 channel names
+            pair = genepair.split("-")
+            if len(pair) != 2:
+                raise ValueError(
+                    "Expected gene-pair to have two values joined by hyphen"
+                )
+            self.channel_names = [
+                "OBS_Alpha Actinin 2",
+                "OBS_DNA",
+                "OBS_Trans",
+                f"OBS_{pair[0]}",
+                f"OBS_{pair[1]}",
+            ]
+            self.channel_colors = [
+                _rgba255(128, 0, 128, 255),
+                _rgba255(128, 128, 0, 255),
+                _rgba255(0, 128, 128, 255),
+                _rgba255(128, 128, 128, 255),
+                _rgba255(255, 0, 0, 255),
+            ]
+            self.channel_indices = [
+                int(self.row[DataField.ChannelNumberStruct]),
+                int(self.row[DataField.ChannelNumber405]),
+                int(self.row[DataField.ChannelNumberBrightfield]),
+                int(self.row[AugmentedDataField.ChannelNumber561]),
+                int(self.row[DataField.ChannelNumber638]),
+            ]
 
         self.channels_to_mask = []
 
@@ -569,25 +612,14 @@ class ImageProcessor:
         image = cr.get_image_data("CZYX", T=0)
         if len(image.shape) != 4:
             raise ValueError("Image did not return 4d CZYX data")
-        self.channel_indices = [
-            int(self.row[DataField.ChannelNumber638]),
-            int(self.row[DataField.ChannelNumberStruct]),
-            int(self.row[DataField.ChannelNumber405]),
-            int(self.row[DataField.ChannelNumberBrightfield]),
-        ]
+
         # image.shape[0] is num of channels.
         if image.shape[0] <= max(self.channel_indices):
             raise ValueError(
                 f"Image does not have enough channels - needs at least {max(self.channel_indices)} but has {image.shape[0]}"
             )
-        image = np.array(
-            [
-                image[self.channel_indices[0]],
-                image[self.channel_indices[1]],
-                image[self.channel_indices[2]],
-                image[self.channel_indices[3]],
-            ]
-        )
+
+        image = np.array([image[i] for i in self.channel_indices])
 
         # 3. fix up XML to reorder channels
         # we want to preserve all channel and plane data for the channels we are keeping!
@@ -610,7 +642,6 @@ class ImageProcessor:
 
         # 2. remove all planes whose C index is not in self.channel_indices
         new_planes = [p for p in pix.planes if p.the_c in self.channel_indices]
-        # new_planes = filter(lambda p: p.the_c in self.channel_indices, pix.planes)
         pix.planes = new_planes
 
         # 3. then remap the C of the remaining planes, as they stll have their old channel indices
@@ -632,7 +663,7 @@ class ImageProcessor:
                 )
             pix.size_c += 1
 
-        nch = 4
+        nch = len(self.channel_indices)
         self.seg_indices = []
         i = 0
         for f in file_list:
@@ -744,18 +775,21 @@ class ImageProcessor:
 
         log.info(f"Generating images for FOVId {self.row[DataField.FOVId]}")
 
-        log.info("making thumbnail...")
-        generator = thumbnailGenerator.ThumbnailGenerator(
-            channel_indices=[memb_index, nuc_index, struct_index],
-            size=self.job.cbrThumbnailSize,
-            mask_channel_index=self.seg_indices[1],
-            colors=thumbnail_colors,
-            projection="slice",
-        )
-        ffthumb = generator.make_thumbnail(
-            self.image.transpose(1, 0, 2, 3), apply_cell_mask=False
-        )
-        log.info("done making thumbnail")
+        if self.do_thumbnails:
+            log.info("making thumbnail...")
+            generator = thumbnailGenerator.ThumbnailGenerator(
+                channel_indices=[memb_index, nuc_index, struct_index],
+                size=self.job.cbrThumbnailSize,
+                mask_channel_index=self.seg_indices[1],
+                colors=thumbnail_colors,
+                projection="slice",
+            )
+            ffthumb = generator.make_thumbnail(
+                self.image.transpose(1, 0, 2, 3), apply_cell_mask=False
+            )
+            log.info("done making thumbnail")
+        else:
+            ffthumb = None
 
         im_to_save = self.image
 
@@ -818,18 +852,21 @@ class ImageProcessor:
             for mi in self.channels_to_mask:
                 cropped[mi] = image_to_mask(cropped[mi], i, 255)
 
-            log.info("making thumbnail...")
-            generator = thumbnailGenerator.ThumbnailGenerator(
-                channel_indices=[memb_index, nuc_index, struct_index],
-                size=self.job.cbrThumbnailSize,
-                mask_channel_index=self.seg_indices[1],
-                colors=thumbnail_colors,
-                projection="max",
-            )
-            thumb = generator.make_thumbnail(
-                cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True
-            )
-            log.info("done making thumbnail")
+            if self.do_thumbnails:
+                log.info("making thumbnail...")
+                generator = thumbnailGenerator.ThumbnailGenerator(
+                    channel_indices=[memb_index, nuc_index, struct_index],
+                    size=self.job.cbrThumbnailSize,
+                    mask_channel_index=self.seg_indices[1],
+                    colors=thumbnail_colors,
+                    projection="max",
+                )
+                thumb = generator.make_thumbnail(
+                    cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True
+                )
+                log.info("done making thumbnail")
+            else:
+                thumb = None
 
             cell_meta = CellMeta(
                 bounds={
