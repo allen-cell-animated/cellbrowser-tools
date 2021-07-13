@@ -53,7 +53,7 @@ def make_json(jobname, info, prefs):
     cell_job_postfix = jobname
     cellline = info.cells[0]["CellLine"]
     current_dir = os.path.join(
-        prefs["out_status"], SLURM_SCRIPTS_DIR
+        prefs["status_dir"], SLURM_SCRIPTS_DIR
     )  # os.path.join(os.getcwd(), outdir)
     dest_dir = os.path.join(current_dir, cellline)
 

@@ -142,7 +142,6 @@ def submit_done(prefs, prefspath, job_ids):
 
 
 def build_feature_data(prefs):
-    # validateProcessedImages.build_feature_data(prefs, groups)
     validateProcessedImages.build_cfe_dataset_2020(prefs)
     return True
 
