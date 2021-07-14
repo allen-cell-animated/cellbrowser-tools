@@ -80,10 +80,8 @@ def do_image(
 
     jobname = lkutils.get_fov_name_from_row(row)
 
-    # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
-
     aicscelllineid = str(row[DataField.CellLine])
-    celllinename = aicscelllineid  # 'AICS-' + str(aicscelllineid)
+    celllinename = aicscelllineid
     subdir = celllinename
 
     info = cellJob.CellJob(rows)
