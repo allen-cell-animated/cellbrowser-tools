@@ -62,10 +62,7 @@ def _clean_ome_xml_for_known_issues(xml: str) -> str:
     # This is from OMEXML object just having invalid reference
     for known_invalid_ref in KNOWN_INVALID_OME_XSD_REFERENCES:
         if known_invalid_ref in xml:
-            xml = xml.replace(
-                known_invalid_ref,
-                REPLACEMENT_OME_XSD_REFERENCE,
-            )
+            xml = xml.replace(known_invalid_ref, REPLACEMENT_OME_XSD_REFERENCE,)
             metadata_changes.append(
                 f"Replaced '{known_invalid_ref}' with "
                 f"'{REPLACEMENT_OME_XSD_REFERENCE}'."
@@ -274,11 +271,7 @@ def _clean_ome_xml_for_known_issues(xml: str) -> str:
         ET.register_namespace("", f"http://{REPLACEMENT_OME_XSD_REFERENCE}")
 
         # Write out cleaned XML to string
-        xml = ET.tostring(
-            root,
-            encoding="unicode",
-            method="xml",
-        )
+        xml = ET.tostring(root, encoding="unicode", method="xml",)
 
     return xml
 
@@ -443,7 +436,7 @@ class ImageProcessor:
         # this is enough data to combine together many channels from many files
 
         # start with 4 channels for membrane, structure, nucleus and transmitted light
-        self.channel_names = ["OBS_Memb", "OBS_STRUCT", "OBS_DNA", "OBS_Trans"]
+        self.channel_names = ["Membrane", "Labeled structure", "DNA", "Bright field"]
         self.channel_colors = [
             _rgba255(128, 0, 128, 255),
             _rgba255(128, 128, 0, 255),
@@ -464,7 +457,7 @@ class ImageProcessor:
         if self.row[DataField.CellIndex].startswith("C") and self.row[
             DataField.FOVId
         ].startswith("F"):
-            self.channel_names[1] = "OBS_Alpha-actinin-2"
+            self.channel_names[1] = "Alpha-actinin-2"
 
         # special case of channel combo when "gene-pair" is present
         # TODO FIX ME
@@ -477,11 +470,11 @@ class ImageProcessor:
                     "Expected gene-pair to have two values joined by hyphen"
                 )
             self.channel_names = [
-                "OBS_Alpha-actinin-2",
-                "OBS_DNA",
-                "OBS_Trans",
-                f"OBS_{pair[0]}",
-                f"OBS_{pair[1]}",
+                "Alpha-actinin-2",
+                "DNA",
+                "Bright field",
+                f"{pair[0]}",
+                f"{pair[1]}",
             ]
             self.channel_colors = [
                 _rgba255(128, 0, 128, 255),
@@ -809,10 +802,7 @@ class ImageProcessor:
 
         log.info("generating atlas ...")
         atlas = textureAtlas.generate_texture_atlas(
-            aimage,
-            name=base,
-            max_edge=2048,
-            pack_order=None,
+            aimage, name=base, max_edge=2048, pack_order=None,
         )
         log.info("done making atlas")
         p = self.omexml.images[0].pixels
@@ -931,10 +921,7 @@ class ImageProcessor:
             # aimage_cropped.metadata = copyxml
             log.info("generating cropped atlas ...")
             atlas_cropped = textureAtlas.generate_texture_atlas(
-                aimage_cropped,
-                name=cell_name,
-                max_edge=2048,
-                pack_order=None,
+                aimage_cropped, name=cell_name, max_edge=2048, pack_order=None,
             )
             atlas_cropped.dims.pixel_size_x = pixels.physical_size_x
             atlas_cropped.dims.pixel_size_y = pixels.physical_size_y
@@ -958,13 +945,7 @@ class ImageProcessor:
         log.info("done processing cells for this fov")
 
     def _save_and_post(
-        self,
-        image,
-        thumbnail,
-        textureatlas,
-        name="",
-        omexml=None,
-        other_data=None,
+        self, image, thumbnail, textureatlas, name="", omexml=None, other_data=None,
     ):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
