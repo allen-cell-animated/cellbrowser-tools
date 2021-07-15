@@ -442,7 +442,7 @@ def build_cfe_dataset_2020(prefs):
         dataset.append(
             {
                 "file_info": {x: rowdict[x] for x in rowdict if x in file_info_columns},
-                "measured_features": {
+                "features": {
                     x: rowdict[x] for x in rowdict if x not in file_info_columns
                 },
             }
