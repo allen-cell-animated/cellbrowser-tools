@@ -38,35 +38,6 @@ def submit_fov_rows(distributed: bool, prefs, groups, action_options: ActionOpti
     return job_ids
 
 
-def get_data_groups(
-    input_manifest: os.PathLike,
-    query_options: dataHandoffUtils.QueryOptions,
-    out_dir: os.PathLike,
-):
-    data = dataHandoffUtils.collect_csv_data_rows(
-        input_manifest, fovids=query_options.fovids, cell_lines=query_options.cell_lines
-    )
-    log.info("Number of total cell rows: " + str(len(data)))
-    # group by fov id
-    data_grouped = data.groupby("FOVId")
-    total_jobs = len(data_grouped)
-    log.info("Number of total FOVs: " + str(total_jobs))
-    # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
-    groups = []
-    for index, (fovid, group) in enumerate(data_grouped):
-        groups.append(group.to_dict(orient="records"))
-        # only the first n FOVs (one group per FOV)
-        if query_options.first_n > 0 and index >= query_options.first_n - 1:
-            break
-
-    log.info("Converted groups to lists of dicts")
-
-    # make dataset available as a file for later runs
-    dataHandoffUtils.cache_dataset(out_dir, groups)
-
-    return groups
-
-
 def build_images(
     input_manifest: os.PathLike,
     output_dir: os.PathLike,
@@ -78,7 +49,9 @@ def build_images(
     output_paths = OutputPaths(output_dir)
 
     # gather data set
-    groups = get_data_groups(input_manifest, query_options, output_dir)
+    groups = dataHandoffUtils.get_data_groups2(
+        input_manifest, query_options, output_dir
+    )
 
     # TODO log the command line args
     # statusdir = output_paths.status_dir
