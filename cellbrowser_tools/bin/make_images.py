@@ -163,7 +163,9 @@ def main():
         query_options = QueryOptions(
             args.fovids, args.plates, args.cell_lines, args.start_date, args.end_date,
         )
-        action_options = ActionOptions(args.do_thumbnais, args.do_atlases, args.do_crop)
+        action_options = ActionOptions(
+            args.do_thumbnails, args.do_atlases, args.do_crop
+        )
         build_images.build_images(
             args.input_manifest,
             args.output_dir,
