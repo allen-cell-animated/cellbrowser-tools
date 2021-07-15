@@ -220,7 +220,11 @@ FULL_FEATURES_DATA = "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cf
 
 
 def collect_csv_data_rows(
-    csvpath=FULL_DATASET, fovids=None, cell_lines=None, raw_only=False, max_rows=None,
+    csvpath=FULL_DATASET,
+    fovids=None,
+    cell_lines=None,
+    raw_only=False,
+    max_rows=None,
 ):
     log.info("REQUESTING DATA HANDOFF")
     df_data_handoff = pd.read_csv(csvpath)
@@ -400,7 +404,12 @@ def get_csv_features(path: str = FULL_FEATURES_DATA):
 
 def cache_dataset(out_dir: os.PathLike, groups):
     with open(
-        os.path.join(out_dir, dataset_constants.DATASET_JSON_FILENAME), "w"
+        os.path.join(
+            out_dir,
+            dataset_constants.STATUS_DIR,
+            dataset_constants.DATASET_JSON_FILENAME,
+        ),
+        "w",
     ) as savefile:
         json.dump(groups, savefile)
     log.info("Saved dataset to json")
@@ -409,7 +418,12 @@ def cache_dataset(out_dir: os.PathLike, groups):
 def uncache_dataset(out_dir: os.PathLike):
     groups = []
     with open(
-        os.path.join(out_dir, dataset_constants.DATASET_JSON_FILENAME), "r"
+        os.path.join(
+            out_dir,
+            dataset_constants.STATUS_DIR,
+            dataset_constants.DATASET_JSON_FILENAME,
+        ),
+        "r",
     ) as savefile:
         groups = json.load(savefile)
     return groups
@@ -441,7 +455,9 @@ def get_data_groups(prefs, n=0):
 
 
 def get_data_groups2(
-    input_manifest: os.PathLike, query_options: QueryOptions, out_dir: os.PathLike,
+    input_manifest: os.PathLike,
+    query_options: QueryOptions,
+    out_dir: os.PathLike,
 ):
     data = collect_csv_data_rows(
         input_manifest, fovids=query_options.fovids, cell_lines=query_options.cell_lines
