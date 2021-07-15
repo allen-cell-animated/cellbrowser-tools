@@ -12,6 +12,7 @@ from cellbrowser_tools.dataHandoffUtils import (
     ActionOptions,
     OutputPaths,
     get_data_groups2,
+    normalize_path,
 )
 from cellbrowser_tools.dataset_constants import DataField, FILE_LIST_FILENAME
 
@@ -146,10 +147,11 @@ def main():
         log.info(args)
 
         query_options = QueryOptions(
-            args.fovids, args.plates, args.cell_lines, args.start_date, args.end_date,
-        )
-        action_options = ActionOptions(
-            args.do_thumbnails, args.do_atlases, args.do_crop
+            args.fovids,
+            args.plates,
+            args.cell_lines,
+            args.start_date,
+            args.end_date,
         )
 
         # setup directories
@@ -172,13 +174,17 @@ def main():
                     "file_id": str(fovrow[DataField.FOVId]),
                     "file_name": fovrow[DataField.SourceFilename],
                     "read_path": fovrow[DataField.SourceReadPath],
-                    "file_size": os.path.getsize(fovrow[DataField.SourceReadPath]),
+                    "file_size": os.path.getsize(
+                        normalize_path(fovrow[DataField.SourceReadPath])
+                    ),
                     # "other_keys": "other_values"
                 }
             )
         keys = outrows[0].keys()
         with open(
-            os.path.join(output_paths.out_dir, FILE_LIST_FILENAME), "w", newline="",
+            os.path.join(output_paths.out_dir, FILE_LIST_FILENAME),
+            "w",
+            newline="",
         ) as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
