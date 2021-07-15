@@ -1,4 +1,4 @@
-from cellbrowser_tools.dataHandoffUtils import OutputPaths
+from cellbrowser_tools.dataHandoffUtils import ActionOptions, OutputPaths
 import logging
 import os
 
@@ -17,18 +17,18 @@ def submit_done(prefs, job_ids):
     return new_job_ids
 
 
-def submit_fov_rows(args, prefs, groups):
+def submit_fov_rows(distributed: bool, prefs, groups, action_options: ActionOptions):
     # gather cluster commands and submit in batch
     jobdata_list = []
     log.info("PREPARING " + str(len(groups)) + " JOBS")
     for index, rows in enumerate(groups):
         jobdata = createJobsFromCSV.do_image(
-            args["cluster"],
-            args["run"],
+            distributed,
+            not distributed,
             prefs,
             rows,
-            do_thumbnails=False,  # TODO get this from args
-            do_crop=False,  # TODO get this from args
+            do_thumbnails=action_options.do_thumbnails,
+            do_crop=action_options.do_crop,
             save_raw=False,
         )
         jobdata_list.append(jobdata)
@@ -72,6 +72,7 @@ def build_images(
     output_dir: os.PathLike,
     distributed: bool,
     query_options: dataHandoffUtils.QueryOptions,
+    action_options: dataHandoffUtils.ActionOptions,
 ):
     # setup directories
     output_paths = OutputPaths(output_dir)
@@ -87,9 +88,7 @@ def build_images(
     # use SLURM sbatch submission to schedule all the steps
     # each step will run build_release.py with a step id
     job_ids = submit_fov_rows(
-        {"cluster": distributed, "run": not distributed},
-        output_paths.__dict__,
-        groups,
+        distributed, output_paths.__dict__, groups, action_options,
     )
     job_ids = submit_done(output_paths.__dict__, job_ids)
     log.info("All Jobs Submitted!")

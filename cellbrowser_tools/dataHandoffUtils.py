@@ -25,6 +25,19 @@ logging.basicConfig(
 )
 
 
+class ActionOptions:
+    """
+    Options for set of files to generate
+    """
+
+    def __init__(
+        self, do_thumbnails: bool = True, do_atlases: bool = True, do_crop: bool = True
+    ):
+        self.do_thumbnails = do_thumbnails
+        self.do_atlases = do_atlases
+        self.do_crop = do_crop
+
+
 class QueryOptions:
     """
     Filters / options for the querying of images in a data input manifest csv
@@ -207,11 +220,7 @@ FULL_FEATURES_DATA = "//allen/aics/assay-dev/MicroscopyOtherData/Viana/forDan/cf
 
 
 def collect_csv_data_rows(
-    csvpath=FULL_DATASET,
-    fovids=None,
-    cell_lines=None,
-    raw_only=False,
-    max_rows=None,
+    csvpath=FULL_DATASET, fovids=None, cell_lines=None, raw_only=False, max_rows=None,
 ):
     log.info("REQUESTING DATA HANDOFF")
     df_data_handoff = pd.read_csv(csvpath)

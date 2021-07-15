@@ -5,7 +5,7 @@ import traceback
 
 from datetime import datetime
 from logging import FileHandler, StreamHandler, Formatter
-from cellbrowser_tools.dataHandoffUtils import QueryOptions
+from cellbrowser_tools.dataHandoffUtils import QueryOptions, ActionOptions
 from cellbrowser_tools import build_images
 
 
@@ -28,7 +28,7 @@ class Args(argparse.Namespace):
     def __parse(self):
         p = argparse.ArgumentParser(
             prog="Make images",
-            description="Generates volume-viewer files for a series of images with or without segmentations.",
+            description="Generates volume-viewer files for a series of images",
         )
         p.add_argument(
             "--input_manifest",
@@ -57,6 +57,31 @@ class Args(argparse.Namespace):
             required=False,
             action="store_true",
         )
+        actions_group = p.add_argument_group(
+            "Actions",
+            "Combine any of the following flags to determine the image outputs",
+        )
+        actions_group.add_argument(
+            "--do_thumbnails",
+            help="Generate png thumbnail images",
+            default=True,
+            required=False,
+            action="store_true",
+        )
+        actions_group.add_argument(
+            "--do_atlases",
+            help="Generate volume-viewer atlas files",
+            default=True,
+            required=False,
+            action="store_true",
+        )
+        actions_group.add_argument(
+            "--do_crop",
+            help="Generate cropped child images",
+            default=True,
+            required=False,
+            action="store_true",
+        )
         filter_group = p.add_argument_group(
             "Filter options",
             "Combine any of the following options to filter FOVs that will be processed.",
@@ -64,21 +89,21 @@ class Args(argparse.Namespace):
         filter_group.add_argument(
             "--cell_lines",
             nargs="+",
-            help="Array of Cell-lines to run segmentations on. E.g. --cell_lines 'AICS-11' 'AICS-7' ",
+            help="Array of Cell-lines to run. E.g. --cell_lines 'AICS-11' 'AICS-7' ",
             default=None,
             required=False,
         )
         filter_group.add_argument(
             "--plates",
             nargs="+",
-            help="Array of plates to run segmentations on. E.g. --plates '3500003813' '3500003642' ",
+            help="Array of plates to run. E.g. --plates '3500003813' '3500003642' ",
             default=None,
             required=False,
         )
         filter_group.add_argument(
             "--fovids",
             nargs="+",
-            help="Array of fovids to run segmentations on. E.g. --fovs '123' '6' ",
+            help="Array of fovids to run. E.g. --fovs '123' '6' ",
             default=None,
             required=False,
         )
@@ -136,14 +161,15 @@ def main():
         log.info(args)
 
         query_options = QueryOptions(
-            args.fovids,
-            args.plates,
-            args.cell_lines,
-            args.start_date,
-            args.end_date,
+            args.fovids, args.plates, args.cell_lines, args.start_date, args.end_date,
         )
+        action_options = ActionOptions(args.do_thumbnais, args.do_atlases, args.do_crop)
         build_images.build_images(
-            args.input_manifest, args.output_dir, args.distributed, query_options
+            args.input_manifest,
+            args.output_dir,
+            args.distributed,
+            query_options,
+            action_options,
         )
 
     except Exception as e:
