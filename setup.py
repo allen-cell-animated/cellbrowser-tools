@@ -85,6 +85,7 @@ setup(
         "console_scripts": [
             "build_release=cellbrowser_tools.bin.build_release:main",
             "make_images=cellbrowser_tools.bin.make_images:main",
+            "make_downloader_manifest=cellbrowser_tools.bin.make_downloader_manifest:main",
             "processImageWithSegmentation=cellbrowser_tools.bin.processImageWithSegmentation:main",
         ],
     },
