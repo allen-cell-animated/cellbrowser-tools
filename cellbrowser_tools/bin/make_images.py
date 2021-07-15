@@ -64,7 +64,7 @@ class Args(argparse.Namespace):
         actions_group.add_argument(
             "--do_thumbnails",
             help="Generate png thumbnail images",
-            default=True,
+            default=False,
             required=False,
             action="store_true",
         )
@@ -78,7 +78,7 @@ class Args(argparse.Namespace):
         actions_group.add_argument(
             "--do_crop",
             help="Generate cropped child images",
-            default=True,
+            default=False,
             required=False,
             action="store_true",
         )
