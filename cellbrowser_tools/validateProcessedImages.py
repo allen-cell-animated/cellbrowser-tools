@@ -429,7 +429,7 @@ def build_cfe_dataset_2020(prefs):
     dataset_df = pd.merge(file_infos, df_feats, how="inner", on="CellId")
     if len(dataset_df) != len(file_infos):
         raise ValueError(
-            f"Features list has different cellIds than source dataset. Can not merge."
+            "Features list has different cellIds than source dataset. Can not merge."
         )
 
     # make each row into two dicts
@@ -493,19 +493,19 @@ def create_variance_dataset_from_features(featurescsv, out_dir):
     file_infos = data[["CellId", "FOVId", "CellLine"]]
     # add file path locations
     file_infos["thumbnailPath"] = file_infos.apply(
-        lambda x: f'{x["CellLine"]}/{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}.png',
+        lambda x: f'{x["CellLine"]}/{x["CellLine"]}_{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}.png',
         axis=1,
     )
     file_infos["volumeviewerPath"] = file_infos.apply(
-        lambda x: f'{x["CellLine"]}/{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}_atlas.json',
+        lambda x: f'{x["CellLine"]}/{x["CellLine"]}_{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}_atlas.json',
         axis=1,
     )
     file_infos["fovThumbnailPath"] = file_infos.apply(
-        lambda x: f'{x["CellLine"]}/{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}.png',
+        lambda x: f'{x["CellLine"]}/{x["CellLine"]}_{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}.png',
         axis=1,
     )
     file_infos["fovVolumeviewerPath"] = file_infos.apply(
-        lambda x: f'{x["CellLine"]}/{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}_atlas.json',
+        lambda x: f'{x["CellLine"]}/{x["CellLine"]}_{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}_atlas.json',
         axis=1,
     )
 
@@ -522,7 +522,7 @@ def create_variance_dataset_from_features(featurescsv, out_dir):
     dataset_df = pd.merge(file_infos, df_feats, how="inner", on="CellId")
     if len(dataset_df) != len(file_infos):
         raise ValueError(
-            f"Features list has different cellIds than source dataset. Can not merge."
+            "Features list has different cellIds than source dataset. Can not merge."
         )
 
     # features_names
@@ -538,20 +538,24 @@ def create_variance_dataset_from_features(featurescsv, out_dir):
         # features = df_feats.to_dict("records")
         dataset.append(
             {
-                "file_info": {x: rowdict[x] for x in rowdict if x in file_info_columns},
+                "file_info": [rowdict[x] for x in rowdict if x in file_info_columns],
                 "features": [rowdict[x] for x in rowdict if x not in file_info_columns],
             }
         )
 
     # write out the final data set
     with open(
-        os.path.join(out_dir, dataset_constants.FEATURE_DATA_FILENAME), "w", newline="",
+        os.path.join(out_dir, dataset_constants.FEATURE_DATA_FILENAME),
+        "w",
+        newline="",
     ) as output_file:
         # TODO: could do this row by row?
         output_file.write(json.dumps(dataset))
 
     # make empty dataset.json
-    dataset_name = featurescsv  # extract just filename
+    dataset_name = os.path.splitext(os.path.basename(featurescsv))[
+        0
+    ]  # extract just filename
     dataset_json = {
         "name": dataset_name,
         "version": "v2021.1",
@@ -578,7 +582,8 @@ def create_variance_dataset_from_features(featurescsv, out_dir):
         "featuresDataOrder": [],
     }
     with open(
-        os.path.join(out_dir, dataset_constants.DATASET_JSON_FILENAME), "w", newline="",
+        os.path.join(out_dir, dataset_constants.DATASET_JSON_FILENAME),
+        "w",
     ) as output_file:
         output_file.write(json.dumps(dataset_json))
 
@@ -602,7 +607,8 @@ def create_variance_dataset_from_features(featurescsv, out_dir):
             }
         )
     with open(
-        os.path.join(out_dir, dataset_constants.FEATURE_DEFS_FILENAME), "w", newline="",
+        os.path.join(out_dir, dataset_constants.FEATURE_DEFS_FILENAME),
+        "w",
     ) as output_file:
         output_file.write(json.dumps(featuresjson))
 

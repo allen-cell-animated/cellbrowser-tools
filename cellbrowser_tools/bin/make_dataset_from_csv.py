@@ -89,7 +89,7 @@ def main():
         log.info(args)
 
         # setup directories
-        # output_paths = OutputPaths(args.output_dir)
+        output_paths = OutputPaths(args.output_dir)
 
         # gather data set
         create_variance_dataset_from_features(args.input_manifest, args.output_dir)
