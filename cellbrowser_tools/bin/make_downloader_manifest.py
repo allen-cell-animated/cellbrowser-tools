@@ -147,11 +147,7 @@ def main():
         log.info(args)
 
         query_options = QueryOptions(
-            args.fovids,
-            args.plates,
-            args.cell_lines,
-            args.start_date,
-            args.end_date,
+            args.fovids, args.plates, args.cell_lines, args.start_date, args.end_date,
         )
 
         # setup directories
@@ -182,9 +178,7 @@ def main():
             )
         keys = outrows[0].keys()
         with open(
-            os.path.join(output_paths.out_dir, FILE_LIST_FILENAME),
-            "w",
-            newline="",
+            os.path.join(output_paths.out_dir, FILE_LIST_FILENAME), "w", newline="",
         ) as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
