@@ -7,12 +7,14 @@ from .dataset_constants import (
     DATA_LOG_NAME,
 )
 import json
-from lkaccess import LabKey
-import lkaccess.contexts
+
+# from lkaccess import LabKey
+# import lkaccess.contexts
 import logging
 import os
 import pandas as pd
-from quilt3 import Package
+
+# from quilt3 import Package
 import re
 import sys
 
@@ -295,104 +297,104 @@ def collect_csv_data_rows(
     return df_data_handoff
 
 
-def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
-    # lk = LabKey(host="aics")
-    lk = LabKey(server_context=lkaccess.contexts.PROD)
+# def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
+#     # lk = LabKey(host="aics")
+#     lk = LabKey(server_context=lkaccess.contexts.PROD)
 
-    print("REQUESTING DATA HANDOFF")
-    lkdatarows = lk.dataset.get_pipeline_4_production_data()
-    df_data_handoff = pd.DataFrame(lkdatarows)
+#     print("REQUESTING DATA HANDOFF")
+#     lkdatarows = lk.dataset.get_pipeline_4_production_data()
+#     df_data_handoff = pd.DataFrame(lkdatarows)
 
-    # verify the expected column names in the above query
-    for field in dataset_constants.DataField:
-        if field.value not in df_data_handoff.columns:
-            raise f"Expected {field.value} to be in labkey dataset results."
+#     # verify the expected column names in the above query
+#     for field in dataset_constants.DataField:
+#         if field.value not in df_data_handoff.columns:
+#             raise f"Expected {field.value} to be in labkey dataset results."
 
-    if fovids is not None and len(fovids) > 0:
-        df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
+#     if fovids is not None and len(fovids) > 0:
+#         df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
 
-    if max_rows is not None:
-        df_data_handoff = df_data_handoff.head(max_rows)
+#     if max_rows is not None:
+#         df_data_handoff = df_data_handoff.head(max_rows)
 
-    print("GOT DATA HANDOFF")
+#     print("GOT DATA HANDOFF")
 
-    # Merge Aligned and Source read path columns
-    df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
-        DataField.AlignedImageReadPath
-    ].combine_first(df_data_handoff[DataField.SourceReadPath])
+#     # Merge Aligned and Source read path columns
+#     df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
+#         DataField.AlignedImageReadPath
+#     ].combine_first(df_data_handoff[DataField.SourceReadPath])
 
-    if raw_only:
-        return df_data_handoff
+#     if raw_only:
+#         return df_data_handoff
 
-    # get mitotic state name for all cells
-    mitoticdata = lk.select_rows_as_list(
-        schema_name="processing",
-        query_name="MitoticAnnotation",
-        sort="MitoticAnnotation",
-        # columns=["CellId", "MitoticStateId/Name", "Complete"]
-        columns=["CellId", "MitoticStateId/Name"],
-    )
-    print("GOT MITOTIC ANNOTATIONS")
+#     # get mitotic state name for all cells
+#     mitoticdata = lk.select_rows_as_list(
+#         schema_name="processing",
+#         query_name="MitoticAnnotation",
+#         sort="MitoticAnnotation",
+#         # columns=["CellId", "MitoticStateId/Name", "Complete"]
+#         columns=["CellId", "MitoticStateId/Name"],
+#     )
+#     print("GOT MITOTIC ANNOTATIONS")
 
-    mitoticdata = pd.DataFrame(mitoticdata)
-    mitoticbooldata = mitoticdata[mitoticdata["MitoticStateId/Name"] == "Mitosis"]
-    mitoticstatedata = mitoticdata[mitoticdata["MitoticStateId/Name"] != "Mitosis"]
-    mitoticbooldata = mitoticbooldata.rename(
-        columns={"MitoticStateId/Name": "IsMitotic"}
-    )
-    mitoticstatedata = mitoticstatedata.rename(
-        columns={"MitoticStateId/Name": "MitoticState"}
-    )
-    df_data_handoff = pd.merge(
-        df_data_handoff,
-        mitoticbooldata,
-        how="left",
-        left_on="CellId",
-        right_on="CellId",
-    )
-    df_data_handoff = pd.merge(
-        df_data_handoff,
-        mitoticstatedata,
-        how="left",
-        left_on="CellId",
-        right_on="CellId",
-    )
-    df_data_handoff = df_data_handoff.fillna(
-        value={"IsMitotic": "", "MitoticState": ""}
-    )
+#     mitoticdata = pd.DataFrame(mitoticdata)
+#     mitoticbooldata = mitoticdata[mitoticdata["MitoticStateId/Name"] == "Mitosis"]
+#     mitoticstatedata = mitoticdata[mitoticdata["MitoticStateId/Name"] != "Mitosis"]
+#     mitoticbooldata = mitoticbooldata.rename(
+#         columns={"MitoticStateId/Name": "IsMitotic"}
+#     )
+#     mitoticstatedata = mitoticstatedata.rename(
+#         columns={"MitoticStateId/Name": "MitoticState"}
+#     )
+#     df_data_handoff = pd.merge(
+#         df_data_handoff,
+#         mitoticbooldata,
+#         how="left",
+#         left_on="CellId",
+#         right_on="CellId",
+#     )
+#     df_data_handoff = pd.merge(
+#         df_data_handoff,
+#         mitoticstatedata,
+#         how="left",
+#         left_on="CellId",
+#         right_on="CellId",
+#     )
+#     df_data_handoff = df_data_handoff.fillna(
+#         value={"IsMitotic": "", "MitoticState": ""}
+#     )
 
-    # get the aligned mitotic cell data
-    imsc_dataset = Package.browse(
-        "aics/imsc_align_cells", "s3://allencell-internal-quilt"
-    )
-    dataset = imsc_dataset["dataset.csv"]()
-    print("GOT INTEGRATED MITOTIC DATA SET")
+#     # get the aligned mitotic cell data
+#     imsc_dataset = Package.browse(
+#         "aics/imsc_align_cells", "s3://allencell-internal-quilt"
+#     )
+#     dataset = imsc_dataset["dataset.csv"]()
+#     print("GOT INTEGRATED MITOTIC DATA SET")
 
-    # assert all the angles and translations are valid production cells
-    # matches = dataset["CellId"].isin(df_data_handoff["CellId"])
-    # assert(matches.all())
+#     # assert all the angles and translations are valid production cells
+#     # matches = dataset["CellId"].isin(df_data_handoff["CellId"])
+#     # assert(matches.all())
 
-    df_data_handoff = pd.merge(
-        df_data_handoff,
-        dataset[["CellId", "Angle", "x", "y"]],
-        left_on="CellId",
-        right_on="CellId",
-        how="left",
-    )
+#     df_data_handoff = pd.merge(
+#         df_data_handoff,
+#         dataset[["CellId", "Angle", "x", "y"]],
+#         left_on="CellId",
+#         right_on="CellId",
+#         how="left",
+#     )
 
-    # deal with nans
-    df_data_handoff = df_data_handoff.fillna(value={"Angle": 0, "x": 0, "y": 0})
+#     # deal with nans
+#     df_data_handoff = df_data_handoff.fillna(value={"Angle": 0, "x": 0, "y": 0})
 
-    # replace any remaining NaNs with None
-    df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
+#     # replace any remaining NaNs with None
+#     df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
 
-    check_dups(df_data_handoff, "CellId")
+#     check_dups(df_data_handoff, "CellId")
 
-    print("DONE BUILDING TABLES")
+#     print("DONE BUILDING TABLES")
 
-    print(list(df_data_handoff.columns))
+#     print(list(df_data_handoff.columns))
 
-    return df_data_handoff
+#     return df_data_handoff
 
 
 def get_csv_features(path: str = FULL_FEATURES_DATA):
@@ -485,5 +487,5 @@ def get_data_groups2(
 
 if __name__ == "__main__":
     print(sys.argv)
-    collect_data_rows()
+    # collect_data_rows()
     sys.exit(0)

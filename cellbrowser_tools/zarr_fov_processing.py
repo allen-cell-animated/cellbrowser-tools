@@ -1,4 +1,4 @@
-from aicsimageio.writers import OmeTiffWriter
+from aicsimageio.writers import OmeZarrWriter
 from aicsimageio.writers.two_d_writer import TwoDWriter
 from aicsimageio import AICSImage
 from . import cellJob
@@ -406,7 +406,8 @@ class ImageProcessor:
         self.channels_to_mask = []
         self.omexml = None
 
-        self.image = self.add_segs_to_img()
+        recipe = self.build_recipe_variance_hipsc(self.row)
+        self.image = self.build_combined_image(recipe)
 
     def _generate_paths(self):
         if self.job.cbrThumbnailLocation:
@@ -431,286 +432,143 @@ class ImageProcessor:
         make_dir(atlasdir)
         self.atlas_dir = atlasdir
 
+    def build_combined_image(self, recipe):
+        result = np.ndarray([])
+        for index, channel_spec in enumerate(recipe):
+            fpath = retrieve_file(
+                channel_spec["file"], os.path.basename(channel_spec["file"])
+            )
+            image = AICSImage(fpath)
+            data = image.get_image_data("ZYX", T=0, C=channel_spec["channel_index"])
+            if index > 0:
+                if data.shape != result[0].shape:
+                    raise ValueError(
+                        "Image shapes do not match: {} != {}".format(
+                            data.shape, result[0].shape
+                        )
+                    )
+            result = np.append(result, [data], axis=0)
+            image.close()
+            unretrieve_file(fpath)
+        return result
 
-    def build_file_list(self):
-        # TODO:
-        # make all this data driven.
-        # either we just take the ALL channels from the images IN ORDER
-        # or we provide some kind of listing and renaming:
-        #     source file
-        #     channel index
-        #     new name
-        #     color (maybe not even needed)
-        # this is enough data to combine together many channels from many files
+    def build_recipe_variance_hipsc(self, data_row):
+        readpath = data_row[DataField.AlignedImageReadPath]
+        if not readpath:
+            readpath = data_row[DataField.SourceReadPath]
+        image_file = utils.normalize_path(readpath)
 
-        # start with 4 channels for membrane, structure, nucleus and transmitted light
-        self.channel_names = ["Membrane", "Labeled structure", "DNA", "Bright field"]
-        self.channel_colors = [
-            _rgba255(128, 0, 128, 255),
-            _rgba255(128, 128, 0, 255),
-            _rgba255(0, 128, 128, 255),
-            _rgba255(128, 128, 128, 255),
+        recipe = [
+            {
+                "channel_name": "Membrane",
+                "file": image_file,
+                "channel_color": _rgba255(255, 255, 255, 255),
+                "channel_index": int(data_row[DataField.ChannelNumber638]),
+            },
+            {
+                "channel_name": "Labeled Structure",
+                "file": image_file,
+                "channel_color": _rgba255(255, 255, 255, 255),
+                "channel_index": int(data_row[DataField.ChannelNumberStruct]),
+            },
+            {
+                "channel_name": "DNA",
+                "file": image_file,
+                "channel_color": _rgba255(255, 255, 255, 255),
+                "channel_index": int(data_row[DataField.ChannelNumber405]),
+            },
+            {
+                "channel_name": "Bright field",
+                "file": image_file,
+                "channel_color": _rgba255(255, 255, 255, 255),
+                "channel_index": int(data_row[DataField.ChannelNumberBrightfield]),
+            },
         ]
-        self.channel_indices = [
-            int(self.row[DataField.ChannelNumber638]),
-            int(self.row[DataField.ChannelNumberStruct]),
-            int(self.row[DataField.ChannelNumber405]),
-            int(self.row[DataField.ChannelNumberBrightfield]),
-        ]
-
-        # special case replace OBS_STRUCT with OBS_Alpha-actinin-2
-        # if CellIndex starts with C and FOVId starts with F then we are in a special data set.
-        # gene-editing FISH chaos 2019
-        # TODO FIX ME
-        if self.row[DataField.CellIndex].startswith("C") and self.row[
-            DataField.FOVId
-        ].startswith("F"):
-            self.channel_names[1] = "Alpha-actinin-2"
-
-        # special case of channel combo when "gene-pair" is present
-        # TODO FIX ME
-        genepair = self.row.get(AugmentedDataField.GenePair)
-        if genepair is not None:
-            # genepair is a hyphenated split of 561 and 638 channel names
-            pair = genepair.split("-")
-            if len(pair) != 2:
-                raise ValueError(
-                    "Expected gene-pair to have two values joined by hyphen"
-                )
-            self.channel_names = [
-                "Alpha-actinin-2",
-                "DNA",
-                "Bright field",
-                f"{pair[0]}",
-                f"{pair[1]}",
-            ]
-            self.channel_colors = [
-                _rgba255(128, 0, 128, 255),
-                _rgba255(128, 128, 0, 255),
-                _rgba255(0, 128, 128, 255),
-                _rgba255(128, 128, 128, 255),
-                _rgba255(255, 0, 0, 255),
-            ]
-            self.channel_indices = [
-                int(self.row[DataField.ChannelNumberStruct]),
-                int(self.row[DataField.ChannelNumber405]),
-                int(self.row[DataField.ChannelNumberBrightfield]),
-                int(self.row[AugmentedDataField.ChannelNumber561]),
-                int(self.row[DataField.ChannelNumber638]),
-            ]
-
-        self.channels_to_mask = []
-
-        log.info("loading segmentations for " + self.file_name + "...")
-        # print(seg_path)
-        # list of tuple(readpath, channelindex, outputChannelName)
-        file_list = []
-
-        # structure segmentation
-        readpath = self.row[DataField.StructureSegmentationReadPath]
+        readpath = data_row[DataField.StructureSegmentationReadPath]
         if readpath != "" and readpath is not None:
             struct_seg_file = utils.normalize_path(readpath)
             # print(struct_seg_file)
-            file_list.append((struct_seg_file, 0, "SEG_STRUCT"))
-            self.channel_names.append("SEG_STRUCT")
-            self.channel_colors.append(_rgba255(255, 0, 0, 255))
+            recipe.append(
+                {
+                    "channel_name": "SEG_STRUCT",
+                    "file": struct_seg_file,
+                    "channel_color": _rgba255(255, 255, 255, 255),
+                    # structure segmentation assumed in channel 0 always?
+                    "channel_index": 0,
+                }
+            )
 
         # cell segmentation
-        readpath = self.row[DataField.MembraneSegmentationReadPath]
+        readpath = data_row[DataField.MembraneSegmentationReadPath]
         if readpath != "" and readpath is not None:
             cell_seg_file = utils.normalize_path(readpath)
             # print(cell_seg_file)
-            file_list.append(
-                (
-                    cell_seg_file,
-                    self.row[DataField.MembraneSegmentationChannelIndex],
-                    "SEG_Memb",
-                )
+            recipe.append(
+                {
+                    "channel_name": "SEG_Memb",
+                    "file": cell_seg_file,
+                    "channel_color": _rgba255(255, 255, 255, 255),
+                    "channel_index": data_row[
+                        DataField.MembraneSegmentationChannelIndex
+                    ],
+                }
             )
-            self.channel_names.append("SEG_Memb")
-            self.channel_colors.append(_rgba255(0, 0, 255, 255))
-            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # nucleus segmentation
-        readpath = self.row[DataField.NucleusSegmentationReadPath]
+        readpath = data_row[DataField.NucleusSegmentationReadPath]
         if readpath != "" and readpath is not None:
             nuc_seg_file = utils.normalize_path(readpath)
             # print(nuc_seg_file)
-            file_list.append(
-                (
-                    nuc_seg_file,
-                    self.row[DataField.NucleusSegmentationChannelIndex],
-                    "SEG_DNA",
-                )
+            recipe.append(
+                {
+                    "channel_name": "SEG_DNA",
+                    "file": nuc_seg_file,
+                    "channel_color": _rgba255(255, 255, 255, 255),
+                    "channel_index": data_row[
+                        DataField.NucleusSegmentationChannelIndex
+                    ],
+                }
             )
-            self.channel_names.append("SEG_DNA")
-            self.channel_colors.append(_rgba255(0, 255, 0, 255))
-            self.channels_to_mask.append(len(self.channel_names) - 1)
 
-        if self.row[DataField.MembraneContourReadPath] is None:
-            self.row[DataField.MembraneContourReadPath] = self.row[
+        if data_row[DataField.MembraneContourReadPath] is None:
+            data_row[DataField.MembraneContourReadPath] = data_row[
                 DataField.MembraneSegmentationReadPath
             ]
 
         # cell contour segmentation (good for viz in the volume viewer)
-        readpath = self.row[DataField.MembraneContourReadPath]
+        readpath = data_row[DataField.MembraneContourReadPath]
         if readpath != "" and readpath is not None:
             cell_con_file = utils.normalize_path(readpath)
             # print(cell_seg_file)
-            file_list.append(
-                (
-                    cell_con_file,
-                    self.row[DataField.MembraneContourChannelIndex],
-                    "CON_Memb",
-                )
+            recipe.append(
+                {
+                    "channel_name": "Con_Memb",
+                    "file": cell_con_file,
+                    "channel_color": _rgba255(255, 255, 255, 255),
+                    "channel_index": data_row[DataField.MembraneContourChannelIndex],
+                }
             )
-            self.channel_names.append("CON_Memb")
-            self.channel_colors.append(_rgba255(255, 255, 0, 255))
-            self.channels_to_mask.append(len(self.channel_names) - 1)
 
-        if self.row[DataField.NucleusContourReadPath] is None:
-            self.row[DataField.NucleusContourReadPath] = self.row[
+        if data_row[DataField.NucleusContourReadPath] is None:
+            data_row[DataField.NucleusContourReadPath] = data_row[
                 DataField.NucleusSegmentationReadPath
             ]
 
         # nucleus contour segmentation (good for viz in the volume viewer)
-        readpath = self.row[DataField.NucleusContourReadPath]
+        readpath = data_row[DataField.NucleusContourReadPath]
         if readpath != "" and readpath is not None:
             nuc_con_file = utils.normalize_path(readpath)
             # print(nuc_seg_file)
-            file_list.append(
-                (
-                    nuc_con_file,
-                    self.row[DataField.NucleusContourChannelIndex],
-                    "CON_DNA",
-                )
-            )
-            self.channel_names.append("CON_DNA")
-            self.channel_colors.append(_rgba255(0, 255, 255, 255))
-            self.channels_to_mask.append(len(self.channel_names) - 1)
-
-        return file_list
-
-    def add_segs_to_img(self):
-        # outdir = self.job.cbrImageLocation
-        # make_dir(outdir)
-
-        # thumbnaildir = self.job.cbrThumbnailLocation
-        # make_dir(thumbnaildir)
-
-        file_list = self.build_file_list()
-
-        image_file = self.image_file
-        image_file = utils.normalize_path(image_file)
-        # print(image_file)
-
-        # COPY FILE TO LOCAL TMP STORAGE BEFORE READING
-        image_file = retrieve_file(image_file, self.row[DataField.SourceFilename])
-
-        # 1. obtain OME XML metadata from original microscopy image
-        cr = AICSImage(image_file)
-
-        with TiffFile(image_file) as tiff:
-            if tiff.is_ome:
-                description = tiff.pages[0].description.strip()
-                description = _clean_ome_xml_for_known_issues(description)
-                # print(description)
-                self.omexml = from_xml(description)
-            else:
-                # this is REALLY catastrophic. Its not expected to happen for AICS data.
-                raise ValueError("Bad OME TIFF file")
-
-        # 2. obtain relevant channels from original image file
-        image = cr.get_image_data("CZYX", T=0)
-        if len(image.shape) != 4:
-            raise ValueError("Image did not return 4d CZYX data")
-
-        # image.shape[0] is num of channels.
-        if image.shape[0] <= max(self.channel_indices):
-            raise ValueError(
-                f"Image does not have enough channels - needs at least {max(self.channel_indices)} but has {image.shape[0]}"
+            recipe.append(
+                {
+                    "channel_name": "Con_DNA",
+                    "file": nuc_con_file,
+                    "channel_color": _rgba255(255, 255, 255, 255),
+                    "channel_index": data_row[DataField.NucleusContourChannelIndex],
+                }
             )
 
-        image = np.array([image[i] for i in self.channel_indices])
-
-        # 3. fix up XML to reorder channels
-        # we want to preserve all channel and plane data for the channels we are keeping!
-        # rename:
-        #   channel_indices[0] to channel0
-        #   channel_indices[1] to channel1
-        #   channel_indices[2] to channel2
-        #   channel_indices[3] to channel3
-
-        pix = self.omexml.images[0].pixels
-        chxml = [pix.channels[channel] for channel in self.channel_indices]
-        pix.channels = chxml
-        pix.size_c = len(chxml)
-
-        # fixups:
-
-        # 1. channel ids
-        for (c, channel) in enumerate(pix.channels):
-            channel.id = f"Channel:0:{c}"
-
-        # 2. remove all planes whose C index is not in self.channel_indices
-        new_planes = [p for p in pix.planes if p.the_c in self.channel_indices]
-        pix.planes = new_planes
-
-        # 3. then remap the C of the remaining planes, as they stll have their old channel indices
-        for p in pix.planes:
-            p.the_c = self.channel_indices.index(p.the_c)
-
-        # 4. remove all tiffdata elements in favor of one single one
-        pix.tiff_data_blocks = [TiffData(plane_count=len(pix.planes))]
-        check_num_planes(pix)
-
-        def add_channel(pix, name):
-            channel_index = len(pix.channels)
-            channel = Channel(id=f"Channel:0:{channel_index}", name=name)
-            pix.channels.append(channel)
-            # add Planes(?)
-            for p in range(pix.size_z):
-                pix.planes.append(
-                    Plane(the_c=channel_index, the_z=p, the_t=pix.size_t - 1)
-                )
-            pix.size_c += 1
-
-        nch = len(self.channel_indices)
-        self.seg_indices = []
-        i = 0
-        for f in file_list:
-            fpath = retrieve_file(f[0], os.path.basename(f[0]))
-            # expect TifReader to handle it.
-            reader = AICSImage(fpath)
-            seg = reader.get_image_data("ZYX", C=f[1], T=0)
-            # seg is expected to be ZYX
-            # image is expected to be CZYX
-            if seg.shape[0] != image.shape[1]:
-                raise ValueError(
-                    f"FOV {self.row[DataField.FOVId]} has shape mismatch {f[2]} {seg.shape[0]} vs FOV {image.shape[1]}"
-                )
-            if seg.shape[1] != image.shape[2]:
-                raise ValueError(
-                    f"FOV {self.row[DataField.FOVId]} has shape mismatch {f[2]} {seg.shape[1]} vs FOV {image.shape[2]}"
-                )
-            if seg.shape[2] != image.shape[3]:
-                raise ValueError(
-                    f"FOV {self.row[DataField.FOVId]} has shape mismatch {f[2]} {seg.shape[2]} vs FOV {image.shape[3]}"
-                )
-            # append channels containing segmentations
-            add_channel(pix, self.channel_names[nch + i])
-
-            # axis=0 is the C axis, and nucseg, cellseg, and structseg are assumed to be of shape ZYX
-            image = np.append(image, [seg], axis=0)
-            self.seg_indices.append(image.shape[0] - 1)
-            reader.close()
-            unretrieve_file(fpath)
-            i += 1
-
-        log.info("done making combined image")
-        cr.close()
-        unretrieve_file(image_file)
-        return image
+        return recipe
 
     def generate_meta(self, metadata, row, cell_meta: CellMeta = None):
         m = {}
@@ -739,14 +597,6 @@ class ImageProcessor:
             m["isCropped"] = True
             m["mitoticPhase"] = row["MitoticStateId/Name"]
             m["isMitotic"] = row["MitoticStateId/Name"] == "M0"
-            # m["alignedTransform"] = {
-            #     "translation": [
-            #         row[AugmentedDataField.MitoticAlignedX],
-            #         row[AugmentedDataField.MitoticAlignedY],
-            #         0,
-            #     ],
-            #     "rotation": [0, 0, row[AugmentedDataField.MitoticAlignedAngle]],
-            # }
         else:
             m["isCropped"] = False
             if self.job.cells:
@@ -781,8 +631,8 @@ class ImageProcessor:
         # indices of channels in the original image
         # before this, indices have been re-organized in add_segs_to_img (in __init__)
         memb_index = 0
-        nuc_index = 2
         struct_index = 1
+        nuc_index = 2
         thumbnail_colors = [[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 0.0]]
 
         log.info(f"Generating images for FOVId {self.row[DataField.FOVId]}")
@@ -1000,6 +850,7 @@ class ImageProcessor:
             ome_str = to_xml(omexml)
             # appease ChimeraX and possibly others who expect to see this
             ome_str = '<?xml version="1.0" encoding="UTF-8"?>' + ome_str
+            writer = OmeZarrWriter()
             with OmeTiffWriter(file_path=ometif_dir, overwrite_file=True) as writer:
                 writer.save(
                     transposed_image,
