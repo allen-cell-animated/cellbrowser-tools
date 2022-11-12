@@ -431,7 +431,6 @@ class ImageProcessor:
         make_dir(atlasdir)
         self.atlas_dir = atlasdir
 
-
     def build_file_list(self):
         # TODO:
         # make all this data driven.
@@ -462,7 +461,7 @@ class ImageProcessor:
         # if CellIndex starts with C and FOVId starts with F then we are in a special data set.
         # gene-editing FISH chaos 2019
         # TODO FIX ME
-        if self.row[DataField.CellIndex].startswith("C") and self.row[
+        if str(self.row[DataField.CellIndex]).startswith("C") and self.row[
             DataField.FOVId
         ].startswith("F"):
             self.channel_names[1] = "Alpha-actinin-2"

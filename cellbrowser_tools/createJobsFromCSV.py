@@ -7,7 +7,9 @@ from . import cellJob
 from . import dataHandoffUtils as lkutils
 from . import jobScheduler
 from .dataset_constants import DataField, SLURM_SCRIPTS_DIR
-from .fov_processing import do_main_image_with_celljob
+
+# from .fov_processing import do_main_image_with_celljob
+from .zarr_fov_processing import do_main_image_with_celljob
 
 # cbrImageLocation path to cellbrowser images
 # cbrThumbnailLocation path to cellbrowser thumbnails

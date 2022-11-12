@@ -433,7 +433,7 @@ class ImageProcessor:
         self.atlas_dir = atlasdir
 
     def build_combined_image(self, recipe):
-        result = np.ndarray([])
+        result = np.array([])
         for index, channel_spec in enumerate(recipe):
             fpath = retrieve_file(
                 channel_spec["file"], os.path.basename(channel_spec["file"])
@@ -441,14 +441,17 @@ class ImageProcessor:
             image = AICSImage(fpath)
             data = image.get_image_data("ZYX", T=0, C=channel_spec["channel_index"])
             if index > 0:
+                # handle bad data:
+                # general ZYX shape mismatch
                 if data.shape != result[0].shape:
                     raise ValueError(
                         "Image shapes do not match: {} != {}".format(
                             data.shape, result[0].shape
                         )
                     )
-            result = np.append(result, [data], axis=0)
-            image.close()
+                result = np.append(result, [data], axis=0)
+            else:
+                result = np.array([data])
             unretrieve_file(fpath)
         return result
 
