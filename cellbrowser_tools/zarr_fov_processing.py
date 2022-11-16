@@ -12,6 +12,7 @@ from aicsimageprocessing import textureAtlas
 import argparse
 import collections
 from copy import deepcopy
+import dask.array as da
 from distributed import LocalCluster, Client
 import errno
 import json
@@ -191,13 +192,15 @@ class ImageProcessor:
         self.atlas_dir = atlasdir
 
     def build_combined_image(self, recipe):
-        result = np.array([])
+        result = da.array([])
         for index, channel_spec in enumerate(recipe):
             fpath = retrieve_file(
                 channel_spec["file"], os.path.basename(channel_spec["file"])
             )
             image = AICSImage(fpath)
-            data = image.get_image_data("ZYX", T=0, C=channel_spec["channel_index"])
+            data = image.get_image_dask_data(
+                "ZYX", T=0, C=channel_spec["channel_index"]
+            )
             if index > 0:
                 # handle bad data:
                 # general ZYX shape mismatch
@@ -207,9 +210,9 @@ class ImageProcessor:
                             data.shape, result[0].shape
                         )
                     )
-                result = np.append(result, [data], axis=0)
+                result = da.append(result, [data], axis=0)
             else:
-                result = np.array([data])
+                result = da.array([data])
             unretrieve_file(fpath)
         return result
 
