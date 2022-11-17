@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-from cellbrowser_tools import cellJob, fov_processing
+from cellbrowser_tools import cellJob, zarr_fov_processing
 
 import argparse
+from distributed import LocalCluster, Client
 import json
 import sys
 import traceback
@@ -18,7 +19,7 @@ def do_main_image(fname):
         #     sys.stderr.write("\n\nEncountered parsing error!\n\n###\nCell Job Object\n###\n")
         #     pprint.pprint(jobspec, stream=sys.stderr)
         #     return
-    return fov_processing.do_main_image_with_celljob(info)
+    return zarr_fov_processing.do_main_image_with_celljob(info)
 
 
 def main():
@@ -28,6 +29,15 @@ def main():
     )
     parser.add_argument("input", help="input json file")
     args = parser.parse_args()
+
+    # Set up for dask processing as a global thing
+
+    # cluster = LocalCluster(processes=True)
+    cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
+    # cluster = LocalCluster(memory_limit="7GB")  # threaded instead of multiprocess
+    # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1, memory_limit="12GB")
+    client = Client(cluster)
+    # client
 
     do_main_image(args.input)
 

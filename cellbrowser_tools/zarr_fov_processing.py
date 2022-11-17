@@ -395,17 +395,11 @@ class ImageProcessor:
 
         os.environ["AWS_PROFILE"] = "animatedcell"
         os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
-        # cluster = LocalCluster(processes=True)
-        cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
-        # cluster = LocalCluster(memory_limit="7GB")  # threaded instead of multiprocess
-        # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1, memory_limit="12GB")
-        client = Client(cluster)
-        # client
 
         # channel_colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0x880000, 0x008800, 0x000088]
 
         # note need aws creds locally for this to work
-        # s3 = s3fs.S3FileSystem(anon=False, config_kwargs={"connect_timeout": 60})
+        s3 = s3fs.S3FileSystem(anon=False, config_kwargs={"connect_timeout": 60})
 
         pps = PhysicalPixelSizes(
             self.row[DataField.PixelScaleZ],
@@ -416,8 +410,14 @@ class ImageProcessor:
         channel_colors = [0xFFFFFFFF for i in recipe]
 
         # print(data.shape)
-        # destination = "s3://animatedcell-test-data/" + self.file_name + ".zarr/"
-        destination = os.path.join(self.ometif_dir, self.file_name + ".zarr/")
+        destination = (
+            "s3://animatedcell-test-data/variance/"
+            + self.job.cbrImageRelPath
+            + "/"
+            + self.file_name
+            + ".zarr/"
+        )
+        # destination = os.path.join(self.ometif_dir, self.file_name + ".zarr/")
 
         writer = OmeZarrWriter(destination)
 
