@@ -412,8 +412,8 @@ class ImageProcessor:
         # print(data.shape)
         destination = (
             "s3://animatedcell-test-data/variance/"
-            + self.job.cbrImageRelPath
-            + "/"
+            # + self.job.cbrImageRelPath
+            # + "/"
             + self.file_name
             + ".zarr/"
         )
