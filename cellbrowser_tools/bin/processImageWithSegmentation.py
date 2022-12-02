@@ -33,10 +33,10 @@ def main():
     # Set up for dask processing as a global thing
 
     # cluster = LocalCluster(processes=True)
-    #cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
+    cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
     # cluster = LocalCluster(memory_limit="7GB")  # threaded instead of multiprocess
     # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1, memory_limit="12GB")
-    #client = Client(cluster)
+    client = Client(cluster)
     # client
 
     do_main_image(args.input)

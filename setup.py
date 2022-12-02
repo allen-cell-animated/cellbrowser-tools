@@ -40,8 +40,8 @@ dev_requirements = [
 
 requirements = [
     "aics_dask_utils==0.2.0",
-    "aicsimageio==4.9.2",
-    "aicsimageprocessing==0.8.3",
+    "aicsimageio>=4.9.3",
+    "aicsimageprocessing>=0.8.3",
     "bokeh<3",
     "dask[complete]==2022.10.2",
     "dask_jobqueue==0.8.1",

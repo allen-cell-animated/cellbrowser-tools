@@ -22,13 +22,6 @@ import s3fs
 log = logging.getLogger()
 
 
-# note need aws creds locally for this to work
-os.environ["AWS_PROFILE"] = "animatedcell"
-os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
-s3 = s3fs.S3FileSystem(anon=False, config_kwargs={"connect_timeout": 60})
-cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
-client = Client(cluster)
-
 ###############################################################################
 
 
@@ -138,6 +131,14 @@ CellMeta = collections.namedtuple("CellMeta", "bounds parent_image index")
 
 class ImageProcessor:
     def __init__(self, info):
+
+        # note need aws creds locally for this to work
+        os.environ["AWS_PROFILE"] = "animatedcell"
+        os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+        s3 = s3fs.S3FileSystem(anon=False, config_kwargs={"connect_timeout": 60})
+        # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
+        # client = Client(cluster)
+
         self.do_thumbnails = True
 
         self.job = info
