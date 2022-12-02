@@ -51,10 +51,10 @@ requirements = [
     "ome-types>=0.2.3",
     "pandas",
     "prefect==2.6.7",
-    "quilt3",
+    # "quilt3",
     "jinja2",
-    "urllib3",  # quilt3
-    "python-dateutil==2.8.0",  # quilt3
+    # "urllib3",  # quilt3
+    # "python-dateutil==2.8.0",  # quilt3
     "cloudpickle==2.2.0",  # prefect
 ]
 
