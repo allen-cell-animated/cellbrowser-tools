@@ -137,10 +137,7 @@ class ImageProcessor:
         os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
         s3 = s3fs.S3FileSystem(
             anon=False,
-            config_kwargs={
-                "connect_timeout": 60,
-                "endpoint_url": "https://s3.us-west-2.amazonaws.com",
-            },
+            config_kwargs={"connect_timeout": 60},
         )
 
         # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
