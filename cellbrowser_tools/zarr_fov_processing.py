@@ -1,36 +1,33 @@
 from aicsimageio.writers import OmeZarrWriter
-from aicsimageio.writers.two_d_writer import TwoDWriter
 from aicsimageio import AICSImage
 from aicsimageio.types import PhysicalPixelSizes
 from . import cellJob
 from . import dataHandoffUtils as utils
-from .dataset_constants import AugmentedDataField, DataField
-from aicsimageprocessing import thumbnailGenerator
-from aicsimageprocessing import textureAtlas
+from .dataset_constants import DataField
 
-# import copy
 import argparse
 import collections
-from copy import deepcopy
 import dask.array as da
 from distributed import LocalCluster, Client
 import errno
 import json
 import logging
 import numpy as np
-from ome_types import from_xml, to_xml
-from ome_types.model import Channel, TiffData, Plane
 import os
-import re
 import sys
-from tifffile import TiffFile
 import traceback
-import xml.etree.ElementTree as ET
 import s3fs
 
 
 log = logging.getLogger()
 
+
+# note need aws creds locally for this to work
+os.environ["AWS_PROFILE"] = "animatedcell"
+os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+s3 = s3fs.S3FileSystem(anon=False, config_kwargs={"connect_timeout": 60})
+cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
+client = Client(cluster)
 
 ###############################################################################
 
@@ -393,14 +390,6 @@ class ImageProcessor:
         recipe = self.recipe
         data = self.image
 
-        os.environ["AWS_PROFILE"] = "animatedcell"
-        os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
-
-        # channel_colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0x880000, 0x008800, 0x000088]
-
-        # note need aws creds locally for this to work
-        s3 = s3fs.S3FileSystem(anon=False, config_kwargs={"connect_timeout": 60})
-
         pps = PhysicalPixelSizes(
             self.row[DataField.PixelScaleZ],
             self.row[DataField.PixelScaleY],
@@ -427,7 +416,7 @@ class ImageProcessor:
 
         writer.write_image(
             image_data=data,  # : types.ArrayLike,  # must be 5D TCZYX
-            image_name="",  #: str,
+            image_name=self.file_name,  #: str,
             physical_pixel_sizes=pps,  # : Optional[types.PhysicalPixelSizes],
             channel_names=cn,  # : Optional[List[str]],
             channel_colors=channel_colors,  # : Optional[List[int]],
