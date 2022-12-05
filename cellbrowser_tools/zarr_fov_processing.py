@@ -135,13 +135,13 @@ class ImageProcessor:
         # note need aws creds locally for this to work
         os.environ["AWS_PROFILE"] = "animatedcell"
         os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
-        s3 = s3fs.S3FileSystem(
+        self.s3 = s3fs.S3FileSystem(
             anon=False,
             config_kwargs={"connect_timeout": 60},
         )
 
-        # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
-        # client = Client(cluster)
+        self.cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
+        self.client = Client(self.cluster)
 
         self.do_thumbnails = True
 
@@ -429,10 +429,15 @@ class ImageProcessor:
             scale_factor=2.0,  #  : float = 2.0,
         )
 
+    def cleanup(self):
+        self.client.close()
+        self.cluster.close()
+
 
 def do_main_image_with_celljob(info):
     processor = ImageProcessor(info)
     processor.generate_and_save()
+    processor.cleanup()
 
 
 def do_main_image(fname):

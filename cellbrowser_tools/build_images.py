@@ -19,13 +19,13 @@ def submit_done(prefs, job_ids):
 
 
 def submit_fov_rows(distributed: bool, prefs, groups, action_options: ActionOptions):
-    if not distributed:
-        # cluster = LocalCluster(processes=True)
-        cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
-        # cluster = LocalCluster(memory_limit="7GB")  # threaded instead of multiprocess
-        # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1, memory_limit="12GB")
-        client = Client(cluster)
-        # client
+    # if not distributed:
+    #     # cluster = LocalCluster(processes=True)
+    #     # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1)
+    #     # cluster = LocalCluster(memory_limit="7GB")  # threaded instead of multiprocess
+    #     # cluster = LocalCluster(n_workers=4, processes=True, threads_per_worker=1, memory_limit="12GB")
+    #     # client = Client(cluster)
+    #     # client
 
     # gather cluster commands and submit in batch
     jobdata_list = []
