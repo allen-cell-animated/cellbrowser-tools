@@ -155,10 +155,11 @@ class ImageProcessor:
             self.row = info
 
         # Setting up directory paths for images
-        readpath = self.row[DataField.AlignedImageReadPath]
-        if not readpath:
-            readpath = self.row[DataField.SourceReadPath]
-        self.image_file = utils.normalize_path(readpath)
+
+        # readpath = self.row[DataField.AlignedImageReadPath]
+        # if not readpath:
+        #     readpath = self.row[DataField.SourceReadPath]
+        # self.image_file = utils.normalize_path(readpath)
         self.file_name = utils.get_fov_name_from_row(self.row)
         self._generate_paths()
 
@@ -167,7 +168,9 @@ class ImageProcessor:
         self.channels_to_mask = []
         self.omexml = None
 
-        self.recipe = self.build_recipe_variance_hipsc(self.row)
+        # self.recipe = self.build_recipe_variance_hipsc(self.row)
+        self.recipe = self.build_recipe_drug_pilot(self.row)
+
         self.image = self.build_combined_image(self.recipe)
 
     def _generate_paths(self):
@@ -215,6 +218,10 @@ class ImageProcessor:
                 result = da.append(result, [data], axis=0)
             else:
                 result = da.array([data])
+            # if no channel name was provided, use the name from the image
+            if channel_spec["channel_name"] == "":
+                cn = image.channel_names
+                channel_spec["channel_name"] = cn[channel_spec["channel_index"]]
             unretrieve_file(fpath)
         return result
 
@@ -336,6 +343,32 @@ class ImageProcessor:
 
         return recipe
 
+    def build_recipe_drug_pilot(self, data_row):
+        output_filename = data_row["SourceFilename"]
+        filepath = data_row["SourceReadPath"]
+        filepath = os.path.join(filepath, output_filename)
+        channelinds = [
+            data_row["ChannelNumber638"] - 1,
+            data_row["ChannelNumberStruct"] - 1,
+            data_row["ChannelNumber405"] - 1,
+            data_row["ChannelNumberBrightfield"] - 1,
+        ]
+
+        readpath = filepath
+        image_file = utils.normalize_path(readpath)
+
+        recipe = [
+            {
+                "channel_name": "",
+                "file": image_file,
+                "channel_color": _rgba255(255, 255, 255, 255),
+                "channel_index": channelinds[i],
+            }
+            for i in range(len(channelinds))
+        ]
+
+        return recipe
+
     def generate_meta(self, metadata, row, cell_meta: CellMeta = None):
         m = {}
 
@@ -405,8 +438,8 @@ class ImageProcessor:
 
         # print(data.shape)
         destination = (
-            "s3://animatedcell-test-data/variance/"
-            # + self.job.cbrImageRelPath
+            "s3://animatedcell-test-data/drug_pilot/images/"
+            # self.job.cbrTextureAtlasLocation
             # + "/"
             + self.file_name
             + ".zarr/"

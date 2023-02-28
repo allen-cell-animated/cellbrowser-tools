@@ -1,5 +1,4 @@
 from cellbrowser_tools.dataHandoffUtils import ActionOptions, OutputPaths
-from distributed import LocalCluster, Client
 import logging
 import os
 
@@ -12,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 def submit_done(prefs, job_ids):
-    command = f"build_release --step done"
+    command = "build_release --step done"
     deps = job_ids
     new_job_ids = jobScheduler.submit_one(command, prefs, name="done", deps=deps)
     return new_job_ids

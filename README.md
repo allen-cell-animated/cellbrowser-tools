@@ -72,3 +72,5 @@ make_images --input_manifest //allen/aics/assay-dev/computational/data/dna_cell_
 or try
 --output_dir e:\\data\\cellbrowser-tools\\test
 for local testing
+
+make_images --input_manifest //allen/aics/animated-cell/Dan/datasets/drug_pilot/drug_cell_meta_pilot_Danhandoff2023.csv --output_dir s3://animatedcell-test-data/ --distributed
