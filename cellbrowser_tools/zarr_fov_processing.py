@@ -458,15 +458,15 @@ class ImageProcessor:
             for i in range(5 - len(data.shape)):
                 data = np.expand_dims(data, axis=0)
 
-        writer.write_image(
-            image_data=data,  # : types.ArrayLike,  # must be 5D TCZYX
-            image_name=self.file_name,  #: str,
-            physical_pixel_sizes=pps,  # : Optional[types.PhysicalPixelSizes],
-            channel_names=cn,  # : Optional[List[str]],
-            channel_colors=channel_colors,  # : Optional[List[int]],
-            scale_num_levels=3,  # : int = 1,
-            scale_factor=2.0,  #  : float = 2.0,
-        )
+        # writer.write_image(
+        #     image_data=data,  # : types.ArrayLike,  # must be 5D TCZYX
+        #     image_name=self.file_name,  #: str,
+        #     physical_pixel_sizes=pps,  # : Optional[types.PhysicalPixelSizes],
+        #     channel_names=cn,  # : Optional[List[str]],
+        #     channel_colors=channel_colors,  # : Optional[List[int]],
+        #     scale_num_levels=3,  # : int = 1,
+        #     scale_factor=2.0,  #  : float = 2.0,
+        # )
 
         if self.do_thumbnails:
             memb_index = 0
@@ -480,7 +480,7 @@ class ImageProcessor:
                 size=self.job.cbrThumbnailSize,
                 mask_channel_index=0,  # apply_cell_mask=False to ignore this
                 colors=thumbnail_colors,
-                projection="slice",
+                projection="max",
             )
             ffthumb = generator.make_thumbnail(
                 data[0].transpose(1, 0, 2, 3), apply_cell_mask=False
