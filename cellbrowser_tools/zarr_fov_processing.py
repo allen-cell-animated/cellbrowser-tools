@@ -1,6 +1,9 @@
 from aicsimageio.writers import OmeZarrWriter
+from aicsimageio.writers.two_d_writer import TwoDWriter
 from aicsimageio import AICSImage
 from aicsimageio.types import PhysicalPixelSizes
+from aicsimageprocessing import thumbnailGenerator
+
 from . import cellJob
 from . import dataHandoffUtils as utils
 from .dataset_constants import DataField
@@ -437,8 +440,11 @@ class ImageProcessor:
         channel_colors = [0xFFFFFFFF for i in recipe]
 
         # print(data.shape)
+        output_root = "s3://animatedcell-test-data/drug_pilot/images/"
+        output_thumbnail_root = "s3://animatedcell-test-data/drug_pilot/thumbs/"
+
         destination = (
-            "s3://animatedcell-test-data/drug_pilot/images/"
+            output_root
             # self.job.cbrTextureAtlasLocation
             # + "/"
             + self.file_name
@@ -461,6 +467,28 @@ class ImageProcessor:
             scale_num_levels=3,  # : int = 1,
             scale_factor=2.0,  #  : float = 2.0,
         )
+
+        if self.do_thumbnails:
+            memb_index = 0
+            nuc_index = 2
+            struct_index = 1
+            thumbnail_colors = [[1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 1.0, 0.0]]
+            # generate thumbnail and save it here!
+            log.info("making thumbnail...")
+            generator = thumbnailGenerator.ThumbnailGenerator(
+                channel_indices=[memb_index, nuc_index, struct_index],
+                size=self.job.cbrThumbnailSize,
+                mask_channel_index=self.seg_indices[1],
+                colors=thumbnail_colors,
+                projection="slice",
+            )
+            ffthumb = generator.make_thumbnail(
+                data.transpose(1, 0, 2, 3), apply_cell_mask=False
+            )
+            destination = output_thumbnail_root + self.file_name + ".png"
+            with TwoDWriter(file_path=destination, overwrite_file=True) as writer:
+                writer.save(ffthumb)
+            log.info("thumbnail saved")
 
     def cleanup(self):
         self.client.close()
