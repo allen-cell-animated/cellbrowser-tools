@@ -1,5 +1,11 @@
 from . import dataset_constants
-from .dataset_constants import DataField
+from .dataset_constants import (
+    DataField,
+    SLURM_SCRIPTS_DIR,
+    SLURM_OUTPUT_DIR,
+    SLURM_ERROR_DIR,
+    DATA_LOG_NAME,
+)
 import json
 from lkaccess import LabKey
 import lkaccess.contexts
@@ -10,10 +16,62 @@ from quilt3 import Package
 import re
 import sys
 
+from datetime import datetime
+from typing import List
+
 log = logging.getLogger()
 logging.basicConfig(
     level=logging.INFO, format="[%(levelname)4s:%(lineno)4s %(asctime)s] %(message)s"
 )
+
+
+class ActionOptions:
+    """
+    Options for set of files to generate
+    """
+
+    def __init__(
+        self, do_thumbnails: bool = True, do_atlases: bool = True, do_crop: bool = True
+    ):
+        self.do_thumbnails = do_thumbnails
+        self.do_atlases = do_atlases
+        self.do_crop = do_crop
+
+
+class QueryOptions:
+    """
+    Filters / options for the querying of images in a data input manifest csv
+    """
+
+    def __init__(
+        self,
+        cell_lines: List[str] = None,
+        plates: List[str] = None,
+        fovids: List[int] = None,
+        start_date: str = None,
+        end_date: str = None,
+        first_n: int = 0,
+    ):
+        self.cell_lines = cell_lines
+        self.plates = plates
+        self.fovids = fovids
+        self.first_n = first_n
+
+        self._ensureValidDateString(start_date)
+        self._ensureValidDateString(end_date)
+        self.start_date = start_date
+        self.end_date = end_date
+
+    def _ensureValidDateString(self, date: str):
+        if date is None:
+            return
+
+        format = "%Y-%m-%d"  # YYYY-MM-DD
+        try:
+            datetime.strptime(date, format)
+        except ValueError:
+            # built-in error message isn't specific enough
+            raise ValueError("Invalid date format - must be YYYY-MM-DD.")
 
 
 # CAUTION:
@@ -80,19 +138,48 @@ def setup_prefs(json_path):
     prefs["atlas_dir"] = atlas_dir
 
     prefs["sbatch_output"] = os.path.join(
-        prefs["out_status"], prefs["script_dir"], prefs["job_prefs"]["output"]
+        prefs["out_status"], SLURM_SCRIPTS_DIR, SLURM_OUTPUT_DIR
     )
     os.makedirs(os.path.dirname(prefs["sbatch_output"]), exist_ok=True)
 
     prefs["sbatch_error"] = os.path.join(
-        prefs["out_status"], prefs["script_dir"], prefs["job_prefs"]["error"]
+        prefs["out_status"], SLURM_SCRIPTS_DIR, SLURM_ERROR_DIR
     )
     os.makedirs(os.path.dirname(prefs["sbatch_error"]), exist_ok=True)
 
     # record the location of the data object
-    prefs["save_log_path"] = prefs["out_status"] + os.sep + prefs["data_log_name"]
+    prefs["save_log_path"] = prefs["out_status"] + os.sep + DATA_LOG_NAME
 
     return prefs
+
+
+class OutputPaths:
+    def __init__(self, out_dir: os.PathLike) -> None:
+        self.out_dir = out_dir
+        self.status_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.STATUS_DIR)
+        )
+        self.images_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.IMAGES_DIR)
+        )
+        self.thumbs_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.THUMBNAILS_DIR)
+        )
+        self.atlas_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.ATLAS_DIR)
+        )
+        self.sbatch_output = self._create_dir(
+            os.path.join(self.status_dir, SLURM_SCRIPTS_DIR, SLURM_OUTPUT_DIR)
+        )
+        self.sbatch_error = self._create_dir(
+            os.path.join(self.status_dir, SLURM_SCRIPTS_DIR, SLURM_ERROR_DIR)
+        )
+        self.save_log_path = os.path.join(self.status_dir, DATA_LOG_NAME)
+
+    def _create_dir(self, d: os.PathLike):
+        if not os.path.exists(d):
+            os.makedirs(d)
+        return d
 
 
 def get_cellline_name_from_row(row):
@@ -101,11 +188,11 @@ def get_cellline_name_from_row(row):
 
 # cellline must be 'AICS-#'
 def get_fov_name(fovid, cellline):
-    return f"{cellline}_{fovid}"
+    return f"{fovid}"
 
 
 def get_cell_name(cellid, fovid, cellline):
-    return f"{cellline}_{fovid}_{cellid}"
+    return f"{get_fov_name(fovid, cellline)}_{cellid}"
 
 
 def get_fov_name_from_row(row):
@@ -195,6 +282,8 @@ def collect_csv_data_rows(
             return "M4/M5"
         elif mid == 6:
             return "Mitosis"
+        elif mid is None:
+            return ""
         else:
             raise ValueError("Unexpected value for MitoticStateId")
 
@@ -311,6 +400,87 @@ def get_csv_features(path: str = FULL_FEATURES_DATA):
     df = pd.read_csv(path)
     df.fillna("NaN", inplace=True)
     return df
+
+
+def cache_dataset(out_dir: os.PathLike, groups):
+    with open(
+        os.path.join(
+            out_dir,
+            dataset_constants.STATUS_DIR,
+            dataset_constants.DATASET_JSON_FILENAME,
+        ),
+        "w",
+    ) as savefile:
+        json.dump(groups, savefile)
+    log.info("Saved dataset to json")
+
+
+def uncache_dataset(out_dir: os.PathLike):
+    groups = []
+    with open(
+        os.path.join(
+            out_dir,
+            dataset_constants.STATUS_DIR,
+            dataset_constants.DATASET_JSON_FILENAME,
+        ),
+        "r",
+    ) as savefile:
+        groups = json.load(savefile)
+    return groups
+
+
+def get_data_groups(prefs, n=0):
+    data = collect_csv_data_rows(
+        fovids=prefs.get("fovs"), cell_lines=prefs.get("cell_lines")
+    )
+    log.info("Number of total cell rows: " + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    log.info("Number of total FOVs: " + str(total_jobs))
+    # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
+    groups = []
+    for index, (fovid, group) in enumerate(data_grouped):
+        groups.append(group.to_dict(orient="records"))
+        # only the first n FOVs (one group per FOV)
+        if n > 0 and index >= n - 1:
+            break
+
+    log.info("Converted groups to lists of dicts")
+
+    # make dataset available as a file for later runs
+    cache_dataset(prefs.get("out_dir"), groups)
+
+    return groups
+
+
+def get_data_groups2(
+    input_manifest: os.PathLike,
+    query_options: QueryOptions,
+    out_dir: os.PathLike,
+):
+    data = collect_csv_data_rows(
+        input_manifest, fovids=query_options.fovids, cell_lines=query_options.cell_lines
+    )
+    log.info("Number of total cell rows: " + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    log.info("Number of total FOVs: " + str(total_jobs))
+    # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
+    groups = []
+    for index, (fovid, group) in enumerate(data_grouped):
+        groups.append(group.to_dict(orient="records"))
+        # only the first n FOVs (one group per FOV)
+        if query_options.first_n > 0 and index >= query_options.first_n - 1:
+            break
+
+    log.info("Converted groups to lists of dicts")
+
+    # make dataset available as a file for later runs
+    cache_dataset(out_dir, groups)
+
+    return groups
 
 
 if __name__ == "__main__":

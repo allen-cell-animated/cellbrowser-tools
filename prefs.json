@@ -1,16 +1,4 @@
 {
   "out_status": "//allen/aics/animated-cell/Dan/cellbrowser-tools/processing/dataset_2_test",
-  "out_dir": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_2_test",
-
-  "script_dir": "scripts_slurm",
-  "data_log_name": "data_jobs_out.csv",
-  "job_prefs": {
-    "max_simultaneous_jobs": 100,
-    "partition": "aics_cpu_general",
-    "time": "06:00:00",
-    "cpus-per-task": 1,
-    "mem-per-cpu": "16G",
-    "output": "out/",
-    "error": "err/"
-  }
+  "out_dir": "//allen/aics/animated-cell/Allen-Cell-Explorer/Allen-Cell-Explorer_2_test"
 }

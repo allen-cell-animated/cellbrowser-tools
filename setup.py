@@ -50,11 +50,11 @@ requirements = [
     "labkey",
     "lkaccess>=1.4.21",
     "ome-types>=0.2.3",
-    "pandas==1.0.3",
+    "pandas",
     "prefect==0.9.7",
     "quilt3",
     "jinja2",
-    "urllib3==1.26.5",  # quilt3
+    "urllib3",  # quilt3
     "python-dateutil==2.8.0",  # quilt3
     "cloudpickle==1.3.0",  # prefect
 ]
@@ -84,6 +84,8 @@ setup(
     entry_points={
         "console_scripts": [
             "build_release=cellbrowser_tools.bin.build_release:main",
+            "make_images=cellbrowser_tools.bin.make_images:main",
+            "make_downloader_manifest=cellbrowser_tools.bin.make_downloader_manifest:main",
             "processImageWithSegmentation=cellbrowser_tools.bin.processImageWithSegmentation:main",
         ],
     },

@@ -3,7 +3,7 @@ from aicsimageio.writers import PngWriter
 from aicsimageio import AICSImage
 from . import cellJob
 from . import dataHandoffUtils as utils
-from .dataset_constants import DataField
+from .dataset_constants import AugmentedDataField, DataField
 from aicsimageprocessing import thumbnailGenerator
 from aicsimageprocessing import textureAtlas
 
@@ -62,10 +62,7 @@ def _clean_ome_xml_for_known_issues(xml: str) -> str:
     # This is from OMEXML object just having invalid reference
     for known_invalid_ref in KNOWN_INVALID_OME_XSD_REFERENCES:
         if known_invalid_ref in xml:
-            xml = xml.replace(
-                known_invalid_ref,
-                REPLACEMENT_OME_XSD_REFERENCE,
-            )
+            xml = xml.replace(known_invalid_ref, REPLACEMENT_OME_XSD_REFERENCE,)
             metadata_changes.append(
                 f"Replaced '{known_invalid_ref}' with "
                 f"'{REPLACEMENT_OME_XSD_REFERENCE}'."
@@ -274,11 +271,7 @@ def _clean_ome_xml_for_known_issues(xml: str) -> str:
         ET.register_namespace("", f"http://{REPLACEMENT_OME_XSD_REFERENCE}")
 
         # Write out cleaned XML to string
-        xml = ET.tostring(
-            root,
-            encoding="unicode",
-            method="xml",
-        )
+        xml = ET.tostring(root, encoding="unicode", method="xml",)
 
     return xml
 
@@ -381,16 +374,13 @@ CellMeta = collections.namedtuple("CellMeta", "bounds parent_image index")
 
 
 class ImageProcessor:
-
-    # to clarify my reasoning for these specific methods and variables in this class...
-    # These methods required a large number of redundant parameters
-    # These params would not change throughout the lifecycle of a cellJob object
-    # These methods use a cellJob object as one of their params
-    # The functions outside of this class do not rely on a cellJob object
     def __init__(self, info):
+        self.do_thumbnails = True
+
         self.job = info
         if isinstance(info, cellJob.CellJob):
             self.row = info.cells[0]
+            self.do_thumbnails = info.do_thumbnails
         elif "cells" in info:
             self.row = info.cells[0]
         else:
@@ -435,14 +425,71 @@ class ImageProcessor:
         self.atlas_dir = atlasdir
 
     def build_file_list(self):
+        # TODO:
+        # make all this data driven.
+        # either we just take the ALL channels from the images IN ORDER
+        # or we provide some kind of listing and renaming:
+        #     source file
+        #     channel index
+        #     new name
+        #     color (maybe not even needed)
+        # this is enough data to combine together many channels from many files
+
         # start with 4 channels for membrane, structure, nucleus and transmitted light
-        self.channel_names = ["OBS_Memb", "OBS_STRUCT", "OBS_DNA", "OBS_Trans"]
+        self.channel_names = ["Membrane", "Labeled structure", "DNA", "Bright field"]
         self.channel_colors = [
             _rgba255(128, 0, 128, 255),
             _rgba255(128, 128, 0, 255),
             _rgba255(0, 128, 128, 255),
             _rgba255(128, 128, 128, 255),
         ]
+        self.channel_indices = [
+            int(self.row[DataField.ChannelNumber638]),
+            int(self.row[DataField.ChannelNumberStruct]),
+            int(self.row[DataField.ChannelNumber405]),
+            int(self.row[DataField.ChannelNumberBrightfield]),
+        ]
+
+        # special case replace OBS_STRUCT with OBS_Alpha-actinin-2
+        # if CellIndex starts with C and FOVId starts with F then we are in a special data set.
+        # gene-editing FISH chaos 2019
+        # TODO FIX ME
+        if self.row[DataField.CellIndex].startswith("C") and self.row[
+            DataField.FOVId
+        ].startswith("F"):
+            self.channel_names[1] = "Alpha-actinin-2"
+
+        # special case of channel combo when "gene-pair" is present
+        # TODO FIX ME
+        genepair = self.row.get(AugmentedDataField.GenePair)
+        if genepair is not None:
+            # genepair is a hyphenated split of 561 and 638 channel names
+            pair = genepair.split("-")
+            if len(pair) != 2:
+                raise ValueError(
+                    "Expected gene-pair to have two values joined by hyphen"
+                )
+            self.channel_names = [
+                "Alpha-actinin-2",
+                "DNA",
+                "Bright field",
+                f"{pair[0]}",
+                f"{pair[1]}",
+            ]
+            self.channel_colors = [
+                _rgba255(128, 0, 128, 255),
+                _rgba255(128, 128, 0, 255),
+                _rgba255(0, 128, 128, 255),
+                _rgba255(128, 128, 128, 255),
+                _rgba255(255, 0, 0, 255),
+            ]
+            self.channel_indices = [
+                int(self.row[DataField.ChannelNumberStruct]),
+                int(self.row[DataField.ChannelNumber405]),
+                int(self.row[DataField.ChannelNumberBrightfield]),
+                int(self.row[AugmentedDataField.ChannelNumber561]),
+                int(self.row[DataField.ChannelNumber638]),
+            ]
 
         self.channels_to_mask = []
 
@@ -452,46 +499,45 @@ class ImageProcessor:
         file_list = []
 
         # structure segmentation
-        if self.row[DataField.StructureSegmentationReadPath] != "":
-            struct_seg_file = utils.normalize_path(
-                self.row[DataField.StructureSegmentationReadPath]
-            )
+        readpath = self.row[DataField.StructureSegmentationReadPath]
+        if readpath != "" and readpath is not None:
+            struct_seg_file = utils.normalize_path(readpath)
             # print(struct_seg_file)
             file_list.append((struct_seg_file, 0, "SEG_STRUCT"))
             self.channel_names.append("SEG_STRUCT")
             self.channel_colors.append(_rgba255(255, 0, 0, 255))
 
         # cell segmentation
-        cell_seg_file = utils.normalize_path(
-            self.row[DataField.MembraneSegmentationReadPath]
-        )
-        # print(cell_seg_file)
-        file_list.append(
-            (
-                cell_seg_file,
-                self.row[DataField.MembraneSegmentationChannelIndex],
-                "SEG_Memb",
+        readpath = self.row[DataField.MembraneSegmentationReadPath]
+        if readpath != "" and readpath is not None:
+            cell_seg_file = utils.normalize_path(readpath)
+            # print(cell_seg_file)
+            file_list.append(
+                (
+                    cell_seg_file,
+                    self.row[DataField.MembraneSegmentationChannelIndex],
+                    "SEG_Memb",
+                )
             )
-        )
-        self.channel_names.append("SEG_Memb")
-        self.channel_colors.append(_rgba255(0, 0, 255, 255))
-        self.channels_to_mask.append(len(self.channel_names) - 1)
+            self.channel_names.append("SEG_Memb")
+            self.channel_colors.append(_rgba255(0, 0, 255, 255))
+            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         # nucleus segmentation
-        nuc_seg_file = utils.normalize_path(
-            self.row[DataField.NucleusSegmentationReadPath]
-        )
-        # print(nuc_seg_file)
-        file_list.append(
-            (
-                nuc_seg_file,
-                self.row[DataField.NucleusSegmentationChannelIndex],
-                "SEG_DNA",
+        readpath = self.row[DataField.NucleusSegmentationReadPath]
+        if readpath != "" and readpath is not None:
+            nuc_seg_file = utils.normalize_path(readpath)
+            # print(nuc_seg_file)
+            file_list.append(
+                (
+                    nuc_seg_file,
+                    self.row[DataField.NucleusSegmentationChannelIndex],
+                    "SEG_DNA",
+                )
             )
-        )
-        self.channel_names.append("SEG_DNA")
-        self.channel_colors.append(_rgba255(0, 255, 0, 255))
-        self.channels_to_mask.append(len(self.channel_names) - 1)
+            self.channel_names.append("SEG_DNA")
+            self.channel_colors.append(_rgba255(0, 255, 0, 255))
+            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         if self.row[DataField.MembraneContourReadPath] is None:
             self.row[DataField.MembraneContourReadPath] = self.row[
@@ -499,16 +545,20 @@ class ImageProcessor:
             ]
 
         # cell contour segmentation (good for viz in the volume viewer)
-        cell_con_file = utils.normalize_path(
-            self.row[DataField.MembraneContourReadPath]
-        )
-        # print(cell_seg_file)
-        file_list.append(
-            (cell_con_file, self.row[DataField.MembraneContourChannelIndex], "CON_Memb")
-        )
-        self.channel_names.append("CON_Memb")
-        self.channel_colors.append(_rgba255(255, 255, 0, 255))
-        self.channels_to_mask.append(len(self.channel_names) - 1)
+        readpath = self.row[DataField.MembraneContourReadPath]
+        if readpath != "" and readpath is not None:
+            cell_con_file = utils.normalize_path(readpath)
+            # print(cell_seg_file)
+            file_list.append(
+                (
+                    cell_con_file,
+                    self.row[DataField.MembraneContourChannelIndex],
+                    "CON_Memb",
+                )
+            )
+            self.channel_names.append("CON_Memb")
+            self.channel_colors.append(_rgba255(255, 255, 0, 255))
+            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         if self.row[DataField.NucleusContourReadPath] is None:
             self.row[DataField.NucleusContourReadPath] = self.row[
@@ -516,14 +566,20 @@ class ImageProcessor:
             ]
 
         # nucleus contour segmentation (good for viz in the volume viewer)
-        nuc_con_file = utils.normalize_path(self.row[DataField.NucleusContourReadPath])
-        # print(nuc_seg_file)
-        file_list.append(
-            (nuc_con_file, self.row[DataField.NucleusContourChannelIndex], "CON_DNA")
-        )
-        self.channel_names.append("CON_DNA")
-        self.channel_colors.append(_rgba255(0, 255, 255, 255))
-        self.channels_to_mask.append(len(self.channel_names) - 1)
+        readpath = self.row[DataField.NucleusContourReadPath]
+        if readpath != "" and readpath is not None:
+            nuc_con_file = utils.normalize_path(readpath)
+            # print(nuc_seg_file)
+            file_list.append(
+                (
+                    nuc_con_file,
+                    self.row[DataField.NucleusContourChannelIndex],
+                    "CON_DNA",
+                )
+            )
+            self.channel_names.append("CON_DNA")
+            self.channel_colors.append(_rgba255(0, 255, 255, 255))
+            self.channels_to_mask.append(len(self.channel_names) - 1)
 
         return file_list
 
@@ -560,25 +616,14 @@ class ImageProcessor:
         image = cr.get_image_data("CZYX", T=0)
         if len(image.shape) != 4:
             raise ValueError("Image did not return 4d CZYX data")
-        self.channel_indices = [
-            int(self.row[DataField.ChannelNumber638]),
-            int(self.row[DataField.ChannelNumberStruct]),
-            int(self.row[DataField.ChannelNumber405]),
-            int(self.row[DataField.ChannelNumberBrightfield]),
-        ]
+
         # image.shape[0] is num of channels.
         if image.shape[0] <= max(self.channel_indices):
             raise ValueError(
                 f"Image does not have enough channels - needs at least {max(self.channel_indices)} but has {image.shape[0]}"
             )
-        image = np.array(
-            [
-                image[self.channel_indices[0]],
-                image[self.channel_indices[1]],
-                image[self.channel_indices[2]],
-                image[self.channel_indices[3]],
-            ]
-        )
+
+        image = np.array([image[i] for i in self.channel_indices])
 
         # 3. fix up XML to reorder channels
         # we want to preserve all channel and plane data for the channels we are keeping!
@@ -600,9 +645,8 @@ class ImageProcessor:
             channel.id = f"Channel:0:{c}"
 
         # 2. remove all planes whose C index is not in self.channel_indices
-        for p in pix.planes:
-            if p.the_c not in self.channel_indices:
-                pix.planes.remove(p)
+        new_planes = [p for p in pix.planes if p.the_c in self.channel_indices]
+        pix.planes = new_planes
 
         # 3. then remap the C of the remaining planes, as they stll have their old channel indices
         for p in pix.planes:
@@ -623,7 +667,7 @@ class ImageProcessor:
                 )
             pix.size_c += 1
 
-        nch = 4
+        nch = len(self.channel_indices)
         self.seg_indices = []
         i = 0
         for f in file_list:
@@ -723,7 +767,7 @@ class ImageProcessor:
 
         return m
 
-    def generate_and_save(self, do_segmented_cells=True):
+    def generate_and_save(self, do_segmented_cells=True, save_raw=True):
         base = self.file_name
 
         # indices of channels in the original image
@@ -735,18 +779,21 @@ class ImageProcessor:
 
         log.info(f"Generating images for FOVId {self.row[DataField.FOVId]}")
 
-        log.info("making thumbnail...")
-        generator = thumbnailGenerator.ThumbnailGenerator(
-            channel_indices=[memb_index, nuc_index, struct_index],
-            size=self.job.cbrThumbnailSize,
-            mask_channel_index=self.seg_indices[1],
-            colors=thumbnail_colors,
-            projection="slice",
-        )
-        ffthumb = generator.make_thumbnail(
-            self.image.transpose(1, 0, 2, 3), apply_cell_mask=False
-        )
-        log.info("done making thumbnail")
+        if self.do_thumbnails:
+            log.info("making thumbnail...")
+            generator = thumbnailGenerator.ThumbnailGenerator(
+                channel_indices=[memb_index, nuc_index, struct_index],
+                size=self.job.cbrThumbnailSize,
+                mask_channel_index=self.seg_indices[1],
+                colors=thumbnail_colors,
+                projection="slice",
+            )
+            ffthumb = generator.make_thumbnail(
+                self.image.transpose(1, 0, 2, 3), apply_cell_mask=False
+            )
+            log.info("done making thumbnail")
+        else:
+            ffthumb = None
 
         im_to_save = self.image
 
@@ -755,22 +802,19 @@ class ImageProcessor:
 
         log.info("generating atlas ...")
         atlas = textureAtlas.generate_texture_atlas(
-            aimage,
-            name=base,
-            max_edge=2048,
-            pack_order=None,
+            aimage, name=base, max_edge=2048, pack_order=None,
         )
         log.info("done making atlas")
         p = self.omexml.images[0].pixels
         atlas.dims.pixel_size_x = p.physical_size_x
         atlas.dims.pixel_size_y = p.physical_size_y
         atlas.dims.pixel_size_z = p.physical_size_z
-        atlas.dims.channel_names = [c.name for c in p.channels]
+        atlas.dims.channel_names = [c for c in self.channel_names]
         # grab metadata for display
         static_meta = self.generate_meta(self.omexml, self.row)
 
         self._save_and_post(
-            image=im_to_save,
+            image=im_to_save if save_raw else None,
             thumbnail=ffthumb,
             textureatlas=atlas,
             name=base,
@@ -809,18 +853,21 @@ class ImageProcessor:
             for mi in self.channels_to_mask:
                 cropped[mi] = image_to_mask(cropped[mi], i, 255)
 
-            log.info("making thumbnail...")
-            generator = thumbnailGenerator.ThumbnailGenerator(
-                channel_indices=[memb_index, nuc_index, struct_index],
-                size=self.job.cbrThumbnailSize,
-                mask_channel_index=self.seg_indices[1],
-                colors=thumbnail_colors,
-                projection="max",
-            )
-            thumb = generator.make_thumbnail(
-                cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True
-            )
-            log.info("done making thumbnail")
+            if self.do_thumbnails:
+                log.info("making thumbnail...")
+                generator = thumbnailGenerator.ThumbnailGenerator(
+                    channel_indices=[memb_index, nuc_index, struct_index],
+                    size=self.job.cbrThumbnailSize,
+                    mask_channel_index=self.seg_indices[1],
+                    colors=thumbnail_colors,
+                    projection="max",
+                )
+                thumb = generator.make_thumbnail(
+                    cropped.copy().transpose(1, 0, 2, 3), apply_cell_mask=True
+                )
+                log.info("done making thumbnail")
+            else:
+                thumb = None
 
             cell_meta = CellMeta(
                 bounds={
@@ -874,15 +921,12 @@ class ImageProcessor:
             # aimage_cropped.metadata = copyxml
             log.info("generating cropped atlas ...")
             atlas_cropped = textureAtlas.generate_texture_atlas(
-                aimage_cropped,
-                name=cell_name,
-                max_edge=2048,
-                pack_order=None,
+                aimage_cropped, name=cell_name, max_edge=2048, pack_order=None,
             )
             atlas_cropped.dims.pixel_size_x = pixels.physical_size_x
             atlas_cropped.dims.pixel_size_y = pixels.physical_size_y
             atlas_cropped.dims.pixel_size_z = pixels.physical_size_z
-            atlas_cropped.dims.channel_names = [c.name for c in pixels.channels]
+            atlas_cropped.dims.channel_names = [c for c in self.channel_names]
 
             static_meta_cropped = self.generate_meta(copyxml, row, cell_meta)
 
@@ -890,7 +934,7 @@ class ImageProcessor:
             log.info("done making cropped atlas")
 
             self._save_and_post(
-                image=im_to_save,
+                image=im_to_save if save_raw else None,
                 thumbnail=thumb,
                 textureatlas=atlas_cropped,
                 name=cell_name,
@@ -901,13 +945,7 @@ class ImageProcessor:
         log.info("done processing cells for this fov")
 
     def _save_and_post(
-        self,
-        image,
-        thumbnail,
-        textureatlas,
-        name="",
-        omexml=None,
-        other_data=None,
+        self, image, thumbnail, textureatlas, name="", omexml=None, other_data=None,
     ):
         # physical_size = [0.065, 0.065, 0.29]
         # note these are strings here.  it's ok for xml purposes but not for any math.
@@ -959,7 +997,7 @@ class ImageProcessor:
 
 def do_main_image_with_celljob(info):
     processor = ImageProcessor(info)
-    processor.generate_and_save()
+    processor.generate_and_save(do_segmented_cells=info.do_crop, save_raw=info.save_raw)
 
 
 def do_main_image(fname):

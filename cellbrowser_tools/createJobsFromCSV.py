@@ -6,7 +6,7 @@ import sys
 from . import cellJob
 from . import dataHandoffUtils as lkutils
 from . import jobScheduler
-from .dataset_constants import DataField
+from .dataset_constants import DataField, SLURM_SCRIPTS_DIR
 from .fov_processing import do_main_image_with_celljob
 
 # cbrImageLocation path to cellbrowser images
@@ -53,7 +53,7 @@ def make_json(jobname, info, prefs):
     cell_job_postfix = jobname
     cellline = info.cells[0]["CellLine"]
     current_dir = os.path.join(
-        prefs["out_status"], prefs["script_dir"]
+        prefs["status_dir"], SLURM_SCRIPTS_DIR
     )  # os.path.join(os.getcwd(), outdir)
     dest_dir = os.path.join(current_dir, cellline)
 
@@ -66,19 +66,29 @@ def make_json(jobname, info, prefs):
     return f"processImageWithSegmentation {jsonname}"
 
 
-def do_image(args, prefs, rows):
+def do_image(
+    make_job: bool,
+    run_now: bool,
+    prefs,
+    rows,
+    do_thumbnails=True,
+    do_crop=True,
+    save_raw=True,
+):
     # use row 0 as the "full field" row
     row = rows[0]
 
     jobname = lkutils.get_fov_name_from_row(row)
 
-    # dataset is assumed to be in source_data = ....dataset_cellnuc_seg_curated/[DATASET]/spreadsheets_dir/sheet_name
-
     aicscelllineid = str(row[DataField.CellLine])
-    celllinename = aicscelllineid  # 'AICS-' + str(aicscelllineid)
+    celllinename = aicscelllineid
     subdir = celllinename
 
     info = cellJob.CellJob(rows)
+
+    info.do_thumbnails = do_thumbnails
+    info.do_crop = do_crop
+    info.save_raw = save_raw
 
     # drop images here
     info.cbrDataRoot = prefs["images_dir"]
@@ -101,9 +111,9 @@ def do_image(args, prefs, rows):
     os.makedirs(info.cbrImageLocation, exist_ok=True)
     os.makedirs(info.cbrThumbnailLocation, exist_ok=True)
 
-    if args.run:
+    if run_now:
         do_main_image_with_celljob(info)
-    elif args.cluster:
+    elif make_job:
         # TODO: set arg to copy each indiv file to another output
         return make_json(jobname, info, prefs)
 
@@ -142,7 +152,7 @@ def process_images(args, prefs):
                 + fovid
             )
 
-            jobdata = do_image(args, prefs, rows)
+            jobdata = do_image(args.cluster, args.run, prefs, rows)
             jobdata_list.append(jobdata)
 
         print("SUBMITTING " + str(total_jobs) + " JOBS")
@@ -160,7 +170,7 @@ def process_images(args, prefs):
                 + " : "
                 + fovid
             )
-            do_image(args, prefs, rows)
+            do_image(args.cluster, args.run, prefs, rows)
 
 
 def is_process_images_done(args):
