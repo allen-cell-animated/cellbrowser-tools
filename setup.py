@@ -35,28 +35,27 @@ dev_requirements = [
     "tox>=3.5.2",
     "twine>=1.13.0",
     "wheel>=0.33.1",
-    "lkaccess",
+    # "lkaccess",
 ]
 
 requirements = [
     "aics_dask_utils==0.2.0",
-    "aicsimageio==3.3.4",
-    "aicsimageprocessing==0.7.3",
-    "bokeh==2.0.2",
-    "dask[bag]==2.12.0",
-    "dask_jobqueue==0.7.0",
-    "distributed==2.12.0",
-    "featuredb>=0.3.0",
+    "aicsimageio>=4.9.3",
+    "aicsimageprocessing>=0.8.3",
+    "bokeh<3",
+    "dask[complete]==2022.11.1",
+    "dask_jobqueue==0.8.1",
+    "distributed==2022.11.1",
     "labkey",
-    "lkaccess>=1.4.21",
+    # "lkaccess>=1.4.21",
     "ome-types>=0.2.3",
     "pandas",
-    "prefect==0.9.7",
-    "quilt3",
+    "prefect==2.6.7",
+    # "quilt3",
     "jinja2",
-    "urllib3",  # quilt3
-    "python-dateutil==2.8.0",  # quilt3
-    "cloudpickle==1.3.0",  # prefect
+    # "urllib3",  # quilt3
+    # "python-dateutil==2.8.0",  # quilt3
+    "cloudpickle==2.2.0",  # prefect
 ]
 
 extra_requirements = {
@@ -85,6 +84,7 @@ setup(
         "console_scripts": [
             "build_release=cellbrowser_tools.bin.build_release:main",
             "make_images=cellbrowser_tools.bin.make_images:main",
+            "make_dataset_from_csv=cellbrowser_tools.bin.make_dataset_from_csv:main",
             "make_downloader_manifest=cellbrowser_tools.bin.make_downloader_manifest:main",
             "processImageWithSegmentation=cellbrowser_tools.bin.processImageWithSegmentation:main",
         ],
