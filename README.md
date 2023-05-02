@@ -12,6 +12,10 @@ Results are all contained in one output directory ready to be uploaded for deplo
 
 ## Installation
 
+Create a conda env called cellbrowser-tools.
+
+conda install -c conda-forge numcodecs imagecodecs
+
 Clone the repo.  
 `pip install -e .`
 
