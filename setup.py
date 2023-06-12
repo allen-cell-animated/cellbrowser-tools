@@ -40,22 +40,22 @@ dev_requirements = [
 
 requirements = [
     "aics_dask_utils==0.2.0",
-    "aicsimageio>=4.9.3",
+    "aicsimageio>=4.11.0",
     "aicsimageprocessing>=0.8.3",
     "bokeh<3",
-    "dask[complete]==2022.11.1",
+    "dask[complete]==2022.12.1",
     "dask_jobqueue==0.8.1",
-    "distributed==2022.11.1",
+    "distributed==2022.12.1",
     "labkey",
     # "lkaccess>=1.4.21",
-    "ome-types>=0.2.3",
+    "ome-types>=0.3.4",
     "pandas",
-    "prefect==2.6.7",
+    "prefect>=2.10.13",
     # "quilt3",
     "jinja2",
     # "urllib3",  # quilt3
     # "python-dateutil==2.8.0",  # quilt3
-    "cloudpickle==2.2.0",  # prefect
+    "cloudpickle==2.2.1",  # prefect
 ]
 
 extra_requirements = {
@@ -87,6 +87,7 @@ setup(
             "make_dataset_from_csv=cellbrowser_tools.bin.make_dataset_from_csv:main",
             "make_downloader_manifest=cellbrowser_tools.bin.make_downloader_manifest:main",
             "processImageWithSegmentation=cellbrowser_tools.bin.processImageWithSegmentation:main",
+            "make_zarr=cellbrowser_tools.bin.make_zarr",
         ],
     },
     install_requires=requirements,
