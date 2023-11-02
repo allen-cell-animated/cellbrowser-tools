@@ -39,22 +39,20 @@ dev_requirements = [
 ]
 
 requirements = [
-    "aics_dask_utils==0.2.0",
-    "aicsimageio>=4.11.0",
-    "aicsimageprocessing>=0.8.3",
-    "bokeh<3",
-    "dask[complete]==2022.12.1",
-    "dask_jobqueue==0.8.1",
-    "distributed==2022.12.1",
+    "aics_dask_utils>=0.2.4",
+    "bioio-base @ git+https://github.com/bioio-devs/bioio-base.git",
+    "bioio @ git+https://github.com/bioio-devs/bioio.git",
+    "bioio-czi @ git+https://github.com/bioio-devs/bioio-czi.git",
+    "bioio-tifffile @ git+https://github.com/bioio-devs/bioio-tifffile.git",
+    "bokeh",
+    "dask[complete]",
+    "dask_jobqueue",
+    "distributed",
     "labkey",
-    # "lkaccess>=1.4.21",
-    "ome-types>=0.3.4",
+    "ome-types",
     "pandas",
-    "prefect>=2.10.13",
-    # "quilt3",
+    "prefect",
     "jinja2",
-    # "urllib3",  # quilt3
-    # "python-dateutil==2.8.0",  # quilt3
     "cloudpickle==2.2.1",  # prefect
 ]
 

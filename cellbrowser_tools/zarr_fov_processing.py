@@ -1,7 +1,7 @@
-from aicsimageio.writers import OmeZarrWriter
-from aicsimageio.writers.two_d_writer import TwoDWriter
-from aicsimageio import AICSImage
-from aicsimageio.types import PhysicalPixelSizes
+from bioio.writers import OmeZarrWriter
+from bioio.writers.two_d_writer import TwoDWriter
+from bioio import BioImage
+from bioio.types import PhysicalPixelSizes
 from aicsimageprocessing import thumbnailGenerator
 
 from . import cellJob
@@ -205,7 +205,7 @@ class ImageProcessor:
             fpath = retrieve_file(
                 channel_spec["file"], os.path.basename(channel_spec["file"])
             )
-            image = AICSImage(fpath)
+            image = BioImage(fpath)
             data = image.get_image_dask_data(
                 "ZYX", T=0, C=channel_spec["channel_index"]
             )

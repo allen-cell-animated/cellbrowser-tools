@@ -1,6 +1,6 @@
-from aicsimageio.writers import OmeTiffWriter
-from aicsimageio.writers.two_d_writer import TwoDWriter
-from aicsimageio import AICSImage
+from bioio.writers import OmeTiffWriter
+from bioio.writers.two_d_writer import TwoDWriter
+from bioio import BioImage
 from . import cellJob
 from . import dataHandoffUtils as utils
 from .dataset_constants import AugmentedDataField, DataField
@@ -607,7 +607,7 @@ class ImageProcessor:
         image_file = retrieve_file(image_file, self.row[DataField.SourceFilename])
 
         # 1. obtain OME XML metadata from original microscopy image
-        cr = AICSImage(image_file)
+        cr = BioImage(image_file)
 
         with TiffFile(image_file) as tiff:
             if tiff.is_ome:
@@ -680,7 +680,7 @@ class ImageProcessor:
         for f in file_list:
             fpath = retrieve_file(f[0], os.path.basename(f[0]))
             # expect TifReader to handle it.
-            reader = AICSImage(fpath)
+            reader = BioImage(fpath)
             seg = reader.get_image_data("ZYX", C=f[1], T=0)
             # seg is expected to be ZYX
             # image is expected to be CZYX
@@ -805,7 +805,7 @@ class ImageProcessor:
         im_to_save = self.image
 
         # do texture atlas here
-        aimage = AICSImage(self.image, known_dims="CZYX")
+        aimage = BioImage(self.image, known_dims="CZYX")
 
         log.info("generating atlas ...")
         atlas = textureAtlas.generate_texture_atlas(
@@ -927,7 +927,7 @@ class ImageProcessor:
             log.info("done making cropped image")
 
             # do texture atlas here
-            aimage_cropped = AICSImage(cropped, known_dims="CZYX")
+            aimage_cropped = BioImage(cropped, known_dims="CZYX")
             # aimage_cropped.metadata = copyxml
             log.info("generating cropped atlas ...")
             atlas_cropped = textureAtlas.generate_texture_atlas(

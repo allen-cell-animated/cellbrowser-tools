@@ -6,9 +6,9 @@ import os
 # import pathlib
 # from pathlib import Path
 import s3fs
-from aicsimageio.writers import OmeZarrWriter
-from aicsimageio import AICSImage
-from aicsimageio.dimensions import DimensionNames
+from bioio.writers import OmeZarrWriter
+from bioio import BioImage
+from bioio.dimensions import DimensionNames
 
 # import numpy
 import pandas
@@ -127,7 +127,7 @@ def convert_to_zarr(
         DimensionNames.SpatialX,
         DimensionNames.Samples,
     ]
-    img = AICSImage(filepath, chunk_dims=chunk_dims)
+    img = BioImage(filepath, chunk_dims=chunk_dims)
 
     # print some data about the image we loaded
     scenes = img.scenes
