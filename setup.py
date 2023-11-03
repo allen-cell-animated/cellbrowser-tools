@@ -40,11 +40,17 @@ dev_requirements = [
 
 requirements = [
     "aics_dask_utils>=0.2.4",
+    "aicsfiles @ git+https://github.com/aics-int/aicsfiles-python.git@v7.1.0",
     "bioio-base @ git+https://github.com/bioio-devs/bioio-base.git",
-    "bioio @ git+https://github.com/bioio-devs/bioio.git",
+    "bioio @ git+https://github.com/bioio-devs/bioio.git@toloudis-patch-1",
     "bioio-czi @ git+https://github.com/bioio-devs/bioio-czi.git",
+    "bioio-nd2 @ git+https://github.com/bioio-devs/bioio-nd2.git",
+    "bioio-ome-tiff @ git+https://github.com/bioio-devs/bioio-ome-tiff.git",
+    "bioio-ome-zarr @ git+https://github.com/bioio-devs/bioio-ome-zarr.git",
+    "bioio-sldy @ git+https://github.com/bioio-devs/bioio-sldy.git",
     "bioio-tifffile @ git+https://github.com/bioio-devs/bioio-tifffile.git",
     "bokeh",
+    "brotli",
     "dask[complete]",
     "dask_jobqueue",
     "distributed",
