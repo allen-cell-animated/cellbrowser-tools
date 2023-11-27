@@ -50,7 +50,7 @@ requirements = [
     # "lkaccess>=1.4.21",
     "ome-types>=0.2.3",
     "pandas",
-    "prefect==2.6.7",
+    "prefect==2.14.3",
     # "quilt3",
     "jinja2",
     # "urllib3",  # quilt3
