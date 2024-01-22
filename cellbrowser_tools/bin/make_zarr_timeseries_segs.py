@@ -19,7 +19,7 @@ from aicsfiles import fms, FileLevelMetadataKeys
 import pandas
 import dask
 
-from dataHandoffUtils import normalize_path
+from cellbrowser_tools.dataHandoffUtils import normalize_path
 
 # from ome_zarr.scale import Scaler
 
