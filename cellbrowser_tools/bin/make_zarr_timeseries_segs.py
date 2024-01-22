@@ -273,7 +273,7 @@ if __name__ == "__main__":
 
     # load all data into a nice big delayed array
     data = []
-    for i in range(min(2, len(seg_paths))):
+    for i in range(len(seg_paths)):
         im = BioImage(raw_paths[i], reader=TiffReader, chunk_dims=chunk_dims)
         data_raw = im.get_image_dask_data("CZYX")
         im2 = BioImage(seg_paths[i], reader=TiffReader, chunk_dims=chunk_dims)
