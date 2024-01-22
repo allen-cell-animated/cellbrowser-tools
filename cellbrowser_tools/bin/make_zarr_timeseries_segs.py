@@ -19,6 +19,8 @@ from aicsfiles import fms, FileLevelMetadataKeys
 import pandas
 import dask
 
+from dataHandoffUtils import normalize_path
+
 # from ome_zarr.scale import Scaler
 
 # import nuc_morph_analysis
@@ -206,6 +208,7 @@ if __name__ == "__main__":
     channelinds = None
 
     filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425_L02-01_processed.czi"
+    filepath = normalize_path(filepath)
     info = {"fmsid": "c394ea65357e4c0384a9df2e74ae48de"}
     # filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425-L03-01_processed.czi"
     # info = {"fmsid": "6bff9d48c00844d786f3a530438417b6"}
@@ -238,8 +241,9 @@ if __name__ == "__main__":
     #else:
     #    record = fms.get_file_by_id(info["fmsid"])
     path = fms_file.path
-    path = path.replace("/", "\\")
-    path = "\\" + path
+    path = normalize_path(path)
+    # path = path.replace("/", "\\")
+    # path = "\\" + path
     df = pandas.read_csv(path, nrows=None).set_index("CellId")
     df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
     df = df.sort_values(by=["index_sequence"])
