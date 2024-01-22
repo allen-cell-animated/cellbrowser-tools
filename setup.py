@@ -41,25 +41,26 @@ dev_requirements = [
 requirements = [
     "aics_dask_utils>=0.2.4",
     "aicsfiles @ git+https://github.com/aics-int/aicsfiles-python.git@v7.1.0",
-    "bioio-base @ git+https://github.com/bioio-devs/bioio-base.git",
-    "bioio @ git+https://github.com/bioio-devs/bioio.git@toloudis-patch-1",
-    "bioio-czi @ git+https://github.com/bioio-devs/bioio-czi.git",
-    "bioio-nd2 @ git+https://github.com/bioio-devs/bioio-nd2.git",
-    "bioio-ome-tiff @ git+https://github.com/bioio-devs/bioio-ome-tiff.git",
-    "bioio-ome-zarr @ git+https://github.com/bioio-devs/bioio-ome-zarr.git",
-    "bioio-sldy @ git+https://github.com/bioio-devs/bioio-sldy.git",
-    "bioio-tifffile @ git+https://github.com/bioio-devs/bioio-tifffile.git",
+    "bioio-base>=1.0",
+    "bioio @ git+https://github.com/bioio-devs/bioio",
+    "bioio-czi>=1.0",
+    "bioio-nd2>=1.0",
+    "bioio-ome-tiff>=1.0",
+    "bioio-ome-zarr>=1.0",
+    "bioio-sldy>=1.0",
+    "bioio-tifffile>=1.0",
     "bokeh",
     "brotli",
-    "dask[complete]",
+    "dask[complete]==2022.12.1",
     "dask_jobqueue",
-    "distributed",
+    "distributed==2022.12.1",
     "labkey",
     "ome-types",
     "pandas",
     "prefect",
     "jinja2",
     "cloudpickle==2.2.1",  # prefect
+    "xarray-multiscale",  # for zarr writer downsampling
 ]
 
 extra_requirements = {

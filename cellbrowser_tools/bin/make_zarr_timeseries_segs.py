@@ -2,11 +2,13 @@
 from distributed import LocalCluster, Client
 
 import os
+from typing import Tuple
 
 # import pathlib
 # from pathlib import Path
 import s3fs
 import bioio
+from bioio_base.dimensions import DimensionNames
 from bioio.writers import OmeZarrWriter
 from bioio import BioImage
 from bioio.plugins import get_plugins, dump_plugins
@@ -26,6 +28,18 @@ import dask
 #     get_length_threshold_in_tps,
 #     get_dataset_pixel_size,
 # )
+
+# def dask_scale(data: dask.Array, num_levels: int, scale_factor: Tuple, method="nearest"):
+#     """
+#     Downsample a dask array by a given factor using a given method.
+#     """
+#     # get the shape of the data
+#     shape = data.shape
+#     # get the number of dimensions
+#     ndim = len(shape)
+#     # get the number of chunks in each dimension
+#     chunks = data.chunks
+    
 
 
 def load_drug_dataset():
@@ -214,8 +228,8 @@ if __name__ == "__main__":
     #symlinked_file_path = fms_file.download(output_directory='/tmp', as_sym_link=True)
 
     # hack init bioio
-    get_plugins()
-    dump_plugins()
+    #get_plugins()
+    #dump_plugins()
 
 
 
@@ -227,22 +241,69 @@ if __name__ == "__main__":
     path = path.replace("/", "\\")
     path = "\\" + path
     df = pandas.read_csv(path, nrows=None).set_index("CellId")
-    df = df[["index_sequence", "seg_full_zstack_path"]]
+    df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
     df = df.sort_values(by=["index_sequence"])
     seg_paths = df.seg_full_zstack_path.unique()
+    raw_paths = df.raw_full_zstack_path.unique()
 
     im = BioImage(filepath, reader=CziReader)
-    print(str(im.dims.T) + " timepoints found")
-    print(str(len(seg_paths)) + " segmentations found")
+    print(str(im.dims.T) + " original timepoints found")
+    print(str(len(seg_paths)) + " segmentation timepoints found")
+    print("Image Info: ")
+    print(str(im.dims.X))
+    print(str(im.dims.Y))
+    print(str(im.dims.Z))
     im2 = BioImage(seg_paths[0], reader=TiffReader)
     print("Segmentation Info: ")
     print(str(im2.dims.X))
     print(str(im2.dims.Y))
     print(str(im2.dims.Z))
-    print("Image Info: ")
-    print(str(im.dims.X))
-    print(str(im.dims.Y))
-    print(str(im.dims.Z))
+    im3 = BioImage(raw_paths[0], reader=TiffReader)
+    print("Raw cropped Info: ")
+    print(str(im3.dims.X))
+    print(str(im3.dims.Y))
+    print(str(im3.dims.Z))
 
+
+    chunk_dims = [
+        DimensionNames.SpatialY,
+        DimensionNames.SpatialX,
+        DimensionNames.Samples,
+    ]
+
+    # load all data into a nice big delayed array
+    data = []
+    for i in range(min(2, len(seg_paths))):
+        im = BioImage(raw_paths[i], reader=TiffReader, chunk_dims=chunk_dims)
+        data_raw = im.get_image_dask_data("CZYX")
+        im2 = BioImage(seg_paths[i], reader=TiffReader, chunk_dims=chunk_dims)
+        data_seg = im2.get_image_dask_data("CZYX")
+        all = dask.array.concatenate((data_raw, data_seg), axis=0)
+        data.append(all)
+    # now the outer list data is dimension T and the inner items are all CZYX
+    data = dask.array.stack(data)
+    print("Dask array has been built")
+    print(data.shape)
     #output_bucket = "animatedcell-test-data"
     # convert_to_zarr(filepath, output_bucket, channel_selection=channelinds)
+
+    # construct some per-channel lists to feed in to the writer.
+    # hardcoding to 2 for now
+    channel_colors = [
+        0xFF0000,
+        0x00FF00
+    ]
+    output_bucket = "animatedcell-test-data"
+    output_filename = os.path.splitext(os.path.basename(filepath))[0]
+    writer = OmeZarrWriter(f"s3://{output_bucket}/{output_filename}_with_seg.zarr/")
+
+    writer.write_image(
+        image_data=data,
+        image_name="",
+        physical_pixel_sizes=im3.physical_pixel_sizes,
+        channel_names=["raw", "seg"],
+        channel_colors=channel_colors,
+        scale_num_levels=4,
+        scale_factor=2.0,
+        chunk_dims=[1,1,1,data.shape[3],data.shape[4]],
+    )
