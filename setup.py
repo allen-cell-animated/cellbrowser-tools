@@ -40,9 +40,9 @@ dev_requirements = [
 
 requirements = [
     "aics_dask_utils>=0.2.4",
-    "aicsfiles @ git+https://github.com/aics-int/aicsfiles-python.git@v7.1.0",
+    "aicsfiles @ git+ssh://git@github.com/aics-int/aicsfiles-python.git@v7.1.0",
     "bioio-base>=1.0",
-    "bioio @ git+https://github.com/bioio-devs/bioio",
+    "bioio @ git+ssh://git@github.com/bioio-devs/bioio.git",
     "bioio-czi>=1.0",
     "bioio-nd2>=1.0",
     "bioio-ome-tiff>=1.0",
@@ -55,6 +55,7 @@ requirements = [
     "dask_jobqueue",
     "distributed==2022.12.1",
     "labkey",
+    "ngff-zarr",
     "ome-types",
     "pandas",
     "prefect",
