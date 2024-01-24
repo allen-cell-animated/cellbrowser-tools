@@ -15,6 +15,7 @@ from bioio.plugins import get_plugins, dump_plugins
 from bioio_czi import Reader as CziReader
 from bioio_ome_tiff import Reader as TiffReader
 from aicsfiles import fms, FileLevelMetadataKeys
+
 # import numpy
 import pandas
 import dask
@@ -41,7 +42,6 @@ from cellbrowser_tools.dataHandoffUtils import normalize_path
 #     ndim = len(shape)
 #     # get the number of chunks in each dimension
 #     chunks = data.chunks
-    
 
 
 def load_drug_dataset():
@@ -216,29 +216,27 @@ if __name__ == "__main__":
     # we need to get list of segmentations
     datadir = None
 
-    annotations = {
-       FileLevelMetadataKeys.FILE_ID.value: info["fmsid"]
-    }
-    fms_file = list(fms.find(
-        annotations=annotations,
-        limit=1,
-    ))[0]
+    annotations = {FileLevelMetadataKeys.FILE_ID.value: info["fmsid"]}
+    fms_file = list(
+        fms.find(
+            annotations=annotations,
+            limit=1,
+        )
+    )[0]
 
     # Copy the file to a local directory
-    #path_to_downloaded_file = fms_file.download(output_directory='/tmp')
+    # path_to_downloaded_file = fms_file.download(output_directory='/tmp')
 
     # Optionally symlink the file rather than copying it
-    #symlinked_file_path = fms_file.download(output_directory='/tmp', as_sym_link=True)
+    # symlinked_file_path = fms_file.download(output_directory='/tmp', as_sym_link=True)
 
     # hack init bioio
-    #get_plugins()
-    #dump_plugins()
+    # get_plugins()
+    # dump_plugins()
 
-
-
-    #if datadir is not None:
+    # if datadir is not None:
     #    record = fms.retrieve_file(info["fmsid"], datadir)[1]
-    #else:
+    # else:
     #    record = fms.get_file_by_id(info["fmsid"])
     path = fms_file.path
     path = normalize_path(path)
@@ -268,34 +266,56 @@ if __name__ == "__main__":
     print(str(im3.dims.Y))
     print(str(im3.dims.Z))
 
-
-    chunk_dims = [
+    # make dask chunks large.
+    # dask best practices say to use at least 100MB per chunk.
+    # but also want to keep chunk size a multiple of our
+    # output chunk size.  We know for zarr, output chunks will
+    # be much smaller.
+    bioio_chunk_dims = [
+        DimensionNames.SpatialZ,
         DimensionNames.SpatialY,
         DimensionNames.SpatialX,
         DimensionNames.Samples,
     ]
+    zarr_chunk_dims = []
+    # TODO - allow different zarr chunk dims for each downsample
+    # TODO - bioio input chunk dims are too coarse-grained
+    nlevels = 4
+    scaling = [1, 1, 1, 0.5, 0.5]
+    for i in range(nlevels):
+        zarr_chunk_dims.append(
+            [
+                1,
+                1,
+                (int((1 / scaling[3]) * (1 / scaling[4])) ** i),
+                im3.dims.Y,
+                im3.dims.X,
+            ]
+        )
 
     # load all data into a nice big delayed array
     data = []
-    for i in range(len(seg_paths)):
-        im = BioImage(raw_paths[i], reader=TiffReader, chunk_dims=chunk_dims)
+
+    for i in range(min(len(seg_paths), 30)):
+        im = BioImage(raw_paths[i], reader=TiffReader, chunk_dims=bioio_chunk_dims)
         data_raw = im.get_image_dask_data("CZYX")
-        im2 = BioImage(seg_paths[i], reader=TiffReader, chunk_dims=chunk_dims)
-        data_seg = im2.get_image_dask_data("CZYX")
-        all = dask.array.concatenate((data_raw, data_seg), axis=0)
-        data.append(all)
+        data.append(data_raw)
+        # im2 = BioImage(seg_paths[i], reader=TiffReader, chunk_dims=bioio_chunk_dims)
+        # data_seg = im2.get_image_dask_data("CZYX")
+        # all = dask.array.concatenate((data_raw, data_seg), axis=0)
+        # data.append(all)
     # now the outer list data is dimension T and the inner items are all CZYX
     data = dask.array.stack(data)
     print("Dask array has been built")
     print(data.shape)
-    #output_bucket = "animatedcell-test-data"
+    # output_bucket = "animatedcell-test-data"
     # convert_to_zarr(filepath, output_bucket, channel_selection=channelinds)
 
     # construct some per-channel lists to feed in to the writer.
     # hardcoding to 2 for now
     channel_colors = [
         0xFF0000,
-        0x00FF00
+        # 0x00FF00
     ]
     output_bucket = "animatedcell-test-data"
     output_filename = os.path.splitext(os.path.basename(filepath))[0]
@@ -305,9 +325,9 @@ if __name__ == "__main__":
         image_data=data,
         image_name="",
         physical_pixel_sizes=im3.physical_pixel_sizes,
-        channel_names=["raw", "seg"],
+        channel_names=["raw"],  # , "seg"
         channel_colors=channel_colors,
         scale_num_levels=4,
         scale_factor=2.0,
-        chunk_dims=[1,1,1,data.shape[3],data.shape[4]],
+        chunk_dims=zarr_chunk_dims,
     )
