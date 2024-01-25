@@ -2,11 +2,12 @@
 from dask.distributed import Client, LocalCluster
 
 import os
-from typing import Tuple, Any
+from typing import Tuple, Any, List, Optional
 import atexit
 import signal
 import sys
 from pathlib import Path
+from dataclasses import asdict
 
 # import pathlib
 # from pathlib import Path
@@ -32,6 +33,7 @@ from cellbrowser_tools.dataHandoffUtils import normalize_path
 
 from ngff_zarr import config, to_ngff_image, to_multiscales, to_ngff_zarr, Methods
 from ngff_zarr.rich_dask_progress import NgffProgress
+from ngff_zarr.zarr_metadata import Metadata, Axis, Scale, Translation, Dataset
 from rich.console import Console
 from rich.live import Live
 from rich.panel import Panel
@@ -211,6 +213,74 @@ def convert_to_zarr(
             )
 
 
+def generate_metadata(image_name:str, shape: dict, dims: Tuple[str], physicalscale: dict, units: Optional[dict], levels: List[dict], channel_names: List[str], channel_colors:List[int], group):
+    # dims= ("t", "c", "z", "y", "x"),
+    # shape = {"t":im3.dims.T, "c":im3.dims.C, "z":im3.dims.Z, "y":im3.dims.Y, "x":im3.dims.X}
+    # scale = {"c":1, "t":1, "x":im3.physical_pixel_sizes.X, "y":im3.physical_pixel_sizes.Y, "z":im3.physical_pixel_sizes.Z},
+    # levels = [{"x":2, "y":2, "z":1, "t":1, "c":1}, ...]
+    axes = []
+    for dim in dims:
+        unit = None
+        if units and dim in units:
+            unit = units[dim]
+        if dim in {"x", "y", "z"}:
+            axis = Axis(name=dim, type="space", unit=unit)
+        elif dim == "c":
+            axis = Axis(name=dim, type="channel", unit=unit)
+        elif dim == "t":
+            axis = Axis(name=dim, type="time", unit=unit)
+        else:
+            msg = f"Dimension identifier is not valid: {dim}"
+            raise KeyError(msg)
+        axes.append(axis)
+
+    datasets = []
+    for index, scaledict in enumerate(levels):
+        path = f"{index}"
+        scale = []
+        for dim in dims:
+            phys = physicalscale[dim] if dim in physicalscale and physicalscale[dim] else 1.0
+            if dim in scaledict:
+                scale.append(scaledict[dim] * phys)
+            else:
+                scale.append(phys)
+        translation = []
+        for dim in dims:
+            translation.append(0.0)
+            # if dim in translation:
+            #     translation.append(translation[dim])
+            # else:
+            #     translation.append(1.0)
+        coordinateTransformations = [Scale(scale), Translation(translation)]
+        dataset = Dataset(
+            path=path, coordinateTransformations=coordinateTransformations
+        )
+        datasets.append(dataset)
+    metadata = Metadata(
+        axes=axes,
+        datasets=datasets,
+        name="/",
+        coordinateTransformations=None,
+    )
+    group.attrs["multiscales"] = [asdict(metadata)]
+
+    ome_json = OmeZarrWriter.build_ome(
+        shape["z"] if "z" in shape else 1,
+        image_name,
+        channel_names=channel_names,  # type: ignore
+        channel_colors=channel_colors,  # type: ignore
+        # This can be slow if computed here.
+        # TODO: Rely on user to supply the per-channel min/max.
+        channel_minmax=[
+            (0.0, 1.0)
+            for i in range(shape["c"] if "c" in shape else 1)
+        ],
+    )
+    group.attrs["omero"] = ome_json
+
+    return metadata
+
+
 def resize(
     image: da.Array, output_shape: Tuple[int, ...], *args: Any, **kwargs: Any
 ) -> da.Array:
@@ -325,21 +395,6 @@ if __name__ == "__main__":
             limit=1,
         )
     )[0]
-
-    # Copy the file to a local directory
-    # path_to_downloaded_file = fms_file.download(output_directory='/tmp')
-
-    # Optionally symlink the file rather than copying it
-    # symlinked_file_path = fms_file.download(output_directory='/tmp', as_sym_link=True)
-
-    # hack init bioio
-    # get_plugins()
-    # dump_plugins()
-
-    # if datadir is not None:
-    #    record = fms.retrieve_file(info["fmsid"], datadir)[1]
-    # else:
-    #    record = fms.get_file_by_id(info["fmsid"])
     path = fms_file.path
     path = normalize_path(path)
     # path = path.replace("/", "\\")
@@ -385,31 +440,33 @@ if __name__ == "__main__":
     zarr_chunk_dims_lists = []
     # TODO - allow different zarr chunk dims for each downsample
     # TODO - bioio input chunk dims are too coarse-grained
+
+    # TODO determine nlevels to go down far enough for effective visualization
     nlevels = 5
-    scale_factor = 2.0
-    scaling = [1, 1, 1, 1.0/scale_factor, 1.0/scale_factor]
-    inv_scaling = [1,1,1,scale_factor,scale_factor]
+    
+    inv_scaling = {"t":1.0, "c":1.0, "z":1.0, "y":2.0, "x":2.0}
+    scaling = {d:1.0/inv_scaling[d] for d in inv_scaling}
     for i in range(nlevels):
         zarr_chunk_dims.append(
             {
                 "t":1,
                 "c":1,
-                "z":(int(inv_scaling[3] * inv_scaling[4]) ** i),
-                "y":int(im3.dims.Y * (scaling[3]**i)),
-                "x":int(im3.dims.X * (scaling[4]**i)),
+                "z":(int(inv_scaling["y"] * inv_scaling["x"]) ** i),
+                "y":int(im3.dims.Y * (scaling["y"]**i)),
+                "x":int(im3.dims.X * (scaling["x"]**i)),
             }
         )
         zarr_chunk_dims_lists.append(
-            [1,1,(int(inv_scaling[3] * inv_scaling[4]) ** i),int(im3.dims.Y * (scaling[3]**i)),int(im3.dims.X * (scaling[4]**i))]
+            [1,1,(int(inv_scaling["y"] * inv_scaling["x"]) ** i),int(im3.dims.Y * (scaling["y"]**i)),int(im3.dims.X * (scaling["x"]**i))]
         )
 
     # load all data into a nice big delayed array
     data = []
-
     for i in range(numT):
         im = BioImage(raw_paths[i], reader=TiffReader, chunk_dims=bioio_chunk_dims)
         data_raw = im.get_image_dask_data("CZYX")
         data.append(data_raw)
+        # # attach segmentations as channel
         # im2 = BioImage(seg_paths[i], reader=TiffReader, chunk_dims=bioio_chunk_dims)
         # data_seg = im2.get_image_dask_data("CZYX")
         # all = dask.array.concatenate((data_raw, data_seg), axis=0)
@@ -422,6 +479,9 @@ if __name__ == "__main__":
     output_bucket = "animatedcell-test-data"
     output_filename = os.path.splitext(os.path.basename(filepath))[0]
 
+    ####################
+    ## USE NGFF_ZARR
+    ####################
     # console = Console()
     # progress = RichProgress(
     #     SpinnerColumn(),
@@ -454,6 +514,9 @@ if __name__ == "__main__":
     #     multiscales,
     #     progress=rich_dask_progress
     # )
+    ####################
+    ## END USE NGFF_ZARR
+    ####################
 
     # construct some per-channel lists to feed in to the writer.
     # hardcoding to 2 for now
@@ -463,6 +526,9 @@ if __name__ == "__main__":
     ]
     channel_names = ["raw"]  # , "seg"]
 
+    ####################
+    ## USE BIOIO
+    ####################
     # writer = OmeZarrWriter(f"s3://{output_bucket}/{output_filename}_with_seg.zarr/")
     # writer.write_image(
     #     image_data=data,
@@ -474,6 +540,9 @@ if __name__ == "__main__":
     #     scale_factor=scale_factor,
     #     chunk_dims=zarr_chunk_dims_lists,
     # )
+    ####################
+    ## END USE BIOIO
+    ####################
 
     # init zarr store as a group.
     # each multiresolution level will be a zarr array
@@ -487,14 +556,15 @@ if __name__ == "__main__":
     output_store = FSStore(url=f"s3://{output_bucket}/{output_filename}_with_seg.zarr", dimension_separator="/")
     # output_store = DirectoryStore(f"c:/{output_bucket}/{output_filename}_with_seg.zarr", dimension_separator="/")
     # create a group with all the levels
-    root = zarr.group(store=output_store, overwrite=True)
+    root = zarr.group(store=output_store)
+
     # set up levels
     lvl_shape = data.shape  # (numT,1,148,2047,848)
     lvls = []
     for i in range(nlevels):
         lvl = root.zeros(str(i), shape=lvl_shape, chunks=zarr_chunk_dims_lists[i])
         lvls.append(lvl)
-        lvl_shape = (lvl_shape[0]*scaling[0], lvl_shape[1]*scaling[1], lvl_shape[2]*scaling[2], lvl_shape[3]*scaling[3], lvl_shape[4]*scaling[4])
+        lvl_shape = (lvl_shape[0]*scaling["t"], lvl_shape[1]*scaling["c"], lvl_shape[2]*scaling["z"], lvl_shape[3]*scaling["y"], lvl_shape[4]*scaling["x"])
         lvl_shape = (int(lvl_shape[0]), int(lvl_shape[1]), int(lvl_shape[2]), int(lvl_shape[3]), int(lvl_shape[4]))
 
     for i in range(numT):
@@ -506,10 +576,29 @@ if __name__ == "__main__":
             ti.compute()
             lvls[j][i] = ti
             # downsample to next level
-            nextshape = (int(ti.shape[0]), int(ti.shape[1]), int(ti.shape[2]/scale_factor), int(ti.shape[3]/scale_factor))
+            nextshape = (int(ti.shape[0]/inv_scaling["c"]),
+                         int(ti.shape[1]/inv_scaling["z"]),
+                         int(ti.shape[2]/inv_scaling["y"]),
+                         int(ti.shape[3]/inv_scaling["x"]))
             ti = resize(ti, nextshape, order=0)
-            # ti = dask.array.coarsen(dask.array.mean, ti, {0:inv_scaling[1], 1:inv_scaling[2], 2:inv_scaling[3], 3:inv_scaling[4]})
             ti = ti.astype("uint16")
-    # # now the outer list data is dimension T and the inner items are all CZYX
-    # data = dask.array.stack(data)
+
+    # write metadata
+    physical_scale = {"c":1,
+                      "t":1,
+                      "x":im3.physical_pixel_sizes.X if im3.physical_pixel_sizes.X else 1.0,
+                      "y":im3.physical_pixel_sizes.Y if im3.physical_pixel_sizes.Y else 1.0,
+                      "z":im3.physical_pixel_sizes.Z if im3.physical_pixel_sizes.Z else 1.0}
+    generate_metadata(image_name=output_filename,
+                      shape={"t":numT, "c":1, "z":im3.dims.Z, "y":im3.dims.Y, "x":im3.dims.X},
+                      # shape={"t":data.shape[0], "c":data.shape[1], "z":data.shape[2], "y":data.shape[3], "x":data.shape[4]},
+                      dims=("t", "c", "z", "y", "x"),
+                      physicalscale = physical_scale,
+                      units={"x":"micrometer", "y":"micrometer", "z":"micrometer", "t":"millisecond"},
+                      levels= [{"x":inv_scaling["x"]**i, "y":inv_scaling["y"]**i, "z":1, "t":1, "c":1} for i in range(nlevels)],
+                      channel_names=channel_names, channel_colors=channel_colors, group=root)
+    # dims= ("t", "c", "z", "y", "x"),
+    # shape = {"t":im3.dims.T, "c":im3.dims.C, "z":im3.dims.Z, "y":im3.dims.Y, "x":im3.dims.X}
+    # scale = {"c":1, "t":1, "x":im3.physical_pixel_sizes.X, "y":im3.physical_pixel_sizes.Y, "z":im3.physical_pixel_sizes.Z},
+    # levels = [{"x":2, "y":2, "z":1, "t":1, "c":1}, ...]
 
