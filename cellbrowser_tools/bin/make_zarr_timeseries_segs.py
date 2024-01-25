@@ -8,6 +8,7 @@ import signal
 import sys
 from pathlib import Path
 from dataclasses import asdict
+import logging
 
 # import pathlib
 # from pathlib import Path
@@ -48,7 +49,7 @@ from rich.progress import (
 )
 from rich.spinner import Spinner
 
-# from ome_zarr.scale import Scaler
+log = logging.getLogger(__name__)
 
 # import nuc_morph_analysis
 # from nuc_morph_analysis.preprocessing.load_data import (
@@ -423,7 +424,7 @@ if __name__ == "__main__":
     print(str(im3.dims.Y))
     print(str(im3.dims.Z))
 
-    numT = len(seg_paths)  # min(len(seg_paths), 2)
+    numT = 18  # len(seg_paths)  # min(len(seg_paths), 2)
 
     # make dask chunks large.
     # dask best practices say to use at least 100MB per chunk.
@@ -553,13 +554,13 @@ if __name__ == "__main__":
     #   write level 0 to zarr group 0 at level=0 / T=t
     #   downsample and write other levels
 
-    output_store = FSStore(url=f"s3://{output_bucket}/{output_filename}_with_seg.zarr", dimension_separator="/")
-    # output_store = DirectoryStore(f"c:/{output_bucket}/{output_filename}_with_seg.zarr", dimension_separator="/")
+    # output_store = FSStore(url=f"s3://{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/")
+    output_store = DirectoryStore(f"c:/{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/")
     # create a group with all the levels
-    root = zarr.group(store=output_store)
+    root = zarr.group(store=output_store, overwrite=True)
 
     # set up levels
-    lvl_shape = data.shape  # (numT,1,148,2047,848)
+    lvl_shape = data.shape
     lvls = []
     for i in range(nlevels):
         lvl = root.zeros(str(i), shape=lvl_shape, chunks=zarr_chunk_dims_lists[i])
@@ -567,21 +568,48 @@ if __name__ == "__main__":
         lvl_shape = (lvl_shape[0]*scaling["t"], lvl_shape[1]*scaling["c"], lvl_shape[2]*scaling["z"], lvl_shape[3]*scaling["y"], lvl_shape[4]*scaling["x"])
         lvl_shape = (int(lvl_shape[0]), int(lvl_shape[1]), int(lvl_shape[2]), int(lvl_shape[3]), int(lvl_shape[4]))
 
-    for i in range(numT):
-        ti = data[i]
-        # ti is level0's CZYX data. 
+    # loop over T in batches
+    log.debug("Starting loop over T")
+    tbatch = 4
+    for i in range(numT//tbatch):
+        start_t = i*tbatch
+        end_t = min((i+1)*tbatch, numT)
+        ti = data[start_t:end_t]
+        # ti is level0's TCZYX data. 
         # we can write it right now and then downsample
         for j in range(nlevels):
             ti = ti.persist()
             ti.compute()
-            lvls[j][i] = ti
+            # write ti to zarr
+            # lvls[j][start_t:end_t] = ti[:]
+            # lvls[j].set_basic_selection(slice(start_t,end_t), ti[:])
+            for k in range(start_t, end_t):
+                lvls[j][k] = ti[k-start_t]
+            # dask.array.to_zarr(ti, lvls[j], component=None, storage_options=None, overwrite=False, region=(slice(start_t,end_t)))
             # downsample to next level
-            nextshape = (int(ti.shape[0]/inv_scaling["c"]),
-                         int(ti.shape[1]/inv_scaling["z"]),
-                         int(ti.shape[2]/inv_scaling["y"]),
-                         int(ti.shape[3]/inv_scaling["x"]))
+            nextshape = (int(ti.shape[0]/inv_scaling["t"]),
+                         int(ti.shape[1]/inv_scaling["c"]),
+                         int(ti.shape[2]/inv_scaling["z"]),
+                         int(ti.shape[3]/inv_scaling["y"]),
+                         int(ti.shape[4]/inv_scaling["x"]))
             ti = resize(ti, nextshape, order=0)
             ti = ti.astype("uint16")
+        log.debug(f"Completed {start_t} to {end_t}")
+        # ti = data[i]
+        # # ti is level0's CZYX data. 
+        # # we can write it right now and then downsample
+        # for j in range(nlevels):
+        #     ti = ti.persist()
+        #     ti.compute()
+        #     lvls[j][i] = ti
+        #     # downsample to next level
+        #     nextshape = (int(ti.shape[0]/inv_scaling["c"]),
+        #                  int(ti.shape[1]/inv_scaling["z"]),
+        #                  int(ti.shape[2]/inv_scaling["y"]),
+        #                  int(ti.shape[3]/inv_scaling["x"]))
+        #     ti = resize(ti, nextshape, order=0)
+        #     ti = ti.astype("uint16")
+    log.debug("Finished loop over T")
 
     # write metadata
     physical_scale = {"c":1,
