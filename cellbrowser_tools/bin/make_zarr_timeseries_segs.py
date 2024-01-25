@@ -554,8 +554,8 @@ if __name__ == "__main__":
     #   write level 0 to zarr group 0 at level=0 / T=t
     #   downsample and write other levels
 
-    # output_store = FSStore(url=f"s3://{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/")
-    output_store = DirectoryStore(f"c:/{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/")
+    output_store = FSStore(url=f"s3://{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/")
+    # output_store = DirectoryStore(f"c:/{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/")
     # create a group with all the levels
     root = zarr.group(store=output_store, overwrite=True)
 
