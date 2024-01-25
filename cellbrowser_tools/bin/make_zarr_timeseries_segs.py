@@ -424,7 +424,7 @@ if __name__ == "__main__":
     print(str(im3.dims.Y))
     print(str(im3.dims.Z))
 
-    numT = 18  # len(seg_paths)  # min(len(seg_paths), 2)
+    numT = len(seg_paths)  # min(len(seg_paths), 2)
 
     # make dask chunks large.
     # dask best practices say to use at least 100MB per chunk.
