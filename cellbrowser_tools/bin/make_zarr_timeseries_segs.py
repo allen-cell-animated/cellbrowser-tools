@@ -581,10 +581,12 @@ if __name__ == "__main__":
             ti = ti.persist()
             ti.compute()
             # write ti to zarr
+            # for some reason this is not working: not allowed to write in this way to a non-memory store
             # lvls[j][start_t:end_t] = ti[:]
             # lvls[j].set_basic_selection(slice(start_t,end_t), ti[:])
             for k in range(start_t, end_t):
                 lvls[j][k] = ti[k-start_t]
+            # for some reason this is not working: not allowed to write in this way to a non-memory store
             # dask.array.to_zarr(ti, lvls[j], component=None, storage_options=None, overwrite=False, region=(slice(start_t,end_t)))
             # downsample to next level
             nextshape = (int(ti.shape[0]/inv_scaling["t"]),
