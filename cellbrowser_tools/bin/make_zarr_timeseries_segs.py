@@ -563,7 +563,7 @@ if __name__ == "__main__":
     lvl_shape = data.shape
     lvls = []
     for i in range(nlevels):
-        lvl = root.zeros(str(i), shape=lvl_shape, chunks=zarr_chunk_dims_lists[i])
+        lvl = root.zeros(str(i), shape=lvl_shape, chunks=zarr_chunk_dims_lists[i], dtype=data.dtype)
         lvls.append(lvl)
         lvl_shape = (lvl_shape[0]*scaling["t"], lvl_shape[1]*scaling["c"], lvl_shape[2]*scaling["z"], lvl_shape[3]*scaling["y"], lvl_shape[4]*scaling["x"])
         lvl_shape = (int(lvl_shape[0]), int(lvl_shape[1]), int(lvl_shape[2]), int(lvl_shape[3]), int(lvl_shape[4]))
@@ -595,7 +595,7 @@ if __name__ == "__main__":
                          int(ti.shape[3]/inv_scaling["y"]),
                          int(ti.shape[4]/inv_scaling["x"]))
             ti = resize(ti, nextshape, order=0)
-            ti = ti.astype("uint16")
+            ti = ti.astype(data.dtype)
         log.debug(f"Completed {start_t} to {end_t}")
         # ti = data[i]
         # # ti is level0's CZYX data. 
