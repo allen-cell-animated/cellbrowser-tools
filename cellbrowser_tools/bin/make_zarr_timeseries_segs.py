@@ -346,8 +346,8 @@ if __name__ == "__main__":
     os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
     # initialize for writing direct to S3
     s3 = s3fs.S3FileSystem(anon=False, config_kwargs={"connect_timeout": 60})
-    # configure for parallelism
 
+    # configure for parallelism
     n_workers = 4
     worker_memory_target = config.memory_target // n_workers
     try:
