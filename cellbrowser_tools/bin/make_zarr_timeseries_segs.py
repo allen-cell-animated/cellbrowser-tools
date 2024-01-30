@@ -481,21 +481,27 @@ if __name__ == "__main__":
             ]
         )
 
-    # load all data into a nice big delayed array
-    data = []
-    for i in range(numT):
-        im = BioImage(raw_paths[i], chunk_dims=bioio_chunk_dims)
-        data_raw = im.get_image_dask_data("CZYX")
-        data.append(data_raw)
-        # # attach segmentations as channel
-        # im2 = BioImage(seg_paths[i], chunk_dims=bioio_chunk_dims)
-        # data_seg = im2.get_image_dask_data("CZYX")
-        # all = dask.array.concatenate((data_raw, data_seg), axis=0)
-        # data.append(all)
-    # now the outer list data is dimension T and the inner items are all CZYX
-    data = dask.array.stack(data)
-    print("Dask array has been built")
-    print(data.shape)
+    ###########################
+    ## PRELOAD DATA
+    ###########################
+    # # load all data into a nice big delayed array
+    # data = []
+    # for i in range(numT):
+    #     im = BioImage(raw_paths[i], chunk_dims=bioio_chunk_dims)
+    #     data_raw = im.get_image_dask_data("CZYX")
+    #     data.append(data_raw)
+    #     # # attach segmentations as channel
+    #     # im2 = BioImage(seg_paths[i], chunk_dims=bioio_chunk_dims)
+    #     # data_seg = im2.get_image_dask_data("CZYX")
+    #     # all = dask.array.concatenate((data_raw, data_seg), axis=0)
+    #     # data.append(all)
+    # # now the outer list data is dimension T and the inner items are all CZYX
+    # data = dask.array.stack(data)
+    # print("Dask array has been built")
+    # print(data.shape)
+    ###########################
+    ## END PRELOAD DATA
+    ###########################
 
     output_bucket = "animatedcell-test-data"
 
@@ -581,11 +587,12 @@ if __name__ == "__main__":
     root = zarr.group(store=output_store, overwrite=True)
 
     # set up levels
-    lvl_shape = data.shape
+    dtype = im3.dtype
+    lvl_shape = (numT, im3.dims.C, im3.dims.Z, im3.dims.Y, im3.dims.X)  # data.shape
     lvls = []
     for i in range(nlevels):
         lvl = root.zeros(
-            str(i), shape=lvl_shape, chunks=zarr_chunk_dims_lists[i], dtype=data.dtype
+            str(i), shape=lvl_shape, chunks=zarr_chunk_dims_lists[i], dtype=dtype
         )
         lvls.append(lvl)
         lvl_shape = (
@@ -609,7 +616,16 @@ if __name__ == "__main__":
     for i in range(numT // tbatch):
         start_t = i * tbatch
         end_t = min((i + 1) * tbatch, numT)
-        ti = data[start_t:end_t]
+
+        # ti = data[start_t:end_t]
+        ti = []
+        for j in range(start_t, end_t):
+            im = BioImage(raw_paths[j], chunk_dims=bioio_chunk_dims)
+            data_raw = im.get_image_dask_data("CZYX")
+            ti.append(data_raw)
+        # now the outer list data is dimension T and the inner items are all CZYX
+        ti = dask.array.stack(ti)
+
         # ti is level0's TCZYX data.
         # we can write it right now and then downsample
         for j in range(nlevels):
