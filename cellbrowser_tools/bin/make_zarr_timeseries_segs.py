@@ -583,7 +583,7 @@ if __name__ == "__main__":
 
     # set up levels
     dtype = im3.dtype
-    lvl_shape = (numT, im3.dims.C, im3.dims.Z, im3.dims.Y, im3.dims.X)  # data.shape
+    lvl_shape = (numT, im.dims.C, im.dims.Z, im.dims.Y, im.dims.X)  # data.shape
     lvls = []
     for i in range(nlevels):
         lvl = root.zeros(
@@ -646,7 +646,7 @@ if __name__ == "__main__":
                 int(ti.shape[4] / inv_scaling["x"]),
             )
             ti = resize(ti, nextshape, order=0)
-            ti = ti.astype(data.dtype)
+            ti = ti.astype(dtype)
         log.debug(f"Completed {start_t} to {end_t}")
         # ti = data[i]
         # # ti is level0's CZYX data.
