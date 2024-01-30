@@ -419,12 +419,12 @@ if __name__ == "__main__":
     print(str(im.dims.X))
     print(str(im.dims.Y))
     print(str(im.dims.Z))
-    im2 = BioImage(seg_paths[0], reader=TiffReader)
+    im2 = BioImage(seg_paths[0])
     print("Segmentation Info: ")
     print(str(im2.dims.X))
     print(str(im2.dims.Y))
     print(str(im2.dims.Z))
-    im3 = BioImage(raw_paths[0], reader=TiffReader)
+    im3 = BioImage(raw_paths[0])
     print("Raw cropped Info: ")
     print(str(im3.dims.X))
     print(str(im3.dims.Y))
@@ -476,11 +476,11 @@ if __name__ == "__main__":
     # load all data into a nice big delayed array
     data = []
     for i in range(numT):
-        im = BioImage(raw_paths[i], reader=TiffReader, chunk_dims=bioio_chunk_dims)
+        im = BioImage(raw_paths[i], chunk_dims=bioio_chunk_dims)
         data_raw = im.get_image_dask_data("CZYX")
         data.append(data_raw)
         # # attach segmentations as channel
-        # im2 = BioImage(seg_paths[i], reader=TiffReader, chunk_dims=bioio_chunk_dims)
+        # im2 = BioImage(seg_paths[i], chunk_dims=bioio_chunk_dims)
         # data_seg = im2.get_image_dask_data("CZYX")
         # all = dask.array.concatenate((data_raw, data_seg), axis=0)
         # data.append(all)
