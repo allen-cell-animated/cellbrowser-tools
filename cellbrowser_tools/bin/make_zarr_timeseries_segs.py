@@ -60,17 +60,6 @@ log = logging.getLogger(__name__)
 #     get_dataset_pixel_size,
 # )
 
-# def dask_scale(data: dask.Array, num_levels: int, scale_factor: Tuple, method="nearest"):
-#     """
-#     Downsample a dask array by a given factor using a given method.
-#     """
-#     # get the shape of the data
-#     shape = data.shape
-#     # get the number of dimensions
-#     ndim = len(shape)
-#     # get the number of chunks in each dimension
-#     chunks = data.chunks
-
 
 def load_drug_dataset():
     manifest_path = (
@@ -394,13 +383,15 @@ if __name__ == "__main__":
 
     filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425_L02-01_processed.czi"
     filepath = normalize_path(filepath)
-    # info = {"fmsid": "c394ea65357e4c0384a9df2e74ae48de"}  # LLS 3
+    # info = {"fmsid": "c394ea65357e4c0384a9df2e74ae48de"}  # lattice3
     # filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425-L03-01_processed.czi"
 
     info = {
         "fmsid": "0709695427454d788852ca50b838cf5b",
         "name": "baby_bear",
         "pixel_size": 0.108,
+        "original_fmsid": "7191a69c6d8f4f37b7a43cc962c72935",
+        "scene": 8,
     }
 
     # info = {"fmsid": "22e6f39eef954b7a99575676377da47f"} # goldilocks
@@ -409,24 +400,30 @@ if __name__ == "__main__":
     # we need to get list of segmentations
     datadir = None
 
+    original_path = fms_id_to_path(info["original_fmsid"])
     path = fms_id_to_path(info["fmsid"])
-    output_filename = info["name"]  # os.path.splitext(os.path.basename(filepath))[0]
-    pixel_size = info["pixel_size"]
-
     df = pandas.read_csv(path, nrows=None).set_index("CellId")
     df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
     df = df.sort_values(by=["index_sequence"])
     seg_paths = df.seg_full_zstack_path.unique()
     raw_paths = df.raw_full_zstack_path.unique()
-
-    # im = BioImage(filepath, reader=CziReader)
+    im = BioImage(original_path, reader=CziReader)
+    im.set_scene(info["scene"])
+    original_dims = im.dims
     # print(str(im.dims.T) + " original timepoints found")
     print(str(len(seg_paths)) + " segmentation timepoints found")
     print(str(len(raw_paths)) + " raw timepoints found")
-    # print("Image Info: ")
-    # print(str(im.dims.X))
-    # print(str(im.dims.Y))
-    # print(str(im.dims.Z))
+    numT = min(len(seg_paths), len(raw_paths), im.dims.T)
+
+    output_filename = info["name"]  # os.path.splitext(os.path.basename(filepath))[0]
+    output_filename = os.path.splitext(os.path.basename(original_path))[0]
+
+    pixel_size = info["pixel_size"]
+
+    print("Image Info: ")
+    print(str(im.dims.X))
+    print(str(im.dims.Y))
+    print(str(im.dims.Z))
     im2 = BioImage(seg_paths[0])
     print("Segmentation Info: ")
     print(str(im2.dims.X))
@@ -437,8 +434,6 @@ if __name__ == "__main__":
     print(str(im3.dims.X))
     print(str(im3.dims.Y))
     print(str(im3.dims.Z))
-
-    numT = min(len(seg_paths), len(raw_paths))  # min(len(seg_paths), 2)
 
     # make dask chunks large.
     # dask best practices say to use at least 100MB per chunk.
@@ -618,13 +613,16 @@ if __name__ == "__main__":
         end_t = min((i + 1) * tbatch, numT)
 
         # ti = data[start_t:end_t]
-        ti = []
-        for j in range(start_t, end_t):
-            im = BioImage(raw_paths[j], chunk_dims=bioio_chunk_dims)
-            data_raw = im.get_image_dask_data("CZYX")
-            ti.append(data_raw)
-        # now the outer list data is dimension T and the inner items are all CZYX
-        ti = dask.array.stack(ti)
+
+        # ti = []
+        # for j in range(start_t, end_t):
+        #     im = BioImage(raw_paths[j], chunk_dims=bioio_chunk_dims)
+        #     data_raw = im.get_image_dask_data("CZYX")
+        #     ti.append(data_raw)
+        # # now the outer list data is dimension T and the inner items are all CZYX
+        # ti = dask.array.stack(ti)
+
+        ti = im.get_image_dask_data("TCZYX", T=slice(start_t, end_t))
 
         # ti is level0's TCZYX data.
         # we can write it right now and then downsample
