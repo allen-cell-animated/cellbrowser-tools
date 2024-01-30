@@ -410,7 +410,7 @@ if __name__ == "__main__":
     datadir = None
 
     path = fms_id_to_path(info["fmsid"])
-    output_filename = info.name  # os.path.splitext(os.path.basename(filepath))[0]
+    output_filename = info["name"]  # os.path.splitext(os.path.basename(filepath))[0]
     pixel_size = info["pixel_size"]
 
     df = pandas.read_csv(path, nrows=None).set_index("CellId")
