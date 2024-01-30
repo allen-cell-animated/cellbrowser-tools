@@ -31,6 +31,7 @@ import zarr
 import skimage
 
 from cellbrowser_tools.dataHandoffUtils import normalize_path
+from cellbrowser_tools.fms_util import fms_id_to_path
 
 from ngff_zarr import config, to_ngff_image, to_multiscales, to_ngff_zarr, Methods
 from ngff_zarr.rich_dask_progress import NgffProgress
@@ -214,7 +215,17 @@ def convert_to_zarr(
             )
 
 
-def generate_metadata(image_name:str, shape: dict, dims: Tuple[str], physicalscale: dict, units: Optional[dict], levels: List[dict], channel_names: List[str], channel_colors:List[int], group):
+def generate_metadata(
+    image_name: str,
+    shape: dict,
+    dims: Tuple[str],
+    physicalscale: dict,
+    units: Optional[dict],
+    levels: List[dict],
+    channel_names: List[str],
+    channel_colors: List[int],
+    group,
+):
     # dims= ("t", "c", "z", "y", "x"),
     # shape = {"t":im3.dims.T, "c":im3.dims.C, "z":im3.dims.Z, "y":im3.dims.Y, "x":im3.dims.X}
     # scale = {"c":1, "t":1, "x":im3.physical_pixel_sizes.X, "y":im3.physical_pixel_sizes.Y, "z":im3.physical_pixel_sizes.Z},
@@ -240,7 +251,11 @@ def generate_metadata(image_name:str, shape: dict, dims: Tuple[str], physicalsca
         path = f"{index}"
         scale = []
         for dim in dims:
-            phys = physicalscale[dim] if dim in physicalscale and physicalscale[dim] else 1.0
+            phys = (
+                physicalscale[dim]
+                if dim in physicalscale and physicalscale[dim]
+                else 1.0
+            )
             if dim in scaledict:
                 scale.append(scaledict[dim] * phys)
             else:
@@ -272,10 +287,7 @@ def generate_metadata(image_name:str, shape: dict, dims: Tuple[str], physicalsca
         channel_colors=channel_colors,  # type: ignore
         # This can be slow if computed here.
         # TODO: Rely on user to supply the per-channel min/max.
-        channel_minmax=[
-            (0.0, 1.0)
-            for i in range(shape["c"] if "c" in shape else 1)
-        ],
+        channel_minmax=[(0.0, 1.0) for i in range(shape["c"] if "c" in shape else 1)],
     )
     group.attrs["omero"] = ome_json
 
@@ -336,7 +348,6 @@ def resize(
     return output.rechunk(image.chunksize).astype(image.dtype)
 
 
-
 if __name__ == "__main__":
     ###########################
     # Infrastructure init
@@ -352,6 +363,7 @@ if __name__ == "__main__":
     worker_memory_target = config.memory_target // n_workers
     try:
         import psutil
+
         n_workers = psutil.cpu_count(False) // 2
         worker_memory_target = config.memory_target // n_workers
     except ImportError:
@@ -382,24 +394,18 @@ if __name__ == "__main__":
 
     filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425_L02-01_processed.czi"
     filepath = normalize_path(filepath)
-    info = {"fmsid": "c394ea65357e4c0384a9df2e74ae48de"}
+    # info = {"fmsid": "c394ea65357e4c0384a9df2e74ae48de"}
     # filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425-L03-01_processed.czi"
-    # info = {"fmsid": "6bff9d48c00844d786f3a530438417b6"}
+    info = {"fmsid": "0709695427454d788852ca50b838cf5b"}  # baby_bear
+    pixel_size = 0.108
+    # info = {"fmsid": "22e6f39eef954b7a99575676377da47f"} # goldilocks
+    # info = {"fmsid": "9dbaf24f86124b96bd5f5b10ce9f892f"} # mama_bear
 
     # we need to get list of segmentations
     datadir = None
 
-    annotations = {FileLevelMetadataKeys.FILE_ID.value: info["fmsid"]}
-    fms_file = list(
-        fms.find(
-            annotations=annotations,
-            limit=1,
-        )
-    )[0]
-    path = fms_file.path
-    path = normalize_path(path)
-    # path = path.replace("/", "\\")
-    # path = "\\" + path
+    path = fms_id_to_path(info["fmsid"])
+
     df = pandas.read_csv(path, nrows=None).set_index("CellId")
     df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
     df = df.sort_values(by=["index_sequence"])
@@ -444,21 +450,27 @@ if __name__ == "__main__":
 
     # TODO determine nlevels to go down far enough for effective visualization
     nlevels = 5
-    
-    inv_scaling = {"t":1.0, "c":1.0, "z":1.0, "y":2.0, "x":2.0}
-    scaling = {d:1.0/inv_scaling[d] for d in inv_scaling}
+
+    inv_scaling = {"t": 1.0, "c": 1.0, "z": 1.0, "y": 2.0, "x": 2.0}
+    scaling = {d: 1.0 / inv_scaling[d] for d in inv_scaling}
     for i in range(nlevels):
         zarr_chunk_dims.append(
             {
-                "t":1,
-                "c":1,
-                "z":(int(inv_scaling["y"] * inv_scaling["x"]) ** i),
-                "y":int(im3.dims.Y * (scaling["y"]**i)),
-                "x":int(im3.dims.X * (scaling["x"]**i)),
+                "t": 1,
+                "c": 1,
+                "z": (int(inv_scaling["y"] * inv_scaling["x"]) ** i),
+                "y": int(im3.dims.Y * (scaling["y"] ** i)),
+                "x": int(im3.dims.X * (scaling["x"] ** i)),
             }
         )
         zarr_chunk_dims_lists.append(
-            [1,1,(int(inv_scaling["y"] * inv_scaling["x"]) ** i),int(im3.dims.Y * (scaling["y"]**i)),int(im3.dims.X * (scaling["x"]**i))]
+            [
+                1,
+                1,
+                (int(inv_scaling["y"] * inv_scaling["x"]) ** i),
+                int(im3.dims.Y * (scaling["y"] ** i)),
+                int(im3.dims.X * (scaling["x"] ** i)),
+            ]
         )
 
     # load all data into a nice big delayed array
@@ -554,7 +566,9 @@ if __name__ == "__main__":
     #   write level 0 to zarr group 0 at level=0 / T=t
     #   downsample and write other levels
 
-    output_store = FSStore(url=f"s3://{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/")
+    output_store = FSStore(
+        url=f"s3://{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/"
+    )
     # output_store = DirectoryStore(f"c:/{output_bucket}/{output_filename}_TEST.zarr", dimension_separator="/")
     # create a group with all the levels
     root = zarr.group(store=output_store, overwrite=True)
@@ -563,19 +577,33 @@ if __name__ == "__main__":
     lvl_shape = data.shape
     lvls = []
     for i in range(nlevels):
-        lvl = root.zeros(str(i), shape=lvl_shape, chunks=zarr_chunk_dims_lists[i], dtype=data.dtype)
+        lvl = root.zeros(
+            str(i), shape=lvl_shape, chunks=zarr_chunk_dims_lists[i], dtype=data.dtype
+        )
         lvls.append(lvl)
-        lvl_shape = (lvl_shape[0]*scaling["t"], lvl_shape[1]*scaling["c"], lvl_shape[2]*scaling["z"], lvl_shape[3]*scaling["y"], lvl_shape[4]*scaling["x"])
-        lvl_shape = (int(lvl_shape[0]), int(lvl_shape[1]), int(lvl_shape[2]), int(lvl_shape[3]), int(lvl_shape[4]))
+        lvl_shape = (
+            lvl_shape[0] * scaling["t"],
+            lvl_shape[1] * scaling["c"],
+            lvl_shape[2] * scaling["z"],
+            lvl_shape[3] * scaling["y"],
+            lvl_shape[4] * scaling["x"],
+        )
+        lvl_shape = (
+            int(lvl_shape[0]),
+            int(lvl_shape[1]),
+            int(lvl_shape[2]),
+            int(lvl_shape[3]),
+            int(lvl_shape[4]),
+        )
 
     # loop over T in batches
     log.debug("Starting loop over T")
     tbatch = 4
-    for i in range(numT//tbatch):
-        start_t = i*tbatch
-        end_t = min((i+1)*tbatch, numT)
+    for i in range(numT // tbatch):
+        start_t = i * tbatch
+        end_t = min((i + 1) * tbatch, numT)
         ti = data[start_t:end_t]
-        # ti is level0's TCZYX data. 
+        # ti is level0's TCZYX data.
         # we can write it right now and then downsample
         for j in range(nlevels):
             ti = ti.persist()
@@ -585,20 +613,22 @@ if __name__ == "__main__":
             # lvls[j][start_t:end_t] = ti[:]
             # lvls[j].set_basic_selection(slice(start_t,end_t), ti[:])
             for k in range(start_t, end_t):
-                lvls[j][k] = ti[k-start_t]
+                lvls[j][k] = ti[k - start_t]
             # for some reason this is not working: not allowed to write in this way to a non-memory store
             # dask.array.to_zarr(ti, lvls[j], component=None, storage_options=None, overwrite=False, region=(slice(start_t,end_t)))
             # downsample to next level
-            nextshape = (int(ti.shape[0]/inv_scaling["t"]),
-                         int(ti.shape[1]/inv_scaling["c"]),
-                         int(ti.shape[2]/inv_scaling["z"]),
-                         int(ti.shape[3]/inv_scaling["y"]),
-                         int(ti.shape[4]/inv_scaling["x"]))
+            nextshape = (
+                int(ti.shape[0] / inv_scaling["t"]),
+                int(ti.shape[1] / inv_scaling["c"]),
+                int(ti.shape[2] / inv_scaling["z"]),
+                int(ti.shape[3] / inv_scaling["y"]),
+                int(ti.shape[4] / inv_scaling["x"]),
+            )
             ti = resize(ti, nextshape, order=0)
             ti = ti.astype(data.dtype)
         log.debug(f"Completed {start_t} to {end_t}")
         # ti = data[i]
-        # # ti is level0's CZYX data. 
+        # # ti is level0's CZYX data.
         # # we can write it right now and then downsample
         # for j in range(nlevels):
         #     ti = ti.persist()
@@ -614,21 +644,46 @@ if __name__ == "__main__":
     log.debug("Finished loop over T")
 
     # write metadata
-    physical_scale = {"c":1,
-                      "t":1,
-                      "x":im3.physical_pixel_sizes.X if im3.physical_pixel_sizes.X else 1.0,
-                      "y":im3.physical_pixel_sizes.Y if im3.physical_pixel_sizes.Y else 1.0,
-                      "z":im3.physical_pixel_sizes.Z if im3.physical_pixel_sizes.Z else 1.0}
-    generate_metadata(image_name=output_filename,
-                      shape={"t":numT, "c":1, "z":im3.dims.Z, "y":im3.dims.Y, "x":im3.dims.X},
-                      # shape={"t":data.shape[0], "c":data.shape[1], "z":data.shape[2], "y":data.shape[3], "x":data.shape[4]},
-                      dims=("t", "c", "z", "y", "x"),
-                      physicalscale = physical_scale,
-                      units={"x":"micrometer", "y":"micrometer", "z":"micrometer", "t":"millisecond"},
-                      levels= [{"x":inv_scaling["x"]**i, "y":inv_scaling["y"]**i, "z":1, "t":1, "c":1} for i in range(nlevels)],
-                      channel_names=channel_names, channel_colors=channel_colors, group=root)
+    physical_scale = {
+        "c": 1,
+        "t": 1,
+        "x": pixel_size * im3.physical_pixel_sizes.X
+        if im3.physical_pixel_sizes.X
+        else pixel_size,
+        "y": pixel_size * im3.physical_pixel_sizes.Y
+        if im3.physical_pixel_sizes.Y
+        else pixel_size,
+        "z": pixel_size * im3.physical_pixel_sizes.Z
+        if im3.physical_pixel_sizes.Z
+        else pixel_size,
+    }
+    generate_metadata(
+        image_name=output_filename,
+        shape={"t": numT, "c": 1, "z": im3.dims.Z, "y": im3.dims.Y, "x": im3.dims.X},
+        # shape={"t":data.shape[0], "c":data.shape[1], "z":data.shape[2], "y":data.shape[3], "x":data.shape[4]},
+        dims=("t", "c", "z", "y", "x"),
+        physicalscale=physical_scale,
+        units={
+            "x": "micrometer",
+            "y": "micrometer",
+            "z": "micrometer",
+            "t": "millisecond",
+        },
+        levels=[
+            {
+                "x": inv_scaling["x"] ** i,
+                "y": inv_scaling["y"] ** i,
+                "z": 1,
+                "t": 1,
+                "c": 1,
+            }
+            for i in range(nlevels)
+        ],
+        channel_names=channel_names,
+        channel_colors=channel_colors,
+        group=root,
+    )
     # dims= ("t", "c", "z", "y", "x"),
     # shape = {"t":im3.dims.T, "c":im3.dims.C, "z":im3.dims.Z, "y":im3.dims.Y, "x":im3.dims.X}
     # scale = {"c":1, "t":1, "x":im3.physical_pixel_sizes.X, "y":im3.physical_pixel_sizes.Y, "z":im3.physical_pixel_sizes.Z},
     # levels = [{"x":2, "y":2, "z":1, "t":1, "c":1}, ...]
-
