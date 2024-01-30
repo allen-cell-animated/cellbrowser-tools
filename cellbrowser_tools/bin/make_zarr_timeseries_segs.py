@@ -394,10 +394,15 @@ if __name__ == "__main__":
 
     filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425_L02-01_processed.czi"
     filepath = normalize_path(filepath)
-    # info = {"fmsid": "c394ea65357e4c0384a9df2e74ae48de"}
+    # info = {"fmsid": "c394ea65357e4c0384a9df2e74ae48de"}  # LLS 3
     # filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425-L03-01_processed.czi"
-    info = {"fmsid": "0709695427454d788852ca50b838cf5b"}  # baby_bear
-    pixel_size = 0.108
+
+    info = {
+        "fmsid": "0709695427454d788852ca50b838cf5b",
+        "name": "baby_bear",
+        "pixel_size": 0.108,
+    }
+
     # info = {"fmsid": "22e6f39eef954b7a99575676377da47f"} # goldilocks
     # info = {"fmsid": "9dbaf24f86124b96bd5f5b10ce9f892f"} # mama_bear
 
@@ -405,6 +410,8 @@ if __name__ == "__main__":
     datadir = None
 
     path = fms_id_to_path(info["fmsid"])
+    output_filename = info.name  # os.path.splitext(os.path.basename(filepath))[0]
+    pixel_size = info["pixel_size"]
 
     df = pandas.read_csv(path, nrows=None).set_index("CellId")
     df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
@@ -412,13 +419,14 @@ if __name__ == "__main__":
     seg_paths = df.seg_full_zstack_path.unique()
     raw_paths = df.raw_full_zstack_path.unique()
 
-    im = BioImage(filepath, reader=CziReader)
-    print(str(im.dims.T) + " original timepoints found")
+    # im = BioImage(filepath, reader=CziReader)
+    # print(str(im.dims.T) + " original timepoints found")
     print(str(len(seg_paths)) + " segmentation timepoints found")
-    print("Image Info: ")
-    print(str(im.dims.X))
-    print(str(im.dims.Y))
-    print(str(im.dims.Z))
+    print(str(len(raw_paths)) + " raw timepoints found")
+    # print("Image Info: ")
+    # print(str(im.dims.X))
+    # print(str(im.dims.Y))
+    # print(str(im.dims.Z))
     im2 = BioImage(seg_paths[0])
     print("Segmentation Info: ")
     print(str(im2.dims.X))
@@ -430,7 +438,7 @@ if __name__ == "__main__":
     print(str(im3.dims.Y))
     print(str(im3.dims.Z))
 
-    numT = len(seg_paths)  # min(len(seg_paths), 2)
+    numT = min(len(seg_paths), len(raw_paths))  # min(len(seg_paths), 2)
 
     # make dask chunks large.
     # dask best practices say to use at least 100MB per chunk.
@@ -490,7 +498,6 @@ if __name__ == "__main__":
     print(data.shape)
 
     output_bucket = "animatedcell-test-data"
-    output_filename = os.path.splitext(os.path.basename(filepath))[0]
 
     ####################
     ## USE NGFF_ZARR
