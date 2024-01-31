@@ -620,7 +620,7 @@ if __name__ == "__main__":
         )
 
     # loop over T in batches
-    log.debug("Starting loop over T")
+    log.info("Starting loop over T")
     tbatch = 4
     for i in range(numT // tbatch):
         start_t = i * tbatch
@@ -661,7 +661,7 @@ if __name__ == "__main__":
             )
             ti = resize(ti, nextshape, order=0)
             ti = ti.astype(dtype)
-        log.debug(f"Completed {start_t} to {end_t}")
+        log.info(f"Completed {start_t} to {end_t}")
         # ti = data[i]
         # # ti is level0's CZYX data.
         # # we can write it right now and then downsample
@@ -676,7 +676,7 @@ if __name__ == "__main__":
         #                  int(ti.shape[3]/inv_scaling["x"]))
         #     ti = resize(ti, nextshape, order=0)
         #     ti = ti.astype("uint16")
-    log.debug("Finished loop over T")
+    log.info("Finished loop over T")
 
     # write metadata
     physical_scale = {
