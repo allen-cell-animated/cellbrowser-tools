@@ -462,8 +462,8 @@ if __name__ == "__main__":
                 "t": 1,
                 "c": 1,
                 "z": (int(inv_scaling["y"] * inv_scaling["x"]) ** i),
-                "y": int(im3.dims.Y * (scaling["y"] ** i)),
-                "x": int(im3.dims.X * (scaling["x"] ** i)),
+                "y": int(im.dims.Y * (scaling["y"] ** i)),
+                "x": int(im.dims.X * (scaling["x"] ** i)),
             }
         )
         zarr_chunk_dims_lists.append(
@@ -471,8 +471,8 @@ if __name__ == "__main__":
                 1,
                 1,
                 (int(inv_scaling["y"] * inv_scaling["x"]) ** i),
-                int(im3.dims.Y * (scaling["y"] ** i)),
-                int(im3.dims.X * (scaling["x"] ** i)),
+                int(im.dims.Y * (scaling["y"] ** i)),
+                int(im.dims.X * (scaling["x"] ** i)),
             ]
         )
 
@@ -542,10 +542,11 @@ if __name__ == "__main__":
     # construct some per-channel lists to feed in to the writer.
     # hardcoding to 2 for now
     channel_colors = [
-        0xFF0000,
+        0xFFFFFF
+        for i in range(im.dims.C)
         # 0x00FF00
     ]
-    channel_names = ["raw"]  # , "seg"]
+    channel_names = im.channel_names  # ["raw"]  # , "seg"]
 
     ####################
     ## USE BIOIO
