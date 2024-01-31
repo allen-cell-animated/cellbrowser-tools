@@ -386,16 +386,26 @@ if __name__ == "__main__":
     # info = {"fmsid": "c394ea65357e4c0384a9df2e74ae48de"}  # lattice3
     # filepath = "\\\\allen\\aics\\assay-dev\\MicroscopyData\\Leveille\\2023\\20230425\\20230425-L03-01_processed.czi"
 
-    info = {
-        "fmsid": "0709695427454d788852ca50b838cf5b",
-        "name": "baby_bear",
-        "pixel_size": 0.108,
-        "original_fmsid": "7191a69c6d8f4f37b7a43cc962c72935",
-        "scene": 8,
-    }
-
-    # info = {"fmsid": "22e6f39eef954b7a99575676377da47f"} # goldilocks
-    # info = {"fmsid": "9dbaf24f86124b96bd5f5b10ce9f892f"} # mama_bear
+    # info = {
+    #     "fmsid": "0709695427454d788852ca50b838cf5b",
+    #     "name": "baby_bear",
+    #     "pixel_size": 0.108,
+    #     "original_fmsid": "7191a69c6d8f4f37b7a43cc962c72935",
+    #     "scene": 8,
+    # }
+    info = (
+        {
+            "name": "goldilocks",
+            "fmsid": "22e6f39eef954b7a99575676377da47f",
+            "pixel_size": 0.108,
+            "original_fmsid": "7191a69c6d8f4f37b7a43cc962c72935",
+            "scene": 5,
+            "time_interval": 5,  # min
+            "length_threshold": 10.0,  # hours,
+            "experiment": "ZSD-control",
+            "overview": None,
+        },
+    )
 
     # we need to get list of segmentations
     datadir = None
