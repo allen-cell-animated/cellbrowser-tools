@@ -412,40 +412,41 @@ if __name__ == "__main__":
 
     original_path = fms_id_to_path(info["original_fmsid"])
     path = fms_id_to_path(info["fmsid"])
-    df = pandas.read_csv(path, nrows=None).set_index("CellId")
-    df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
-    df = df.sort_values(by=["index_sequence"])
-    seg_paths = df.seg_full_zstack_path.unique()
-    raw_paths = df.raw_full_zstack_path.unique()
+    # df = pandas.read_csv(path, nrows=None).set_index("CellId")
+    # df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
+    # df = df.sort_values(by=["index_sequence"])
+    # seg_paths = df.seg_full_zstack_path.unique()
+    # raw_paths = df.raw_full_zstack_path.unique()
     im = BioImage(original_path, reader=CziReader)
     im.set_scene(info["scene"])
     original_dims = im.dims
+    numT = im.dims.T
     # print(str(im.dims.T) + " original timepoints found")
-    print(str(len(seg_paths)) + " segmentation timepoints found")
-    print(str(len(raw_paths)) + " raw timepoints found")
-    numT = min(len(seg_paths), len(raw_paths), im.dims.T)
+    # print(str(len(seg_paths)) + " segmentation timepoints found")
+    # print(str(len(raw_paths)) + " raw timepoints found")
+    # numT = min(len(seg_paths), len(raw_paths), im.dims.T)
 
     output_filename = info["name"]  # os.path.splitext(os.path.basename(filepath))[0]
     output_filename = (
         os.path.splitext(os.path.basename(original_path))[0] + "_" + info["name"]
     )
 
-    pixel_size = info["pixel_size"]
+    pixel_size = 1.0  # info["pixel_size"]
 
     print("Image Info: ")
     print(str(im.dims.X))
     print(str(im.dims.Y))
     print(str(im.dims.Z))
-    im2 = BioImage(seg_paths[0])
-    print("Segmentation Info: ")
-    print(str(im2.dims.X))
-    print(str(im2.dims.Y))
-    print(str(im2.dims.Z))
-    im3 = BioImage(raw_paths[0])
-    print("Raw cropped Info: ")
-    print(str(im3.dims.X))
-    print(str(im3.dims.Y))
-    print(str(im3.dims.Z))
+    # im2 = BioImage(seg_paths[0])
+    # print("Segmentation Info: ")
+    # print(str(im2.dims.X))
+    # print(str(im2.dims.Y))
+    # print(str(im2.dims.Z))
+    # im3 = BioImage(raw_paths[0])
+    # print("Raw cropped Info: ")
+    # print(str(im3.dims.X))
+    # print(str(im3.dims.Y))
+    # print(str(im3.dims.Z))
 
     # make dask chunks large.
     # dask best practices say to use at least 100MB per chunk.
@@ -595,7 +596,7 @@ if __name__ == "__main__":
     root = zarr.group(store=output_store, overwrite=True)
 
     # set up levels
-    dtype = im3.dtype
+    dtype = im.dtype
     lvl_shape = (numT, im.dims.C, im.dims.Z, im.dims.Y, im.dims.X)  # data.shape
     lvls = []
     for i in range(nlevels):
@@ -681,14 +682,14 @@ if __name__ == "__main__":
     physical_scale = {
         "c": 1,
         "t": 1,
-        "x": pixel_size * im3.physical_pixel_sizes.X
-        if im3.physical_pixel_sizes.X
+        "x": pixel_size * im.physical_pixel_sizes.X
+        if im.physical_pixel_sizes.X
         else pixel_size,
-        "y": pixel_size * im3.physical_pixel_sizes.Y
-        if im3.physical_pixel_sizes.Y
+        "y": pixel_size * im.physical_pixel_sizes.Y
+        if im.physical_pixel_sizes.Y
         else pixel_size,
-        "z": pixel_size * im3.physical_pixel_sizes.Z
-        if im3.physical_pixel_sizes.Z
+        "z": pixel_size * im.physical_pixel_sizes.Z
+        if im.physical_pixel_sizes.Z
         else pixel_size,
     }
     generate_metadata(
