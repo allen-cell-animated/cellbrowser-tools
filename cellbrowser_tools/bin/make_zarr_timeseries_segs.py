@@ -693,7 +693,13 @@ if __name__ == "__main__":
     }
     generate_metadata(
         image_name=output_filename,
-        shape={"t": numT, "c": 1, "z": im3.dims.Z, "y": im3.dims.Y, "x": im3.dims.X},
+        shape={
+            "t": numT,
+            "c": im.dims.C,
+            "z": im.dims.Z,
+            "y": im.dims.Y,
+            "x": im.dims.X,
+        },
         # shape={"t":data.shape[0], "c":data.shape[1], "z":data.shape[2], "y":data.shape[3], "x":data.shape[4]},
         dims=("t", "c", "z", "y", "x"),
         physicalscale=physical_scale,
