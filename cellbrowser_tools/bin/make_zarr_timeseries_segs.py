@@ -410,8 +410,8 @@ if __name__ == "__main__":
     # we need to get list of segmentations
     datadir = None
 
-    original_path = fms_id_to_path(info["original_fmsid"])
-    path = fms_id_to_path(info["fmsid"])
+    original_path = fms_id_to_path(fms_id=info["original_fmsid"])
+    path = fms_id_to_path(fms_id=info["fmsid"])
     # df = pandas.read_csv(path, nrows=None).set_index("CellId")
     # df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
     # df = df.sort_values(by=["index_sequence"])
