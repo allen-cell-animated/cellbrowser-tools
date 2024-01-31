@@ -426,7 +426,9 @@ if __name__ == "__main__":
     numT = min(len(seg_paths), len(raw_paths), im.dims.T)
 
     output_filename = info["name"]  # os.path.splitext(os.path.basename(filepath))[0]
-    output_filename = os.path.splitext(os.path.basename(original_path))[0]
+    output_filename = (
+        os.path.splitext(os.path.basename(original_path))[0] + "_" + info["name"]
+    )
 
     pixel_size = info["pixel_size"]
 
