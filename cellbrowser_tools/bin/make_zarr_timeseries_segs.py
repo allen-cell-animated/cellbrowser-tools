@@ -19,6 +19,7 @@ from bioio.writers import OmeZarrWriter
 from bioio import BioImage
 from bioio.plugins import get_plugins, dump_plugins
 from bioio_czi import Reader as CziReader
+from bioio_nd2 import Reader as ND2Reader
 from bioio_ome_tiff import Reader as TiffReader
 from aicsfiles import fms, FileLevelMetadataKeys
 
@@ -408,14 +409,21 @@ if __name__ == "__main__":
     # we need to get list of segmentations
     datadir = None
 
-    original_path = fms_id_to_path(fms_id=info["original_fmsid"])
-    path = fms_id_to_path(fms_id=info["fmsid"])
+    # path = fms_id_to_path(fms_id=info["fmsid"])
     # df = pandas.read_csv(path, nrows=None).set_index("CellId")
     # df = df[["index_sequence", "seg_full_zstack_path", "raw_full_zstack_path"]]
     # df = df.sort_values(by=["index_sequence"])
     # seg_paths = df.seg_full_zstack_path.unique()
     # raw_paths = df.raw_full_zstack_path.unique()
-    im = BioImage(original_path, reader=CziReader)
+
+    # original_path = fms_id_to_path(fms_id=info["original_fmsid"])
+    # im = BioImage(original_path, reader=CziReader)
+
+    original_path = (
+        "/allen/aics/microscopy/Antoine/Nikon test/3500006064_20X_water002.nd2"
+    )
+    im = BioImage(original_path, reader=ND2Reader)
+
     im.set_scene(info["scene"])
     original_dims = im.dims
     numT = im.dims.T
