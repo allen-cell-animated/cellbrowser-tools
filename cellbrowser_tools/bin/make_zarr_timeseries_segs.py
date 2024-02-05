@@ -5,52 +5,25 @@ import os
 from typing import Tuple, Any, List, Optional
 import atexit
 import signal
-import sys
-from pathlib import Path
-from dataclasses import asdict
 import logging
 
 # import pathlib
 # from pathlib import Path
 import s3fs
-import bioio
+
 from bioio_base.dimensions import DimensionNames
-from bioio.writers import OmeZarrWriter
 from bioio import BioImage
-from bioio.plugins import get_plugins, dump_plugins
-from bioio_czi import Reader as CziReader
-from bioio_nd2 import Reader as ND2Reader
-from bioio_ome_tiff import Reader as TiffReader
+
 from aicsfiles import fms, FileLevelMetadataKeys
 
 import numpy as np
 import pandas
-import dask
-from dask import array as da
-from zarr.storage import DirectoryStore, FSStore
-import zarr
-import skimage
 
 from cellbrowser_tools.dataHandoffUtils import normalize_path
 from cellbrowser_tools.fms_util import fms_id_to_path
 from cellbrowser_tools.ome_zarr_writer import OmeZarrWriter
 
-from ngff_zarr import config, to_ngff_image, to_multiscales, to_ngff_zarr, Methods
-from ngff_zarr.rich_dask_progress import NgffProgress
-from ngff_zarr.zarr_metadata import Metadata, Axis, Scale, Translation, Dataset
-from rich.console import Console
-from rich.live import Live
-from rich.panel import Panel
-from rich.pretty import Pretty
-from rich.progress import (
-    MofNCompleteColumn,
-    SpinnerColumn,
-    TimeElapsedColumn,
-)
-from rich.progress import (
-    Progress as RichProgress,
-)
-from rich.spinner import Spinner
+from ngff_zarr import config
 
 log = logging.getLogger(__name__)
 
@@ -141,16 +114,16 @@ if __name__ == "__main__":
     # seg_paths = df.seg_full_zstack_path.unique()
     # raw_paths = df.raw_full_zstack_path.unique()
 
-    # original_path = fms_id_to_path(fms_id=info["original_fmsid"])
-    # im = BioImage(original_path, reader=CziReader)
-
-    original_path = (
-        "/allen/aics/microscopy/Antoine/Nikon test/3500006064_20X_water002.nd2"
-    )
-    im = BioImage(original_path, reader=ND2Reader)
+    original_path = fms_id_to_path(fms_id=info["original_fmsid"])
+    im = BioImage(original_path)
     im.set_scene(info["scene"])
+
+    # original_path = (
+    #     "/allen/aics/microscopy/Antoine/Nikon test/3500006064_20X_water002.nd2"
+    # )
+    # im = BioImage(original_path, reader=ND2Reader)
     original_dims = im.dims
-    numT = im.dims.T
+
     # print(str(im.dims.T) + " original timepoints found")
     # print(str(len(seg_paths)) + " segmentation timepoints found")
     # print(str(len(raw_paths)) + " raw timepoints found")
@@ -161,7 +134,7 @@ if __name__ == "__main__":
         os.path.splitext(os.path.basename(original_path))[0] + "_" + info["name"]
     )
 
-    pixel_size = 1.0  # info["pixel_size"]
+    pixel_size = info["pixel_size"]
 
     print("Image Info: ")
     print(str(im.dims.X))
