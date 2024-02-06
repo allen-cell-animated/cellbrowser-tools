@@ -323,7 +323,7 @@ class OmeZarrWriter:
         # create a group with all the levels
         self.root = zarr.group(store=self.store, overwrite=True)
         # pre-create all levels here?
-        self._create_levels(self.root)
+        self._create_levels(root=self.root, level_shapes=shapes, level_chunk_sizes=chunk_sizes, dtype=dtype)
 
 
     def _create_levels(self, root, level_shapes, level_chunk_sizes, dtype):
