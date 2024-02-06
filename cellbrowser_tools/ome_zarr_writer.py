@@ -10,7 +10,7 @@ import logging
 import dask.array as da
 import skimage.transform
 
-from bioio import BioImage
+from aicsimageio import AICSImage as BioImage
 from ngff_zarr.zarr_metadata import Metadata, Axis, Scale, Translation, Dataset
 
 log = logging.getLogger(__name__)
@@ -340,7 +340,7 @@ class OmeZarrWriter:
         dtype = data_tczyx.dtype
         if len(data_tczyx.shape) != 5:
             raise ValueError("data_tczyx must be 5D")
-        if len(data_tczyx[0]) != end_t-start_t:
+        if len(data_tczyx) != end_t-start_t:
             raise ValueError("data_tczyx must have the same T length as end_t-start_t")
 
         # write level 0 first
