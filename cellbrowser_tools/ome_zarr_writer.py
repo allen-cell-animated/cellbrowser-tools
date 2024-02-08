@@ -352,7 +352,6 @@ class OmeZarrWriter:
         # downsample to next level then write
         for j in range(1, len(self.levels)):
             # downsample to next level
-            # import pdb; pdb.set_trace()
             nextshape = (end_t-start_t,)+self.levels[j].shape[1:]
             data_tczyx = resize(data_tczyx, nextshape, order=0)
             data_tczyx = data_tczyx.astype(dtype)
