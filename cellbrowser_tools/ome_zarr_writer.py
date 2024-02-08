@@ -340,7 +340,7 @@ class OmeZarrWriter:
         dtype = data_tczyx.dtype
         if len(data_tczyx.shape) != 5:
             raise ValueError("data_tczyx must be 5D")
-        if len(data_tczyx[0]) != end_t-start_t:
+        if data_tczyx.shape[0] != end_t-start_t:
             raise ValueError("data_tczyx must have the same T length as end_t-start_t")
 
         # write level 0 first
