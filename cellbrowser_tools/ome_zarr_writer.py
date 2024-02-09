@@ -393,7 +393,7 @@ class OmeZarrWriter:
         :param tbatch: The number of T to write at a time.
         """
         # loop over T in batches
-        numT = im.dims.T
+        numT = len(paths)
         log.info("Starting loop over T")
         for i in range(numT // tbatch):
             start_t = i * tbatch
