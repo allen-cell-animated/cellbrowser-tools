@@ -419,11 +419,12 @@ class OmeZarrWriter:
                 lvl0_shape[4]/lvl_shape[4])
 
     def write_metadata(self, 
-                       image_name:str,
-                       channel_names:List[str],
-                       physical_dims:dict, # {"x":0.1, "y", 0.1, "z", 0.3, "t": 5.0}
-                       physical_units:dict, # {"x":"micrometer", "y":"micrometer", "z":"micrometer", "t":"minute"}
-                       ):
+        image_name:str,
+        channel_names:List[str],
+        physical_dims:dict, # {"x":0.1, "y", 0.1, "z", 0.3, "t": 5.0}
+        physical_units:dict, # {"x":"micrometer", "y":"micrometer", "z":"micrometer", "t":"minute"},
+        channel_colors:List[str]
+        ):
         """
         Write the metadata.
         :param image_name: The image name.
@@ -486,10 +487,11 @@ class OmeZarrWriter:
             shapedict["z"] if "z" in shapedict else 1,
             image_name,
             channel_names=channel_names,  # assumes we have written all channels!
-            channel_colors=[],  # type: ignore
+            channel_colors=channel_colors,  # type: ignore
             # TODO: Rely on user to supply the per-channel min/max.
             channel_minmax=[(0.0, 1.0) for i in range(shapedict["c"] if "c" in shapedict else 1)],
         )
+
         self.root.attrs["omero"] = ome_json
 
         return metadata
