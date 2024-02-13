@@ -92,7 +92,7 @@ setup(
             "make_dataset_from_csv=cellbrowser_tools.bin.make_dataset_from_csv:main",
             "make_downloader_manifest=cellbrowser_tools.bin.make_downloader_manifest:main",
             "processImageWithSegmentation=cellbrowser_tools.bin.processImageWithSegmentation:main",
-            "make_zarr=cellbrowser_tools.bin.make_zarr",
+            "make_zarr=cellbrowser_tools.bin.make_zarr:main",
         ],
     },
     install_requires=requirements,
