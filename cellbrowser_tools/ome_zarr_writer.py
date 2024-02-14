@@ -369,7 +369,7 @@ class OmeZarrWriter:
         log.info(f"Completed {start_t} to {end_t}")
 
 
-    def write_t_batches(self, im: BioImage, tbatch:int=4):
+    def write_t_batches(self, im: BioImage, tbatch:int=4, debug:bool=False):
         """
         Write the image in batches of T.
         :param im: The BioImage object.
@@ -377,6 +377,8 @@ class OmeZarrWriter:
         """
         # loop over T in batches
         numT = im.dims.T
+        if debug:
+            numT = np.min([5, numT])
         log.info("Starting loop over T")
         for i in range(numT // tbatch):
             start_t = i * tbatch
@@ -386,7 +388,7 @@ class OmeZarrWriter:
             self._downsample_and_write_batch_t(ti, start_t, end_t)
         log.info("Finished loop over T")
 
-    def write_t_batches_image_sequence(self, paths: List[str], tbatch:int=4):
+    def write_t_batches_image_sequence(self, paths: List[str], tbatch:int=4, debug:bool=False):
         """
         Write the image in batches of T.
         :param paths: The list of file paths, one path per T.
@@ -394,6 +396,8 @@ class OmeZarrWriter:
         """
         # loop over T in batches
         numT = im.dims.T
+        if debug:
+            numT = np.min([5, numT])
         log.info("Starting loop over T")
         for i in range(numT // tbatch):
             start_t = i * tbatch
