@@ -10,7 +10,7 @@ import logging
 import dask.array as da
 import skimage.transform
 
-from aicsimageio import AICSImage as BioImage
+from bioio import BioImage
 from ngff_zarr.zarr_metadata import Metadata, Axis, Scale, Translation, Dataset
 
 log = logging.getLogger(__name__)
