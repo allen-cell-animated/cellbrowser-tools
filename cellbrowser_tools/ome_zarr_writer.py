@@ -331,7 +331,7 @@ class OmeZarrWriter:
         for i in range(len(level_shapes)):
             lvl = root.zeros(
                 str(i), shape=level_shapes[i], chunks=level_chunk_sizes[i], dtype=dtype
-            ) if root else None
+            ) if root is not None else None
             level = ZarrLevel(level_shapes[i], level_chunk_sizes[i], dtype, lvl)
             self.levels.append(level)
 
