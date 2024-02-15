@@ -422,21 +422,21 @@ class OmeZarrWriter:
                 lvl0_shape[3]/lvl_shape[3], 
                 lvl0_shape[4]/lvl_shape[4])
 
-    def write_metadata(self, 
+    def generate_metadata(self, 
         image_name:str,
         channel_names:List[str],
         physical_dims:dict, # {"x":0.1, "y", 0.1, "z", 0.3, "t": 5.0}
         physical_units:dict, # {"x":"micrometer", "y":"micrometer", "z":"micrometer", "t":"minute"},
-        channel_colors:List[str]
+        channel_colors:List[str],
+        shape:Tuple[int],
         ):
         """
-        Write the metadata.
+        Build a metadata dict suitable for writing to ome-zarr attrs.
         :param image_name: The image name.
         :param channel_names: The channel names.
         :param physical_dims: for each physical dimension, include a scale factor.  E.g. {"x":0.1, "y", 0.1, "z", 0.3, "t": 5.0}
         :param physical_units: For each physical dimension, include a unit string. E.g. {"x":"micrometer", "y":"micrometer", "z":"micrometer", "t":"minute"}
         """
-        # write metadata
         dims= ("t", "c", "z", "y", "x")
         axes = []
         for dim in dims:
@@ -481,10 +481,11 @@ class OmeZarrWriter:
 
         metadata_dict = asdict(metadata)
         metadata_dict = _pop_metadata_optionals(metadata_dict)
-        self.root.attrs["multiscales"] = [metadata_dict]
 
         # get the total shape as dict:
-        shapedict = dim_tuple_to_dict(self.levels[0].shape)
+        if shape is None:
+            shape = self.levels[0].shape
+        shapedict = dim_tuple_to_dict(shape)
 
         # add the omero data
         ome_json = build_ome(
@@ -496,10 +497,19 @@ class OmeZarrWriter:
             channel_minmax=[(0.0, 1.0) for i in range(shapedict["c"] if "c" in shapedict else 1)],
         )
 
-        self.root.attrs["omero"] = ome_json
+        ome_zarr_metadata = {
+            "multiscales"  : [metadata_dict],
+            "omero"        : ome_json
+        }
+        return ome_zarr_metadata
 
-        return metadata
-
+    def write_metadata(self, metadata:dict):
+        """
+        Write the metadata.
+        :param metadata: The metadata dict. Expected to contain a multiscales array and omero dict
+        """
+        self.root.attrs["multiscales"] = metadata["multiscales"]
+        self.root.attrs["omero"] = metadata["omero"]
 
 
 # shapes = compute_level_shapes((500, 4, 150, 2000, 2000),(1,1,2,2,2), 5)
