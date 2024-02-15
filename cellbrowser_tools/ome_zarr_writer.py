@@ -427,7 +427,8 @@ class OmeZarrWriter:
         channel_names:List[str],
         physical_dims:dict, # {"x":0.1, "y", 0.1, "z", 0.3, "t": 5.0}
         physical_units:dict, # {"x":"micrometer", "y":"micrometer", "z":"micrometer", "t":"minute"},
-        channel_colors:List[str]
+        channel_colors:List[str],
+        shape:Tuple[int],
         ):
         """
         Build a metadata dict suitable for writing to ome-zarr attrs.
@@ -482,7 +483,9 @@ class OmeZarrWriter:
         metadata_dict = _pop_metadata_optionals(metadata_dict)
 
         # get the total shape as dict:
-        shapedict = dim_tuple_to_dict(self.levels[0].shape)
+        if shape is None:
+            shape = self.levels[0].shape
+        shapedict = dim_tuple_to_dict(shape)
 
         # add the omero data
         ome_json = build_ome(
