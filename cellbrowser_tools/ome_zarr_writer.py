@@ -392,7 +392,7 @@ class OmeZarrWriter:
     def write_t_batches_image_sequence(self, paths: List[str], tbatch:int=4, debug:bool=False):
         """
         Write the image in batches of T.
-        :param paths: The list of file paths, one pat   h per T.
+        :param paths: The list of file paths, one path per T.
         :param tbatch: The number of T to write at a time.
         """
         # loop over T in batches
