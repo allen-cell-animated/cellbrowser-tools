@@ -1,5 +1,5 @@
 import zarr
-from zarr.storage import DirectoryStore, FSStore
+from zarr.storage import DirectoryStore, FSStore, default_compressor
 
 from typing import List, Tuple, Any
 from dataclasses import dataclass, asdict
@@ -300,7 +300,7 @@ class OmeZarrWriter:
         self.store : zarr.Store = None
         self.root : zarr.hierarchy.Group = None
 
-    def init_store(self, output_path:str, shapes:List[Tuple[int]], chunk_sizes:List[Tuple[int]], dtype:np.dtype):
+    def init_store(self, output_path:str, shapes:List[Tuple[int]], chunk_sizes:List[Tuple[int]], dtype:np.dtype, compressor = default_compressor):
         """
         Initialize the store.
         :param output_path: The output path. If it begins with "s3://" or "gs://", it is assumed to be a remote store. Credentials required to be provided externally.
@@ -323,14 +323,14 @@ class OmeZarrWriter:
         # create a group with all the levels
         self.root = zarr.group(store=self.store, overwrite=True)
         # pre-create all levels here?
-        self._create_levels(root=self.root, level_shapes=shapes, level_chunk_sizes=chunk_sizes, dtype=dtype)
+        self._create_levels(root=self.root, level_shapes=shapes, level_chunk_sizes=chunk_sizes, dtype=dtype, compressor=compressor)
 
 
-    def _create_levels(self, root, level_shapes, level_chunk_sizes, dtype):
+    def _create_levels(self, root, level_shapes, level_chunk_sizes, dtype, compressor=default_compressor):
         self.levels = []
         for i in range(len(level_shapes)):
             lvl = root.zeros(
-                str(i), shape=level_shapes[i], chunks=level_chunk_sizes[i], dtype=dtype
+                str(i), shape=level_shapes[i], chunks=level_chunk_sizes[i], dtype=dtype, compressor=compressor
             ) if root is not None else None
             level = ZarrLevel(level_shapes[i], level_chunk_sizes[i], dtype, lvl)
             self.levels.append(level)
@@ -345,7 +345,7 @@ class OmeZarrWriter:
 
         # write level 0 first
         data_tczyx = data_tczyx.persist()
-        data_tczyx.compute()
+        # data_tczyx.compute()
         for k in range(start_t, end_t):
             self.levels[0].zarray[k] = data_tczyx[k - start_t]
 
@@ -356,7 +356,8 @@ class OmeZarrWriter:
             data_tczyx = resize(data_tczyx, nextshape, order=0)
             data_tczyx = data_tczyx.astype(dtype)
             data_tczyx = data_tczyx.persist()
-            data_tczyx.compute()
+            # data_tczyx.compute()
+
             # write ti to zarr
             # for some reason this is not working: not allowed to write in this way to a non-memory store
             # lvls[j][start_t:end_t] = ti[:]
