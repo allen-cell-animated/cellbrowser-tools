@@ -381,12 +381,13 @@ class OmeZarrWriter:
         if debug:
             numT = np.min([5, numT])
         log.info("Starting loop over T")
-        for i in range(numT // tbatch):
-            start_t = i * tbatch
-            end_t = min((i + 1) * tbatch, numT)
-            # assume start t and end t are in range (caller should guarantee this)
-            ti = im.get_image_dask_data("TCZYX", T=slice(start_t, end_t))
-            self._downsample_and_write_batch_t(ti, start_t, end_t)
+        for i in np.arange(0, numT+1, tbatch):
+            start_t = i
+            end_t = min(i + tbatch, numT)
+            if end_t > start_t:
+                # assume start t and end t are in range (caller should guarantee this)
+                ti = im.get_image_dask_data("TCZYX", T=slice(start_t, end_t))
+                self._downsample_and_write_batch_t(ti, start_t, end_t)
         log.info("Finished loop over T")
 
     def write_t_batches_image_sequence(self, paths: List[str], tbatch:int=4, debug:bool=False):
@@ -400,18 +401,17 @@ class OmeZarrWriter:
         if debug:
             numT = np.min([5, numT])
         log.info("Starting loop over T")
-        for i in range(numT // tbatch):
-            start_t = i * tbatch
-            end_t = min((i + 1) * tbatch, numT)
-
-            # read batch into dask array
-            ti = []
-            for j in range(start_t, end_t):
-                im = BioImage(paths[j])
-                ti.append(im.get_image_dask_data("CZYX"))
-            ti = da.stack(ti, axis=0)
-
-            self._downsample_and_write_batch_t(ti, start_t, end_t)
+        for i in np.arange(0, numT+1, tbatch):
+            start_t = i
+            end_t = min(i + tbatch, numT)
+            if end_t > start_t:
+                # read batch into dask array
+                ti = []
+                for j in range(start_t, end_t):
+                    im = BioImage(paths[j])
+                    ti.append(im.get_image_dask_data("CZYX"))
+                ti = da.stack(ti, axis=0)
+                self._downsample_and_write_batch_t(ti, start_t, end_t)
         log.info("Finished loop over T")
 
     def _get_scale_ratio(self, level:int)->Tuple[float]:
