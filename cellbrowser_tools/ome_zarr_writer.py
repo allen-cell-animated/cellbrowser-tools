@@ -409,7 +409,7 @@ class OmeZarrWriter:
                 ti = []
                 for j in range(start_t, end_t):
                     im = BioImage(paths[j])
-                    ti.append(im.get_image_dask_data("CZYX"), C=channels)
+                    ti.append(im.get_image_dask_data("CZYX", C=channels))
                 ti = da.stack(ti, axis=0)
                 self._downsample_and_write_batch_t(ti, start_t, end_t)
         log.info("Finished loop over T")
