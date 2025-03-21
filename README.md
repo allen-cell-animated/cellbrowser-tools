@@ -12,6 +12,10 @@ Results are all contained in one output directory ready to be uploaded for deplo
 
 ## Installation
 
+Create a conda env called cellbrowser-tools.
+
+conda install -c conda-forge numcodecs imagecodecs
+
 Clone the repo.  
 `pip install -e .`
 
@@ -35,6 +39,7 @@ Workflow:
 
 Test dataset from csv instead of db query
 \\allen\aics\assay-dev\computational\data\dna_cell_seg_on_production_data\production_run_test\mergedataset\manifest.csv
+/allen/aics/assay-dev/computational/data/dna_cell_seg_on_production_data/production_run/mergedataset/manifest.csv
 
 3. Generate dataset. This step will prepare every image, validate the final images, and then compile some aggregations including a csv manifest for deployment and the final CFE input dataset in a json file.
    run:
@@ -64,3 +69,12 @@ Test dataset from csv instead of db query
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for information related to developing the code.
+
+make_images --input_manifest //allen/aics/gene-editing/FISH/2019/chaos/data/raw_merged_ometiff/manifest_cfe_live_for_dan.csv --output_dir //allen/aics/animated-cell/Allen-Cell-Explorer/cellsystems-2021-live --distributed
+
+make_images --input_manifest //allen/aics/assay-dev/computational/data/dna_cell_seg_on_production_data/production_run_test/mergedataset/manifest.csv --output_dir s3://animatedcell-test-data/
+or try
+--output_dir e:\\data\\cellbrowser-tools\\test
+for local testing
+
+make_images --input_manifest //allen/aics/animated-cell/Dan/datasets/drug_pilot/drug_cell_meta_pilot_Danhandoff2023.csv --output_dir s3://animatedcell-test-data/ --distributed

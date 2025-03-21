@@ -1,19 +1,79 @@
 from . import dataset_constants
-from .dataset_constants import DataField
+from .dataset_constants import (
+    DataField,
+    SLURM_SCRIPTS_DIR,
+    SLURM_OUTPUT_DIR,
+    SLURM_ERROR_DIR,
+    DATA_LOG_NAME,
+)
 import json
-from lkaccess import LabKey
-import lkaccess.contexts
+
+# from lkaccess import LabKey
+# import lkaccess.contexts
 import logging
 import os
 import pandas as pd
-from quilt3 import Package
+
+# from quilt3 import Package
 import re
 import sys
+
+from datetime import datetime
+from typing import List
 
 log = logging.getLogger()
 logging.basicConfig(
     level=logging.INFO, format="[%(levelname)4s:%(lineno)4s %(asctime)s] %(message)s"
 )
+
+
+class ActionOptions:
+    """
+    Options for set of files to generate
+    """
+
+    def __init__(
+        self, do_thumbnails: bool = True, do_atlases: bool = True, do_crop: bool = True
+    ):
+        self.do_thumbnails = do_thumbnails
+        self.do_atlases = do_atlases
+        self.do_crop = do_crop
+
+
+class QueryOptions:
+    """
+    Filters / options for the querying of images in a data input manifest csv
+    """
+
+    def __init__(
+        self,
+        cell_lines: List[str] = None,
+        plates: List[str] = None,
+        fovids: List[int] = None,
+        start_date: str = None,
+        end_date: str = None,
+        first_n: int = 0,
+    ):
+        self.cell_lines = cell_lines
+        self.plates = plates
+        self.fovids = fovids
+        self.first_n = first_n
+
+        self._ensureValidDateString(start_date)
+        self._ensureValidDateString(end_date)
+        self.start_date = start_date
+        self.end_date = end_date
+
+    def _ensureValidDateString(self, date: str):
+        if date is None:
+            return
+
+        format = "%Y-%m-%d"  # YYYY-MM-DD
+        try:
+            datetime.strptime(date, format)
+        except ValueError:
+            # built-in error message isn't specific enough
+            raise ValueError("Invalid date format - must be YYYY-MM-DD.")
 
 
 # CAUTION:
@@ -80,19 +140,50 @@ def setup_prefs(json_path):
     prefs["atlas_dir"] = atlas_dir
 
     prefs["sbatch_output"] = os.path.join(
-        prefs["out_status"], prefs["script_dir"], prefs["job_prefs"]["output"]
+        prefs["out_status"], SLURM_SCRIPTS_DIR, SLURM_OUTPUT_DIR
     )
     os.makedirs(os.path.dirname(prefs["sbatch_output"]), exist_ok=True)
 
     prefs["sbatch_error"] = os.path.join(
-        prefs["out_status"], prefs["script_dir"], prefs["job_prefs"]["error"]
+        prefs["out_status"], SLURM_SCRIPTS_DIR, SLURM_ERROR_DIR
     )
     os.makedirs(os.path.dirname(prefs["sbatch_error"]), exist_ok=True)
 
     # record the location of the data object
-    prefs["save_log_path"] = prefs["out_status"] + os.sep + prefs["data_log_name"]
+    prefs["save_log_path"] = prefs["out_status"] + os.sep + DATA_LOG_NAME
 
     return prefs
+
+
+class OutputPaths:
+    def __init__(self, out_dir: os.PathLike) -> None:
+        self.out_dir = out_dir
+        self.status_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.STATUS_DIR)
+        )
+        self.images_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.IMAGES_DIR)
+        )
+        self.thumbs_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.THUMBNAILS_DIR)
+        )
+        self.atlas_dir = self._create_dir(
+            os.path.join(out_dir, dataset_constants.ATLAS_DIR)
+        )
+        self.sbatch_output = self._create_dir(
+            os.path.join(self.status_dir, SLURM_SCRIPTS_DIR, SLURM_OUTPUT_DIR)
+        )
+        self.sbatch_error = self._create_dir(
+            os.path.join(self.status_dir, SLURM_SCRIPTS_DIR, SLURM_ERROR_DIR)
+        )
+        self.save_log_path = os.path.join(self.status_dir, DATA_LOG_NAME)
+
+    def _create_dir(self, d: os.PathLike):
+        if d.startswith("s3:"):
+            return d
+        if not os.path.exists(d):
+            os.makedirs(d)
+        return d
 
 
 def get_cellline_name_from_row(row):
@@ -101,16 +192,17 @@ def get_cellline_name_from_row(row):
 
 # cellline must be 'AICS-#'
 def get_fov_name(fovid, cellline):
-    return f"{cellline}_{fovid}"
+    return f"{fovid}"
 
 
 def get_cell_name(cellid, fovid, cellline):
-    return f"{cellline}_{fovid}_{cellid}"
+    return f"{get_fov_name(fovid, cellline)}_{cellid}"
 
 
 def get_fov_name_from_row(row):
     celllinename = get_cellline_name_from_row(row)
-    fovid = row[DataField.FOVId]
+    # fovid = row[DataField.FOVId]
+    fovid = row["SourceFilename"]
     return get_fov_name(fovid, celllinename)
 
 
@@ -143,9 +235,9 @@ def collect_csv_data_rows(
     df_data_handoff = pd.read_csv(csvpath)
 
     # verify the expected column names in the above query
-    for field in dataset_constants.DataField:
-        if field.value not in df_data_handoff.columns:
-            raise f"Expected {field.value} to be in labkey dataset results."
+    # for field in dataset_constants.DataField:
+    #     if field.value not in df_data_handoff.columns:
+    #         raise ValueError(f"Expected {field.value} to be in labkey dataset results.")
 
     if fovids is not None and len(fovids) > 0:
         df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
@@ -158,9 +250,13 @@ def collect_csv_data_rows(
     log.info("GOT DATA HANDOFF")
 
     # Merge Aligned and Source read path columns
-    df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
-        DataField.AlignedImageReadPath
-    ].combine_first(df_data_handoff[DataField.SourceReadPath])
+    if (
+        "AlignedImageReadPath" in df_data_handoff.columns
+        and "SourceReadPath" not in df_data_handoff.columns
+    ):
+        df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
+            DataField.AlignedImageReadPath
+        ].combine_first(df_data_handoff[DataField.SourceReadPath])
 
     if raw_only:
         return df_data_handoff
@@ -168,17 +264,18 @@ def collect_csv_data_rows(
     # replace any remaining NaNs with None
     df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
 
-    check_dups(df_data_handoff, "CellId")
+    # check_dups(df_data_handoff, "CellId")
 
     print("DONE BUILDING TABLES")
 
     print(list(df_data_handoff.columns))
 
     # verify the expected column names in the above query
-    expected_columns = ["MitoticStateId", "Complete"]
+    expected_columns = []
+    # expected_columns = ["MitoticStateId", "Complete"]
     for field in expected_columns:
         if field not in df_data_handoff.columns:
-            raise f"Expected {field} to be in combined dataset results."
+            raise ValueError(f"Expected {field} to be in combined dataset results.")
 
     # put in string mitotic state names
     def mitotic_id_to_name(row):
@@ -195,115 +292,118 @@ def collect_csv_data_rows(
             return "M4/M5"
         elif mid == 6:
             return "Mitosis"
+        elif mid is None:
+            return ""
         else:
             raise ValueError("Unexpected value for MitoticStateId")
 
-    df_data_handoff["MitoticStateId/Name"] = df_data_handoff.apply(
-        lambda row: mitotic_id_to_name(row), axis=1
-    )
+    if "MitoticStateId" in df_data_handoff.columns:
+        df_data_handoff["MitoticStateId/Name"] = df_data_handoff.apply(
+            lambda row: mitotic_id_to_name(row), axis=1
+        )
 
     log.info("RETURNING COMPLETE DATASET")
     return df_data_handoff
 
 
-def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
-    # lk = LabKey(host="aics")
-    lk = LabKey(server_context=lkaccess.contexts.PROD)
+# def collect_data_rows(fovids=None, raw_only=False, max_rows=None):
+#     # lk = LabKey(host="aics")
+#     lk = LabKey(server_context=lkaccess.contexts.PROD)
 
-    print("REQUESTING DATA HANDOFF")
-    lkdatarows = lk.dataset.get_pipeline_4_production_data()
-    df_data_handoff = pd.DataFrame(lkdatarows)
+#     print("REQUESTING DATA HANDOFF")
+#     lkdatarows = lk.dataset.get_pipeline_4_production_data()
+#     df_data_handoff = pd.DataFrame(lkdatarows)
 
-    # verify the expected column names in the above query
-    for field in dataset_constants.DataField:
-        if field.value not in df_data_handoff.columns:
-            raise f"Expected {field.value} to be in labkey dataset results."
+#     # verify the expected column names in the above query
+#     for field in dataset_constants.DataField:
+#         if field.value not in df_data_handoff.columns:
+#             raise f"Expected {field.value} to be in labkey dataset results."
 
-    if fovids is not None and len(fovids) > 0:
-        df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
+#     if fovids is not None and len(fovids) > 0:
+#         df_data_handoff = df_data_handoff[df_data_handoff["FOVId"].isin(fovids)]
 
-    if max_rows is not None:
-        df_data_handoff = df_data_handoff.head(max_rows)
+#     if max_rows is not None:
+#         df_data_handoff = df_data_handoff.head(max_rows)
 
-    print("GOT DATA HANDOFF")
+#     print("GOT DATA HANDOFF")
 
-    # Merge Aligned and Source read path columns
-    df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
-        DataField.AlignedImageReadPath
-    ].combine_first(df_data_handoff[DataField.SourceReadPath])
+#     # Merge Aligned and Source read path columns
+#     df_data_handoff[DataField.SourceReadPath] = df_data_handoff[
+#         DataField.AlignedImageReadPath
+#     ].combine_first(df_data_handoff[DataField.SourceReadPath])
 
-    if raw_only:
-        return df_data_handoff
+#     if raw_only:
+#         return df_data_handoff
 
-    # get mitotic state name for all cells
-    mitoticdata = lk.select_rows_as_list(
-        schema_name="processing",
-        query_name="MitoticAnnotation",
-        sort="MitoticAnnotation",
-        # columns=["CellId", "MitoticStateId/Name", "Complete"]
-        columns=["CellId", "MitoticStateId/Name"],
-    )
-    print("GOT MITOTIC ANNOTATIONS")
+#     # get mitotic state name for all cells
+#     mitoticdata = lk.select_rows_as_list(
+#         schema_name="processing",
+#         query_name="MitoticAnnotation",
+#         sort="MitoticAnnotation",
+#         # columns=["CellId", "MitoticStateId/Name", "Complete"]
+#         columns=["CellId", "MitoticStateId/Name"],
+#     )
+#     print("GOT MITOTIC ANNOTATIONS")
 
-    mitoticdata = pd.DataFrame(mitoticdata)
-    mitoticbooldata = mitoticdata[mitoticdata["MitoticStateId/Name"] == "Mitosis"]
-    mitoticstatedata = mitoticdata[mitoticdata["MitoticStateId/Name"] != "Mitosis"]
-    mitoticbooldata = mitoticbooldata.rename(
-        columns={"MitoticStateId/Name": "IsMitotic"}
-    )
-    mitoticstatedata = mitoticstatedata.rename(
-        columns={"MitoticStateId/Name": "MitoticState"}
-    )
-    df_data_handoff = pd.merge(
-        df_data_handoff,
-        mitoticbooldata,
-        how="left",
-        left_on="CellId",
-        right_on="CellId",
-    )
-    df_data_handoff = pd.merge(
-        df_data_handoff,
-        mitoticstatedata,
-        how="left",
-        left_on="CellId",
-        right_on="CellId",
-    )
-    df_data_handoff = df_data_handoff.fillna(
-        value={"IsMitotic": "", "MitoticState": ""}
-    )
+#     mitoticdata = pd.DataFrame(mitoticdata)
+#     mitoticbooldata = mitoticdata[mitoticdata["MitoticStateId/Name"] == "Mitosis"]
+#     mitoticstatedata = mitoticdata[mitoticdata["MitoticStateId/Name"] != "Mitosis"]
+#     mitoticbooldata = mitoticbooldata.rename(
+#         columns={"MitoticStateId/Name": "IsMitotic"}
+#     )
+#     mitoticstatedata = mitoticstatedata.rename(
+#         columns={"MitoticStateId/Name": "MitoticState"}
+#     )
+#     df_data_handoff = pd.merge(
+#         df_data_handoff,
+#         mitoticbooldata,
+#         how="left",
+#         left_on="CellId",
+#         right_on="CellId",
+#     )
+#     df_data_handoff = pd.merge(
+#         df_data_handoff,
+#         mitoticstatedata,
+#         how="left",
+#         left_on="CellId",
+#         right_on="CellId",
+#     )
+#     df_data_handoff = df_data_handoff.fillna(
+#         value={"IsMitotic": "", "MitoticState": ""}
+#     )
 
-    # get the aligned mitotic cell data
-    imsc_dataset = Package.browse(
-        "aics/imsc_align_cells", "s3://allencell-internal-quilt"
-    )
-    dataset = imsc_dataset["dataset.csv"]()
-    print("GOT INTEGRATED MITOTIC DATA SET")
+#     # get the aligned mitotic cell data
+#     imsc_dataset = Package.browse(
+#         "aics/imsc_align_cells", "s3://allencell-internal-quilt"
+#     )
+#     dataset = imsc_dataset["dataset.csv"]()
+#     print("GOT INTEGRATED MITOTIC DATA SET")
 
-    # assert all the angles and translations are valid production cells
-    # matches = dataset["CellId"].isin(df_data_handoff["CellId"])
-    # assert(matches.all())
+#     # assert all the angles and translations are valid production cells
+#     # matches = dataset["CellId"].isin(df_data_handoff["CellId"])
+#     # assert(matches.all())
 
-    df_data_handoff = pd.merge(
-        df_data_handoff,
-        dataset[["CellId", "Angle", "x", "y"]],
-        left_on="CellId",
-        right_on="CellId",
-        how="left",
-    )
+#     df_data_handoff = pd.merge(
+#         df_data_handoff,
+#         dataset[["CellId", "Angle", "x", "y"]],
+#         left_on="CellId",
+#         right_on="CellId",
+#         how="left",
+#     )
 
-    # deal with nans
-    df_data_handoff = df_data_handoff.fillna(value={"Angle": 0, "x": 0, "y": 0})
+#     # deal with nans
+#     df_data_handoff = df_data_handoff.fillna(value={"Angle": 0, "x": 0, "y": 0})
 
-    # replace any remaining NaNs with None
-    df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
+#     # replace any remaining NaNs with None
+#     df_data_handoff = df_data_handoff.where((pd.notnull(df_data_handoff)), None)
 
-    check_dups(df_data_handoff, "CellId")
+#     check_dups(df_data_handoff, "CellId")
 
-    print("DONE BUILDING TABLES")
+#     print("DONE BUILDING TABLES")
 
-    print(list(df_data_handoff.columns))
+#     print(list(df_data_handoff.columns))
 
-    return df_data_handoff
+#     return df_data_handoff
 
 
 def get_csv_features(path: str = FULL_FEATURES_DATA):
@@ -313,7 +413,91 @@ def get_csv_features(path: str = FULL_FEATURES_DATA):
     return df
 
 
+def cache_dataset(out_dir: os.PathLike, groups):
+    with open(
+        os.path.join(
+            out_dir,
+            dataset_constants.STATUS_DIR,
+            dataset_constants.DATASET_JSON_FILENAME,
+        ),
+        "w",
+    ) as savefile:
+        json.dump(groups, savefile)
+    log.info("Saved dataset to json")
+
+
+def uncache_dataset(out_dir: os.PathLike):
+    groups = []
+    with open(
+        os.path.join(
+            out_dir,
+            dataset_constants.STATUS_DIR,
+            dataset_constants.DATASET_JSON_FILENAME,
+        ),
+        "r",
+    ) as savefile:
+        groups = json.load(savefile)
+    return groups
+
+
+def get_data_groups(prefs, n=0):
+    data = collect_csv_data_rows(
+        fovids=prefs.get("fovs"), cell_lines=prefs.get("cell_lines")
+    )
+    log.info("Number of total cell rows: " + str(len(data)))
+    # group by fov id
+    data_grouped = data.groupby("FOVId")
+    total_jobs = len(data_grouped)
+    log.info("Number of total FOVs: " + str(total_jobs))
+    # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
+    groups = []
+    for index, (fovid, group) in enumerate(data_grouped):
+        groups.append(group.to_dict(orient="records"))
+        # only the first n FOVs (one group per FOV)
+        if n > 0 and index >= n - 1:
+            break
+
+    log.info("Converted groups to lists of dicts")
+
+    # make dataset available as a file for later runs
+    cache_dataset(prefs.get("out_dir"), groups)
+
+    return groups
+
+
+def get_data_groups2(
+    input_manifest: os.PathLike,
+    query_options: QueryOptions,
+    out_dir: os.PathLike,
+):
+    data = collect_csv_data_rows(
+        input_manifest, fovids=query_options.fovids, cell_lines=query_options.cell_lines
+    )
+    log.info("Number of total cell rows: " + str(len(data)))
+
+    # group by fov id
+    # data_grouped = data.groupby("FOVId")
+    data_grouped = data.groupby("SourceFilename")
+
+    total_jobs = len(data_grouped)
+    log.info("Number of total FOVs: " + str(total_jobs))
+    # log.info('ABOUT TO CREATE ' + str(total_jobs) + ' JOBS')
+    groups = []
+    for index, (fovid, group) in enumerate(data_grouped):
+        groups.append(group.to_dict(orient="records"))
+        # only the first n FOVs (one group per FOV)
+        if query_options.first_n > 0 and index >= query_options.first_n - 1:
+            break
+
+    log.info("Converted groups to lists of dicts")
+
+    # make dataset available as a file for later runs
+    cache_dataset(out_dir, groups)
+
+    return groups
+
+
 if __name__ == "__main__":
     print(sys.argv)
-    collect_data_rows()
+    # collect_data_rows()
     sys.exit(0)

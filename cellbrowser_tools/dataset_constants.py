@@ -5,12 +5,19 @@ THUMBNAILS_DIR = "Cell-Viewer_Thumbnails"
 ATLAS_DIR = "Cell-Viewer_Thumbnails"
 
 FEATURE_DATA_FILENAME = "cell-feature-analysis.json"
+FEATURE_DEFS_FILENAME = "feature_defs.json"
 CELL_LINE_DATA_FILENAME = "cell-line-def.json"
 FILE_LIST_FILENAME = "cellviewer-files.csv"
 DATASET_JSON_FILENAME = "dataset.json"
 
 ERROR_FOVS_FILENAME = "errorFovs.txt"
 CHANNEL_NAMES_FILENAME = "allChannelNames.txt"
+
+STATUS_DIR = "processing"
+SLURM_SCRIPTS_DIR = "scripts_slurm"
+SLURM_OUTPUT_DIR = "out/"
+SLURM_ERROR_DIR = "err/"
+DATA_LOG_NAME = "data_jobs_out.csv"
 
 
 # the expected column names returned from labkey
@@ -86,3 +93,6 @@ class DataField(str, Enum):
 class AugmentedDataField(str, Enum):
     IsMitotic = "IsMitotic"
     MitoticState = "MitoticState"
+    ChannelNumber561 = "ChannelNumber561"
+    # special case for FISH dataset
+    GenePair = "gene_pair"

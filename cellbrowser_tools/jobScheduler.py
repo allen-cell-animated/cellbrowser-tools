@@ -1,3 +1,4 @@
+from cellbrowser_tools.dataset_constants import SLURM_OUTPUT_DIR, SLURM_ERROR_DIR
 import subprocess
 import os
 import random
@@ -7,7 +8,16 @@ import jinja2
 
 
 def _job_prefs_from_prefs(prefs, name, array=False):
-    job_prefs = prefs["job_prefs"].copy()
+    job_prefs = {
+        "max_simultaneous_jobs": 100,
+        "partition": "aics_cpu_general",
+        "time": "06:00:00",
+        "cpus-per-task": 1,
+        "mem-per-cpu": "16G",
+        "output": SLURM_OUTPUT_DIR,
+        "error": SLURM_ERROR_DIR,
+    }
+    # job_prefs = prefs["job_prefs"].copy()
     arraystring = f"_%A_%a" if array else f"_%A"
     job_prefs["output"] = os.path.join(
         prefs["sbatch_output"], name + arraystring + ".out"
@@ -72,7 +82,7 @@ def submit_one(commandstring, prefs, name="", do_run=True, deps=[], mem=""):
         slurm_args.append(f"--{keyword} {value}")
 
     batchrunnerscriptname = f"BatchRunner{name}_{unique_id}.sh"
-    script = Path(prefs["out_status"]) / batchrunnerscriptname
+    script = Path(prefs["status_dir"]) / batchrunnerscriptname
 
     config = {
         "job_with_args": commandstring,
@@ -124,8 +134,8 @@ def submit_batch(commandlist, prefs, name="", do_run=True, deps=[]):
 
         batchrunnerscriptname = f"BatchRunner{i}{name}_{unique_id}.sh"
         batchdatafilename = f"BatchData{i}{name}_{unique_id}.txt"
-        script = Path(prefs["out_status"]) / batchrunnerscriptname
-        batchfile = Path(prefs["out_status"]) / batchdatafilename
+        script = Path(prefs["status_dir"]) / batchrunnerscriptname
+        batchfile = Path(prefs["status_dir"]) / batchdatafilename
 
         config = {
             "mybatchdatafilename": batchfile,

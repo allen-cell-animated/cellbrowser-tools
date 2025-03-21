@@ -429,7 +429,7 @@ def build_cfe_dataset_2020(prefs):
     dataset_df = pd.merge(file_infos, df_feats, how="inner", on="CellId")
     if len(dataset_df) != len(file_infos):
         raise ValueError(
-            f"Features list has different cellIds than source dataset. Can not merge."
+            "Features list has different cellIds than source dataset. Can not merge."
         )
 
     # make each row into two dicts
@@ -442,7 +442,7 @@ def build_cfe_dataset_2020(prefs):
         dataset.append(
             {
                 "file_info": {x: rowdict[x] for x in rowdict if x in file_info_columns},
-                "measured_features": {
+                "features": {
                     x: rowdict[x] for x in rowdict if x not in file_info_columns
                 },
             }
@@ -456,6 +456,192 @@ def build_cfe_dataset_2020(prefs):
     ) as output_file:
         # TODO: could do this row by row?
         output_file.write(json.dumps(dataset))
+
+
+def create_variance_dataset_from_features(featurescsv, out_dir):
+    # read features dataset
+    log.info("Collecting feature data")
+    df_feats = lkutils.get_csv_features(featurescsv)
+
+    # read whole variance dataset into dataframe
+    data = lkutils.collect_csv_data_rows()
+    log.info(f"Number of total cell rows: {len(data)}")
+    # Per-cell
+    #     {
+    #     "file_info": {
+    #         "CellId": 2,
+    #         "FOVId": 1,
+    #         "CellLineName": "AICS-13"
+    #     },
+    #     "features": {
+    #         "Apical Proximity (unitless)": 2.1123541,
+    #         ...
+    #     }
+    # }
+    # select only the data in df_feats rows (join on CellId)
+    data = data[data["CellId"].isin(df_feats["CellId"])]
+
+    file_info_columns = [
+        "CellId",
+        "FOVId",
+        "CellLineName",
+        "thumbnailPath",
+        "volumeviewerPath",
+        "fovThumbnailPath",
+        "fovVolumeviewerPath",
+    ]
+    file_infos = data[["CellId", "FOVId", "CellLine"]]
+    # add file path locations
+    file_infos["thumbnailPath"] = file_infos.apply(
+        lambda x: f'{x["CellLine"]}/{x["CellLine"]}_{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}.png',
+        axis=1,
+    )
+    file_infos["volumeviewerPath"] = file_infos.apply(
+        lambda x: f'{x["CellLine"]}/{x["CellLine"]}_{lkutils.get_cell_name(x["CellId"], x["FOVId"], x["CellLine"])}_atlas.json',
+        axis=1,
+    )
+    file_infos["fovThumbnailPath"] = file_infos.apply(
+        lambda x: f'{x["CellLine"]}/{x["CellLine"]}_{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}.png',
+        axis=1,
+    )
+    file_infos["fovVolumeviewerPath"] = file_infos.apply(
+        lambda x: f'{x["CellLine"]}/{x["CellLine"]}_{lkutils.get_fov_name(x["FOVId"], x["CellLine"])}_atlas.json',
+        axis=1,
+    )
+
+    # need CellLineName here
+    file_infos.rename(columns={"CellLine": "CellLineName"}, inplace=True)
+
+    # at this time these need to have the same length
+    if len(df_feats) != len(file_infos):
+        raise ValueError(
+            f"Features list has different number of cells ({len(df_feats)}) than source dataset ({len(file_infos)})"
+        )
+
+    # merge together on cellid
+    dataset_df = pd.merge(file_infos, df_feats, how="inner", on="CellId")
+    if len(dataset_df) != len(file_infos):
+        raise ValueError(
+            "Features list has different cellIds than source dataset. Can not merge."
+        )
+
+    # features_names
+    features_names = [x for x in dataset_df.columns if x not in file_info_columns]
+    print(features_names)
+    discreteFeatures = {}
+
+    # make a feature defs for the known features:
+    featuresjson = []
+    for featurename in features_names:
+        # split on parens and extract unit
+        firstparen = featurename.find("(")
+        if firstparen == -1:
+            unitstr = ""
+            trimmed_featurename = featurename
+        else:
+            lastparen = featurename.find(")")
+            unitstr = featurename[firstparen + 1 : lastparen]
+            trimmed_featurename = featurename[0:firstparen]
+        trimmed_featurename = trimmed_featurename.strip()
+        # if unitless then get all the unique values
+        options = {}
+        discrete = False
+        if unitstr == "":
+            discrete = True
+            vals = dataset_df[featurename].unique()
+            for i, v in enumerate(vals):
+                options[str(i)] = {"color": "#ffffff", "name": str(v)}
+            discreteFeatures[featurename] = options
+        featuresjson.append(
+            {
+                "displayName": trimmed_featurename,
+                "description": trimmed_featurename,
+                "tooltip": trimmed_featurename,
+                "unit": unitstr,
+                "key": trimmed_featurename,
+                "discrete": discrete,
+                "options": options,
+            }
+        )
+    with open(
+        os.path.join(out_dir, dataset_constants.FEATURE_DEFS_FILENAME),
+        "w",
+    ) as output_file:
+        output_file.write(json.dumps(featuresjson))
+
+    # make each row into two dicts
+    # format
+    dataset = []
+    for i, row in dataset_df.iterrows():
+        rowdict = row.to_dict()
+        # file_infos = file_infos.to_dict("records")
+        # features = df_feats.to_dict("records")
+        vals = []
+        for x in rowdict:
+            if x not in file_info_columns:
+                if discreteFeatures.get(x):
+                    # opts is list keyed by feature name
+                    opts = discreteFeatures.get(x)
+                    # opts contains options keyed by option name
+                    value = "NaN"
+                    for opt in opts:
+                        if opts[opt]["name"] == rowdict[x]:
+                            value = opt
+                    vals.append(value)
+                else:
+                    vals.append(rowdict[x])
+        dataset.append(
+            {
+                "file_info": [
+                    str(rowdict[x]) for x in rowdict if x in file_info_columns
+                ],
+                "features": vals,
+            }
+        )
+
+    # write out the final data set
+    with open(
+        os.path.join(out_dir, dataset_constants.FEATURE_DATA_FILENAME),
+        "w",
+        newline="",
+    ) as output_file:
+        # TODO: could do this row by row?
+        output_file.write(json.dumps(dataset))
+
+    # make empty dataset.json
+    dataset_name = os.path.splitext(os.path.basename(featurescsv))[
+        0
+    ]  # extract just filename
+    dataset_json = {
+        "name": dataset_name,
+        "version": "v2021.1",
+        "id": dataset_name,
+        "image": "",
+        "description": "TODO",
+        "userData": {
+            "isNew": True,
+            "inReview": False,
+            "totalCells": len(file_infos),
+            "totalFOVs": 0,
+            "totalTaggedStructures": 1,
+        },
+        "featureDefsPath": dataset_constants.FEATURE_DEFS_FILENAME,
+        "featuresDataPath": dataset_constants.FEATURE_DATA_FILENAME,
+        "cellLineDataPath": dataset_constants.CELL_LINE_DATA_FILENAME,
+        "albumPath": "albums",
+        "thumbnailRoot": f"https://s3-us-west-2.amazonaws.com/bisque.allencell.org/{dataset_name}/Cell-Viewer_Thumbnails",
+        "downloadRoot": f"https://files.allencell.org/api/2.0/file/download?collection={dataset_name}",
+        "volumeViewerDataRoot": f"https://s3-us-west-2.amazonaws.com/bisque.allencell.org/{dataset_name}/Cell-Viewer_Thumbnails",
+        "defaultXAxis": featuresjson[0]["key"],
+        "defaultYAxis": featuresjson[1]["key"],
+        "featuresDisplayOrder": [],
+        "featuresDataOrder": [],
+    }
+    with open(
+        os.path.join(out_dir, dataset_constants.DATASET_JSON_FILENAME),
+        "w",
+    ) as output_file:
+        output_file.write(json.dumps(dataset_json))
 
 
 def build_feature_data(prefs, groups):
